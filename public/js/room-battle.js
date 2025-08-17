@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let questionStartTime;
     let allQuestions = []; // Lưu tất cả câu hỏi
     let myQuestionOrder = []; // Thứ tự câu hỏi của tôi
+    let gameStartTime; // Thời gian bắt đầu game
+    let totalTimeRemaining = 60; // 60 giây tổng
+    let gameFinished = false;
     
     // Kết nối Socket.IO
     function connectSocket() {
@@ -62,9 +65,21 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTimer(data.totalTimeLeft);
         });
         
-        // Xử lý sự kiện khi có người trả lời
+                // Xử lý sự kiện khi có người trả lời  
         socket.on('participant_answered', function(data) {
             updateParticipantStatus(data);
+        });
+        
+        // Xử lý khi có người hoàn thành game
+        socket.on('player_finished', function(data) {
+            console.log('🏁 Người chơi hoàn thành:', data);
+            showNotification(`${data.username} đã hoàn thành! Điểm: ${data.score}`, 'info');
+        });
+        
+        // Xử lý kết quả cuối cùng
+        socket.on('game_results', function(data) {
+            console.log('🎯 Kết quả cuối cùng:', data);
+            showResults(data.results);
         });
         
         // Xử lý sự kiện khi hết thời gian câu hỏi
@@ -309,6 +324,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function showQuestion(data) {
         const { questionNumber, totalQuestions, question, totalTimeLeft } = data;
         
+        console.log('📋 showQuestion called:', { questionNumber, totalQuestions, questionText: question?.text?.substring(0, 50) + '...' });
+        
         // Lưu câu hỏi hiện tại
         currentQuestion = question;
         currentQuestionIndex = questionNumber - 1;
@@ -378,22 +395,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     answerResult.textContent = 'Đúng! +10 điểm';
                     answerResult.className = 'answer-result correct';
+                    showNotification('Đúng! +10 điểm', 'success');
                 } else {
                     answerResult.textContent = `Sai! Đáp án đúng: ${response.correctAnswer}`;
                     answerResult.className = 'answer-result incorrect';
+                    showNotification('Sai rồi!', 'error');
                 }
                 
-                // Chuyển câu hỏi tiếp theo khi submit
-                currentQuestionIndex++;
-                
-                // Kiểm tra nếu hết câu hỏi
-                if (currentQuestionIndex >= allQuestions.length) {
-                    console.log('✅ Đã hoàn thành tất cả câu hỏi!');
-                    return;
-                }
-                
-                // Delay trước khi hiển thị câu tiếp theo
+                // ✅ Tự chuyển câu tiếp theo như solo battle - KHÔNG chờ người khác
                 setTimeout(() => {
+                    currentQuestionIndex++;
+                    
+                    // Kiểm tra nếu hết câu hỏi
+                    if (currentQuestionIndex >= allQuestions.length) {
+                        console.log('🏁 Đã hoàn thành tất cả câu hỏi!');
+                        finishMyGame();
+                        return;
+                    }
+                    
+                    // Hiển thị câu tiếp theo
                     const questionIndex = myQuestionOrder[currentQuestionIndex];
                     const nextQuestion = allQuestions[questionIndex];
                     
@@ -403,7 +423,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         question: nextQuestion,
                         totalTimeLeft: document.getElementById('total-timer').textContent
                     });
-                }, 2000);
+                }, 1500);
+            } else {
+                showNotification('Lỗi khi gửi câu trả lời: ' + response.error, 'error');
             }
         });
     }
@@ -423,31 +445,108 @@ document.addEventListener('DOMContentLoaded', function() {
         showNotification('Hết thời gian!');
     }
     
-    // Xử lý khi có thông báo bắt đầu câu hỏi mới
+    // Xử lý khi có thông báo bắt đầu câu hỏi mới  
     function handleNewQuestionStart(data) {
-        console.log('🎯 Xử lý câu hỏi mới, current index:', currentQuestionIndex);
+        console.log('📨 Nhận event new_question_start với data:', data);
         
-        if (!allQuestions.length) {
-            // Lần đầu nhận data, lưu tất cả câu hỏi và tạo thứ tự ngẫu nhiên
-            allQuestions = data.questionData;
-            myQuestionOrder = shuffleArray([...Array(allQuestions.length).keys()]);
-            console.log('🔀 Thứ tự câu hỏi của tôi:', myQuestionOrder);
+        // Lần đầu nhận data, lưu tất cả câu hỏi và tạo thứ tự ngẫu nhiên
+        allQuestions = data.questionData;
+        myQuestionOrder = shuffleArray([...Array(allQuestions.length).keys()]);
+        console.log('🔀 Thứ tự câu hỏi của tôi:', myQuestionOrder);
+        
+        currentQuestionIndex = 0; // Reset về câu đầu tiên
+        gameStartTime = Date.now();
+        gameFinished = false;
+        
+        // Bắt đầu timer 60 giây tổng
+        startTotalTimer();
+        
+        // Hiển thị câu hỏi đầu tiên
+        const questionIndex = myQuestionOrder[currentQuestionIndex];
+        const question = allQuestions[questionIndex];
+        
+        console.log('📋 Hiển thị câu hỏi đầu tiên:', currentQuestionIndex + 1);
+        
+        showQuestion({
+            questionNumber: currentQuestionIndex + 1,
+            totalQuestions: allQuestions.length,
+            question: question,
+            totalTimeLeft: totalTimeRemaining
+        });
+    }
+    
+    // Bắt đầu timer 60 giây tổng (từ solo battle)
+    function startTotalTimer() {
+        totalTimeRemaining = 60;
+        updateTimer(totalTimeRemaining);
+        
+        if (timerInterval) {
+            clearInterval(timerInterval);
         }
         
-        // Kiểm tra nếu còn câu hỏi
-        if (currentQuestionIndex < allQuestions.length) {
-            const questionIndex = myQuestionOrder[currentQuestionIndex];
-            const question = allQuestions[questionIndex];
+        timerInterval = setInterval(() => {
+            totalTimeRemaining--;
+            updateTimer(totalTimeRemaining);
             
-            console.log('📋 Hiển thị câu hỏi', currentQuestionIndex + 1, '- Index:', questionIndex);
-            
-            showQuestion({
-                questionNumber: currentQuestionIndex + 1,
-                totalQuestions: allQuestions.length,
-                question: question,
-                totalTimeLeft: data.totalTimeLeft
-            });
-        }
+            if (totalTimeRemaining <= 0) {
+                clearInterval(timerInterval);
+                if (!gameFinished) {
+                    console.log('⏰ Hết thời gian! Kết thúc game tự động');
+                    handleGameTimeout();
+                }
+            }
+        }, 1000);
+    }
+    
+    // Cập nhật hiển thị timer
+    function updateTimer(timeLeft) {
+        document.getElementById('total-timer').textContent = timeLeft;
+    }
+    
+    // Xử lý khi hết thời gian tổng
+    function handleGameTimeout() {
+        if (gameFinished) return;
+        
+        gameFinished = true;
+        clearInterval(timerInterval);
+        
+        // Vô hiệu hóa input và nút trả lời
+        const answerInput = document.getElementById('answer-input');
+        const submitBtn = document.getElementById('submit-answer');
+        if (answerInput) answerInput.disabled = true;
+        if (submitBtn) submitBtn.disabled = true;
+        
+        showNotification('Hết thời gian! Game kết thúc.', 'warning');
+        
+        // Kết thúc game của mình
+        finishMyGame();
+    }
+    
+    // Kết thúc game của riêng mình 
+    function finishMyGame() {
+        if (gameFinished) return;
+        
+        gameFinished = true;
+        clearInterval(timerInterval);
+        
+        const completionTime = Math.floor((Date.now() - gameStartTime) / 1000);
+        
+        console.log('🏁 Hoàn thành game! Điểm:', playerScore, '- Thời gian:', completionTime);
+        
+        // Gửi kết quả đến server
+        socket.emit('finish_game', {
+            roomCode: roomInfo.code,
+            userId: userId,
+            score: playerScore,
+            completionTime: completionTime,
+            questionsAnswered: currentQuestionIndex
+        }, function(response) {
+            if (response.success) {
+                showNotification('Đã gửi kết quả thành công!', 'success');
+            } else {
+                console.error('Lỗi gửi kết quả:', response.error);
+            }
+        });
     }
     
     // Helper function: Shuffle array (giống bên server)
