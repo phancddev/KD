@@ -19,6 +19,21 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🔍 selectAllBtn element:', selectAllBtn);
     const selectedCountSpan = document.getElementById('selected-count');
     
+    // Hàm helper để reset trạng thái select all
+    function resetSelectAllState() {
+        window.selectAllQuestionsSelected = false;
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.style.display = 'none';
+        }
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = '0';
+        }
+    }
+    
     // Lấy thông tin người dùng
     fetch('/api/user')
         .then(response => response.json())
@@ -127,7 +142,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Thêm event listeners cho checkboxes
         document.querySelectorAll('.question-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', updateSelectedCount);
+            checkbox.addEventListener('change', function() {
+                // Nếu bỏ chọn bất kỳ checkbox nào trong trạng thái "select all", 
+                // chỉ reset trạng thái nếu đang ở trang đầu tiên
+                if (!this.checked && window.selectAllQuestionsSelected && currentPage === 1) {
+                    window.selectAllQuestionsSelected = false;
+                }
+                updateSelectedCount();
+            });
         });
         
         // Nếu đang trong trạng thái "select all", tự động check tất cả checkboxes
@@ -137,6 +159,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             if (selectAllCheckbox) {
                 selectAllCheckbox.checked = true;
+            }
+            // Cập nhật số lượng đã chọn để hiển thị tổng số câu hỏi
+            if (selectedCountSpan) {
+                selectedCountSpan.textContent = questions.length;
+            }
+            // Hiển thị nút delete selected
+            if (deleteSelectedBtn) {
+                deleteSelectedBtn.style.display = 'inline-block';
             }
         }
         
@@ -168,6 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
         firstButton.disabled = currentPage === 1;
         firstButton.title = 'Trang đầu';
         firstButton.addEventListener('click', function() {
+            resetSelectAllState();
             currentPage = 1;
             renderQuestions(filteredQuestions);
             renderPagination(filteredQuestions);
@@ -181,6 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
         prevButton.title = 'Trang trước';
         prevButton.addEventListener('click', function() {
             if (currentPage > 1) {
+                resetSelectAllState();
                 currentPage--;
                 renderQuestions(filteredQuestions);
                 renderPagination(filteredQuestions);
@@ -193,11 +225,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const pageButton = document.createElement('button');
             pageButton.textContent = pageNum;
             pageButton.classList.toggle('active', pageNum === currentPage);
-            pageButton.addEventListener('click', function() {
-                currentPage = pageNum;
-                renderQuestions(filteredQuestions);
-                renderPagination(filteredQuestions);
-            });
+                    pageButton.addEventListener('click', function() {
+            resetSelectAllState();
+            currentPage = pageNum;
+            renderQuestions(filteredQuestions);
+            renderPagination(filteredQuestions);
+        });
             return pageButton;
         }
         
@@ -252,6 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
         nextButton.title = 'Trang sau';
         nextButton.addEventListener('click', function() {
             if (currentPage < totalPages) {
+                resetSelectAllState();
                 currentPage++;
                 renderQuestions(filteredQuestions);
                 renderPagination(filteredQuestions);
@@ -265,6 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
         lastButton.disabled = currentPage === totalPages;
         lastButton.title = 'Trang cuối';
         lastButton.addEventListener('click', function() {
+            resetSelectAllState();
             currentPage = totalPages;
             renderQuestions(filteredQuestions);
             renderPagination(filteredQuestions);
@@ -315,6 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function goToPage() {
             const targetPage = parseInt(pageInput.value);
             if (targetPage >= 1 && targetPage <= totalPages && targetPage !== currentPage) {
+                resetSelectAllState();
                 currentPage = targetPage;
                 renderQuestions(filteredQuestions);
                 renderPagination(filteredQuestions);
@@ -339,6 +375,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tìm kiếm câu hỏi
     searchInput.addEventListener('input', function() {
         const searchTerm = this.value.trim().toLowerCase();
+        
+        // Reset trạng thái "select all" khi tìm kiếm
+        resetSelectAllState();
         
         if (searchTerm === '') {
             currentPage = 1;
@@ -545,12 +584,26 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateSelectedCount() {
         const checkboxes = document.querySelectorAll('.question-checkbox');
         const selectedCheckboxes = document.querySelectorAll('.question-checkbox:checked');
-        const count = selectedCheckboxes.length;
         
+        // Nếu đang trong trạng thái "select all", hiển thị tổng số câu hỏi
+        if (window.selectAllQuestionsSelected) {
+            selectedCountSpan.textContent = questions.length;
+            deleteSelectedBtn.style.display = 'inline-block';
+            
+            // Update select all checkbox state
+            if (selectAllCheckbox) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            }
+            return;
+        }
+        
+        // Logic bình thường khi không phải "select all"
+        const count = selectedCheckboxes.length;
         selectedCountSpan.textContent = count;
         
         if (count > 0) {
-            deleteSelectedBtn.style.display = 'block';
+            deleteSelectedBtn.style.display = 'inline-block';
         } else {
             deleteSelectedBtn.style.display = 'none';
         }
@@ -588,19 +641,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log(`✅ Bắt đầu chọn toàn bộ ${questions.length} câu hỏi...`);
         
-        // Tự động select tất cả câu hỏi trên tất cả các trang
-        const allCheckboxes = document.querySelectorAll('.question-checkbox');
-        console.log('🔍 Tìm thấy checkboxes:', allCheckboxes.length);
+        // Đánh dấu trạng thái "select all" để khi chuyển trang vẫn giữ được
+        window.selectAllQuestionsSelected = true;
         
-        if (allCheckboxes.length === 0) {
-            console.warn('⚠️ Không tìm thấy checkboxes nào!');
-            showNotification('Không tìm thấy checkboxes để select. Vui lòng refresh trang.', 'error');
-            return;
-        }
-        
-        allCheckboxes.forEach((checkbox, index) => {
+        // Select tất cả checkboxes trên trang hiện tại
+        const currentPageCheckboxes = document.querySelectorAll('.question-checkbox');
+        currentPageCheckboxes.forEach((checkbox, index) => {
             checkbox.checked = true;
-            console.log(`✅ Checked checkbox ${index + 1}:`, checkbox);
+            console.log(`✅ Checked checkbox ${index + 1} trên trang hiện tại:`, checkbox);
         });
         
         // Update UI để hiển thị nút "Xóa đã chọn"
@@ -621,14 +669,12 @@ document.addEventListener('DOMContentLoaded', function() {
             selectAllCheckbox.checked = true;
         }
         
-        // Lưu trạng thái "select all" để khi chuyển trang vẫn giữ được
-        window.selectAllQuestionsSelected = true;
+        showNotification(`✅ Đã chọn toàn bộ ${questions.length} câu hỏi trên tất cả các trang. Bạn có thể bấm "Xóa đã chọn" để xóa.`, 'success');
         
-        showNotification(`✅ Đã chọn toàn bộ ${questions.length} câu hỏi. Bạn có thể bấm "Xóa đã chọn" để xóa.`, 'success');
-        
-        console.log('🔍 Checkboxes đã select:', allCheckboxes.length);
-        console.log('🔍 Questions array length:', questions.length);
+        console.log('🔍 Checkboxes đã select trên trang hiện tại:', currentPageCheckboxes.length);
+        console.log('🔍 Questions array length (tổng số câu hỏi):', questions.length);
         console.log('🔍 Nút "Xóa đã chọn" đã hiển thị');
+        console.log('🔍 Trạng thái selectAllQuestionsSelected:', window.selectAllQuestionsSelected);
     }
 
     function deleteSelectedQuestions() {
@@ -682,15 +728,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 showNotification(`✅ Đã xóa thành công ${deleteCount}/${totalCount} câu hỏi`, 'success');
                 
                 // Reset trạng thái select all
-                window.selectAllQuestionsSelected = false;
+                resetSelectAllState();
                 
                 // Reload danh sách
                 fetchQuestions();
-                
-                // Ẩn nút delete selected
-                if (deleteSelectedBtn) {
-                    deleteSelectedBtn.style.display = 'none';
-                }
             }
             
             if (errorCount > 0) {
@@ -703,6 +744,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
             const checkboxes = document.querySelectorAll('.question-checkbox');
+            
+            // Nếu bỏ chọn select all checkbox, reset trạng thái "select all"
+            if (!this.checked) {
+                window.selectAllQuestionsSelected = false;
+            }
+            
             checkboxes.forEach(cb => {
                 cb.checked = this.checked;
             });
