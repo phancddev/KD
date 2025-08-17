@@ -537,3 +537,61 @@ tr.rank-3 {
         width: 90%;
     }
 }
+
+/* Sound control button styles */
+.sound-control {
+    margin-left: 15px;
+}
+
+.sound-control .btn {
+    background-color: #f39c12;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.sound-control .btn:hover {
+    background-color: #e67e22;
+    transform: scale(1.1);
+}
+
+.sound-control .btn:active {
+    transform: scale(0.95);
+}
+
+/* Question header layout */
+.question-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.question-header .question-number {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.question-header .timer-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.question-header .total-timer {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #e74c3c;
+    min-width: 40px;
+    text-align: center;
+}

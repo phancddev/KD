@@ -27,6 +27,11 @@
                                     <div class="total-timer" id="total-timer">60</div>
                                     <span class="timer-label">giây còn lại</span>
                                 </div>
+                                <div class="sound-control">
+                                    <button id="sound-toggle" class="btn btn-small" title="Bật/Tắt âm thanh">
+                                        <span id="sound-icon">🔊</span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="question-content">
                                 <h3 id="question-text">Nội dung câu hỏi sẽ hiển thị ở đây</h3>
@@ -78,6 +83,9 @@
         </main>
     </div>
     
+    <audio id="battle-sound" preload="auto">
+        <source src="/sounds/soudKD.mpeg" type="audio/mpeg">
+    </audio>
     <script src="/js/solo-battle.js"></script>
 </body>
 </html>

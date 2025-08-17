@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+
+    
     // Lấy thông tin người dùng
     fetch('/api/user')
         .then(response => response.json())
@@ -770,4 +772,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Khởi tạo
     fetchQuestions();
+    
+    // EXPOSE FUNCTIONS VÀ BIẾN RA GLOBAL SCOPE
+    window.questions = questions;
+    window.currentPage = currentPage;
+    window.questionsPerPage = questionsPerPage;
+    window.selectAllQuestions = selectAllQuestions;
+    window.updateSelectedCount = updateSelectedCount;
+    window.deleteSelectedQuestions = deleteSelectedQuestions;
+    window.resetSelectAllState = resetSelectAllState;
+    window.fetchQuestions = fetchQuestions;
+    window.renderQuestions = renderQuestions;
+    window.renderPagination = renderPagination;
+    
+    console.log('✅ Functions và biến đã được expose ra global scope');
+    console.log('🔍 Có thể gọi: selectAllQuestions(), updateSelectedCount(), deleteSelectedQuestions()');
+    console.log('🔍 Có thể truy cập: window.questions, window.currentPage');
 });

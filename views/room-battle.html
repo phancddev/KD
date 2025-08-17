@@ -599,6 +599,11 @@
                                 <div class="total-timer" id="total-timer">60</div>
                                 <span class="timer-label">giây còn lại</span>
                             </div>
+                            <div class="sound-control">
+                                <button id="sound-toggle" class="btn btn-small" title="Bật/Tắt âm thanh">
+                                    <span id="sound-icon">🔊</span>
+                                </button>
+                            </div>
                             <button id="end-game-btn" class="btn btn-danger btn-small" style="display: none;">
                                 <i class="fas fa-stop"></i> Kết thúc
                             </button>
@@ -682,6 +687,9 @@
     </div>
     
     <script src="/socket.io/socket.io.js"></script>
+    <audio id="battle-sound" preload="auto">
+        <source src="/sounds/soudKD.mpeg" type="audio/mpeg">
+    </audio>
     <script src="/js/room-battle.js"></script>
 </body>
 </html>

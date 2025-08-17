@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Âm thanh</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+        .test-buttons {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .playing {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .stopped {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Âm thanh Battle</h1>
+    
+    <div class="test-buttons">
+        <button id="play-btn">▶️ Phát nhạc</button>
+        <button id="stop-btn">⏹️ Dừng nhạc</button>
+        <button id="toggle-btn">🔊 Bật/Tắt âm thanh</button>
+    </div>
+    
+    <div id="status" class="status stopped">Âm thanh đã dừng</div>
+    
+    <audio id="battle-sound" preload="auto">
+        <source src="/sounds/soudKD.mpeg" type="audio/mpeg">
+    </audio>
+    
+    <script>
+        const battleSound = document.getElementById('battle-sound');
+        const playBtn = document.getElementById('play-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const toggleBtn = document.getElementById('toggle-btn');
+        const status = document.getElementById('status');
+        
+        let soundEnabled = true;
+        
+        // Phát nhạc
+        playBtn.addEventListener('click', function() {
+            if (battleSound && soundEnabled) {
+                battleSound.currentTime = 0;
+                battleSound.volume = 0.7;
+                battleSound.loop = true;
+                battleSound.play().then(() => {
+                    status.textContent = 'Âm thanh đang phát...';
+                    status.className = 'status playing';
+                }).catch(error => {
+                    console.error('Lỗi phát nhạc:', error);
+                    status.textContent = 'Lỗi phát nhạc: ' + error.message;
+                    status.className = 'status stopped';
+                });
+            }
+        });
+        
+        // Dừng nhạc
+        stopBtn.addEventListener('click', function() {
+            if (battleSound) {
+                battleSound.pause();
+                battleSound.currentTime = 0;
+                status.textContent = 'Âm thanh đã dừng';
+                status.className = 'status stopped';
+            }
+        });
+        
+        // Bật/tắt âm thanh
+        toggleBtn.addEventListener('click', function() {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                toggleBtn.textContent = '🔊 Bật âm thanh';
+                if (battleSound) {
+                    battleSound.volume = 0.7;
+                }
+            } else {
+                toggleBtn.textContent = '🔇 Tắt âm thanh';
+                if (battleSound) {
+                    battleSound.volume = 0;
+                }
+            }
+        });
+        
+        // Theo dõi trạng thái âm thanh
+        battleSound.addEventListener('play', function() {
+            status.textContent = 'Âm thanh đang phát...';
+            status.className = 'status playing';
+        });
+        
+        battleSound.addEventListener('pause', function() {
+            status.textContent = 'Âm thanh đã dừng';
+            status.className = 'status stopped';
+        });
+        
+        battleSound.addEventListener('ended', function() {
+            status.textContent = 'Âm thanh đã kết thúc';
+            status.className = 'status stopped';
+        });
+        
+        battleSound.addEventListener('error', function(e) {
+            status.textContent = 'Lỗi âm thanh: ' + e.message;
+            status.className = 'status stopped';
+        });
+    </script>
+</body>
+</html> 

@@ -18,6 +18,48 @@ document.addEventListener('DOMContentLoaded', function() {
     const endRoomBtn = document.getElementById('end-room-btn');
     const endGameBtn = document.getElementById('end-game-btn');
     
+    // Audio element for battle sound
+    const battleSound = document.getElementById('battle-sound');
+    const soundToggleBtn = document.getElementById('sound-toggle');
+    const soundIcon = document.getElementById('sound-icon');
+    
+    // Biến để theo dõi trạng thái âm thanh
+    let soundEnabled = true;
+    
+    // Hàm để kiểm tra và chuẩn bị âm thanh
+    function prepareBattleSound() {
+        if (battleSound) {
+            // Đặt âm lượng mặc định
+            battleSound.volume = 0.7;
+            // Preload âm thanh
+            battleSound.load();
+        }
+    }
+    
+    // Hàm để bật/tắt âm thanh
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        if (soundEnabled) {
+            soundIcon.textContent = '🔊';
+            if (battleSound) {
+                battleSound.volume = 0.7;
+            }
+        } else {
+            soundIcon.textContent = '🔇';
+            if (battleSound) {
+                battleSound.volume = 0;
+            }
+        }
+    }
+    
+    // Event listener cho nút bật/tắt âm thanh
+    if (soundToggleBtn) {
+        soundToggleBtn.addEventListener('click', toggleSound);
+    }
+    
+    // Chuẩn bị âm thanh khi trang load
+    prepareBattleSound();
+    
     // Khởi tạo biến
     let socket;
     let userId;
@@ -257,6 +299,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Nút chơi lại
     playAgainBtn.addEventListener('click', function() {
+        // Dừng nhạc nếu đang phát
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
+        
         // Quay lại trang chủ
         window.location.href = '/';
     });
@@ -550,6 +598,16 @@ document.addEventListener('DOMContentLoaded', function() {
         totalTimeRemaining = 60;
         updateTimer(totalTimeRemaining);
         
+        // Phát nhạc khi bắt đầu trận đấu
+        if (battleSound && soundEnabled) {
+            battleSound.currentTime = 0; // Reset về đầu
+            battleSound.volume = 0.7; // Đặt âm lượng 70%
+            battleSound.loop = true; // Lặp lại để phát trong 60 giây
+            battleSound.play().catch(error => {
+                console.log('Không thể phát nhạc:', error);
+            });
+        }
+        
         if (timerInterval) {
             clearInterval(timerInterval);
         }
@@ -590,6 +648,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Dừng nhạc khi hết thời gian
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
+        
         // Vô hiệu hóa input và nút trả lời
         const answerInput = document.getElementById('answer-input');
         const submitBtn = document.getElementById('submit-answer');
@@ -620,6 +684,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // SET IMMEDIATELY to prevent double calls
         gameFinished = true;
         clearInterval(timerInterval);
+        
+        // Dừng nhạc khi kết thúc game
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
         
         const completionTime = Math.floor((Date.now() - gameStartTime) / 1000);
         
@@ -778,6 +848,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Xóa bộ đếm thời gian
         clearInterval(timerInterval);
+        
+        // Dừng nhạc khi hiển thị kết quả
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
         
         // Hiển thị bảng kết quả với thời gian hoàn thành
         resultTableBodyEl.innerHTML = '';

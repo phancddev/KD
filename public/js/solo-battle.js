@@ -14,6 +14,48 @@ document.addEventListener('DOMContentLoaded', function() {
     const playAgainBtn = document.getElementById('play-again-btn');
     const userScoreEl = document.getElementById('user-score');
     
+    // Audio element for battle sound
+    const battleSound = document.getElementById('battle-sound');
+    const soundToggleBtn = document.getElementById('sound-toggle');
+    const soundIcon = document.getElementById('sound-icon');
+    
+    // Biến để theo dõi trạng thái âm thanh
+    let soundEnabled = true;
+    
+    // Hàm để kiểm tra và chuẩn bị âm thanh
+    function prepareBattleSound() {
+        if (battleSound) {
+            // Đặt âm lượng mặc định
+            battleSound.volume = 0.7;
+            // Preload âm thanh
+            battleSound.load();
+        }
+    }
+    
+    // Hàm để bật/tắt âm thanh
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        if (soundEnabled) {
+            soundIcon.textContent = '🔊';
+            if (battleSound) {
+                battleSound.volume = 0.7;
+            }
+        } else {
+            soundIcon.textContent = '🔇';
+            if (battleSound) {
+                battleSound.volume = 0;
+            }
+        }
+    }
+    
+    // Event listener cho nút bật/tắt âm thanh
+    if (soundToggleBtn) {
+        soundToggleBtn.addEventListener('click', toggleSound);
+    }
+    
+    // Chuẩn bị âm thanh khi trang load
+    prepareBattleSound();
+    
     // Biến lưu thông tin người dùng
     let userId;
     
@@ -87,6 +129,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Chơi lại
     playAgainBtn.addEventListener('click', function() {
+        // Dừng nhạc nếu đang phát
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
+        
         // Reset trạng thái trò chơi
         currentQuestionIndex = 0;
         playerScore = 0;
@@ -223,6 +271,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Dừng trò chơi ngay lập tức và hiển thị kết quả
         clearInterval(timerInterval);
         
+        // Dừng nhạc khi hết thời gian
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
+        
         // Lưu tất cả câu hỏi còn lại như không trả lời
         for (let i = currentQuestionIndex; i < questions.length; i++) {
             const question = questions[i];
@@ -244,6 +298,16 @@ document.addEventListener('DOMContentLoaded', function() {
         totalTimerEl.textContent = totalTimeRemaining;
         
         clearInterval(timerInterval);
+        
+        // Phát nhạc khi bắt đầu trận đấu
+        if (battleSound && soundEnabled) {
+            battleSound.currentTime = 0; // Reset về đầu
+            battleSound.volume = 0.7; // Đặt âm lượng 70%
+            battleSound.loop = true; // Lặp lại để phát trong 60 giây
+            battleSound.play().catch(error => {
+                console.log('Không thể phát nhạc:', error);
+            });
+        }
         
         timerInterval = setInterval(() => {
             totalTimeRemaining--;
@@ -271,6 +335,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Dừng đếm giờ
         clearInterval(timerInterval);
+        
+        // Dừng nhạc khi kết thúc trận đấu
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
         
         // Cập nhật điểm số
         finalScoreEl.textContent = playerScore;
