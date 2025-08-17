@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const editQuestionForm = document.getElementById('edit-question-form');
     const selectAllCheckbox = document.getElementById('select-all');
     const deleteSelectedBtn = document.getElementById('delete-selected');
+    const deleteAllBtn = document.getElementById('delete-all-questions');
     const selectedCountSpan = document.getElementById('selected-count');
     
     // Lấy thông tin người dùng
@@ -421,6 +422,42 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(selectedCheckboxes).map(cb => cb.getAttribute('data-id'));
     }
     
+    // Xóa toàn bộ câu hỏi
+    function deleteAllQuestions() {
+        if (!confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ KHO ĐỀ?\n\nHành động này sẽ xóa TẤT CẢ câu hỏi và KHÔNG THỂ HOÀN TÁC!')) {
+            return;
+        }
+        
+        if (!confirm('🚨 XÁC NHẬN LẦN CUỐI!\n\nViệc xóa toàn bộ kho đề sẽ làm mất tất cả câu hỏi. Bạn có thực sự muốn tiếp tục?')) {
+            return;
+        }
+        
+        deleteAllBtn.disabled = true;
+        deleteAllBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xóa...';
+        
+        fetch('/admin/api/questions', {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(`✅ Đã xóa thành công ${data.deletedCount} câu hỏi`, 'success');
+                fetchQuestions(); // Tải lại danh sách (sẽ rỗng)
+                updateSelectedCount(); // Cập nhật số lượng đã chọn
+            } else {
+                throw new Error(data.error || 'Không thể xóa toàn bộ câu hỏi');
+            }
+        })
+        .catch(error => {
+            console.error('Lỗi khi xóa toàn bộ câu hỏi:', error);
+            showNotification('Lỗi khi xóa toàn bộ câu hỏi: ' + error.message, 'error');
+        })
+        .finally(() => {
+            deleteAllBtn.disabled = false;
+            deleteAllBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Xóa toàn bộ';
+        });
+    }
+
     function deleteSelectedQuestions() {
         const selectedIds = getSelectedQuestionIds();
         
@@ -480,6 +517,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (deleteSelectedBtn) {
         deleteSelectedBtn.addEventListener('click', deleteSelectedQuestions);
+    }
+
+    if (deleteAllBtn) {
+        deleteAllBtn.addEventListener('click', deleteAllQuestions);
     }
 
     // Khởi tạo

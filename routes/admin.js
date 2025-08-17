@@ -202,6 +202,28 @@ router.delete('/api/questions/:id', checkAdmin, async (req, res) => {
     }
 });
 
+// API xóa toàn bộ câu hỏi
+router.delete('/api/questions', checkAdmin, async (req, res) => {
+    try {
+        console.log('🗑️ Admin yêu cầu xóa toàn bộ câu hỏi');
+        const result = await deleteAllQuestions();
+        
+        if (result.success) {
+            console.log(`✅ Đã xóa ${result.deletedCount} câu hỏi thành công`);
+            res.json({ 
+                success: true, 
+                message: `Đã xóa ${result.deletedCount} câu hỏi thành công`,
+                deletedCount: result.deletedCount
+            });
+        } else {
+            res.status(500).json({ success: false, error: 'Không thể xóa câu hỏi' });
+        }
+    } catch (error) {
+        console.error('Lỗi khi xóa toàn bộ câu hỏi:', error);
+        res.status(500).json({ success: false, error: 'Không thể xóa toàn bộ câu hỏi' });
+    }
+});
+
 // API nhập câu hỏi từ file
 router.post('/api/questions/import', checkAdmin, upload.single('csvFile'), async (req, res) => {
     try {

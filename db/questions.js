@@ -327,6 +327,23 @@ async function deleteQuestion(id) {
   }
 }
 
+// Xóa toàn bộ câu hỏi
+export async function deleteAllQuestions() {
+  try {
+    const [result] = await pool.query('DELETE FROM questions');
+    
+    console.log(`✅ Đã xóa ${result.affectedRows} câu hỏi khỏi database`);
+    
+    return {
+      success: true,
+      deletedCount: result.affectedRows
+    };
+  } catch (error) {
+    console.error('Lỗi khi xóa toàn bộ câu hỏi:', error);
+    throw error;
+  }
+}
+
 // Cập nhật câu hỏi
 async function updateQuestion(id, question) {
   try {
