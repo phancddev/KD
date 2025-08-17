@@ -15,6 +15,8 @@ SCRIPTS=(
     "ssl_setup.sh"
     "debug_nginx.sh"
     "fix_nginx.sh"
+    "cleanup_nginx.sh"
+    "simple_start.sh"
     "make_executable.sh"
 )
 
@@ -36,8 +38,16 @@ echo
 echo "🎉 All scripts are now executable!"
 echo
 echo "📖 Quick start:"
-echo "  sudo ./auto_setup.sh kd.tiepluatrithuc.com    # Full setup"
-echo "  ./quick_deploy.sh kd.tiepluatrithuc.com       # Quick deploy"
-echo "  ./domain_manager.sh status                    # Check status"
+echo "  NGINX + DOMAIN SETUP:"
+echo "    sudo ./auto_setup.sh kd.tiepluatrithuc.com    # Full setup with nginx"
+echo "    ./quick_deploy.sh kd.tiepluatrithuc.com       # Quick deploy"  
+echo "    ./domain_manager.sh status                    # Check status"
 echo
-echo "📚 See DEPLOY_GUIDE.md for detailed instructions"
+echo "  SIMPLE SETUP (NO NGINX):"
+echo "    sudo ./cleanup_nginx.sh                       # Remove nginx/domain"
+echo "    ./simple_start.sh start                       # Start simple app"
+echo "    ./simple_start.sh status                      # Check status"
+echo
+echo "📚 Documentation:"
+echo "  - DEPLOY_GUIDE.md     # Full nginx setup guide"
+echo "  - SIMPLE_SETUP.md     # Simple setup guide"
