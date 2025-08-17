@@ -10,7 +10,7 @@ import { createUser, findUserByUsername, authenticateUser, isUserAdmin } from '.
 import { initSocketIO, getIO, addOnlineUser, removeOnlineUser } from './socket/index.js';
 import adminRoutes from './routes/admin.js';
 import adminApiRoutes from './routes/admin-api.js';
-import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails } from './db/game-sessions.js';
+import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails, createGameSession, finishGameSession } from './db/game-sessions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -321,9 +321,11 @@ app.post('/api/solo-game/finish', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    // TODO: Lưu kết quả trận đấu solo
+    // Tạo phiên chơi solo và lưu kết quả
+    const gameSession = await createGameSession(req.session.user.id, null, true, totalQuestions);
+    await finishGameSession(gameSession.id, score, correctAnswers);
     
-    res.json({ success: true });
+    res.json({ success: true, sessionId: gameSession.id });
   } catch (error) {
     console.error('Lỗi khi lưu kết quả trận đấu solo:', error);
     res.status(500).json({ error: 'Internal Server Error' });

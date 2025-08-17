@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const roomCodeDisplay = document.getElementById('room-code-display');
     const currentQuestionEl = document.getElementById('current-question');
     const totalQuestionsEl = document.getElementById('total-questions');
-    const timerEl = document.getElementById('timer');
+    // Removed timerEl since we only use total timer now
     const questionTextEl = document.getElementById('question-text');
     const answerOptionsEl = document.getElementById('answer-options');
     const participantsStatusEl = document.getElementById('participants-status');
@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let timerInterval;
     let currentQuestion = null;
     let questionStartTime;
+    let allQuestions = []; // Lưu tất cả câu hỏi
+    let myQuestionOrder = []; // Thứ tự câu hỏi của tôi
     
     // Kết nối Socket.IO
     function connectSocket() {
@@ -46,9 +48,16 @@ document.addEventListener('DOMContentLoaded', function() {
             showCountdown(data.countDown);
         });
         
-        // Xử lý sự kiện khi có câu hỏi mới
-        socket.on('new_question', function(data) {
-            showQuestion(data);
+        // Xử lý sự kiện khi có câu hỏi mới (approach mới)
+        socket.on('new_question_start', function(data) {
+            console.log('📨 Nhận event new_question_start:', data);
+            handleNewQuestionStart(data);
+        });
+        
+        // Xử lý sự kiện cập nhật timer
+        socket.on('timer_update', function(data) {
+            console.log('⏰ Timer update:', data.totalTimeLeft);
+            updateTimer(data.totalTimeLeft);
         });
         
         // Xử lý sự kiện khi có người trả lời
@@ -215,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Hiển thị câu hỏi
     function showQuestion(data) {
-        const { questionNumber, totalQuestions, question, timeLimit, totalTimeLeft } = data;
+        const { questionNumber, totalQuestions, question, totalTimeLeft } = data;
         
         // Lưu câu hỏi hiện tại
         currentQuestion = question;
@@ -240,11 +249,14 @@ document.addEventListener('DOMContentLoaded', function() {
         answerResult.textContent = '';
         answerResult.className = 'answer-result';
         
-        // Bắt đầu đếm giờ với thời gian tổng còn lại
-        startTimer(timeLimit, totalTimeLeft);
+        // Cập nhật timer tổng
+        updateTimer(totalTimeLeft);
         
         // Cập nhật trạng thái người tham gia
         updateParticipantsStatus([]);
+        
+        // Focus vào input để người dùng có thể nhập ngay
+        answerInput.focus();
     }
     
     // Chọn câu trả lời
@@ -287,6 +299,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     answerResult.textContent = `Sai! Đáp án đúng: ${response.correctAnswer}`;
                     answerResult.className = 'answer-result incorrect';
                 }
+                
+                // Chuyển câu hỏi tiếp theo khi submit
+                currentQuestionIndex++;
+                
+                // Kiểm tra nếu hết câu hỏi
+                if (currentQuestionIndex >= allQuestions.length) {
+                    console.log('✅ Đã hoàn thành tất cả câu hỏi!');
+                    return;
+                }
+                
+                // Delay trước khi hiển thị câu tiếp theo
+                setTimeout(() => {
+                    const questionIndex = myQuestionOrder[currentQuestionIndex];
+                    const nextQuestion = allQuestions[questionIndex];
+                    
+                    showQuestion({
+                        questionNumber: currentQuestionIndex + 1,
+                        totalQuestions: allQuestions.length,
+                        question: nextQuestion,
+                        totalTimeLeft: document.getElementById('total-timer').textContent
+                    });
+                }, 2000);
             }
         });
     }
@@ -306,56 +340,56 @@ document.addEventListener('DOMContentLoaded', function() {
         showNotification('Hết thời gian!');
     }
     
-    // Bắt đầu đếm giờ cho câu hỏi hiện tại
-    function startTimer(timeLimit, totalTimeLeft) {
-        let timeLeft = timeLimit;
-        let totalTimeRemaining = totalTimeLeft || 0;
+    // Xử lý khi có thông báo bắt đầu câu hỏi mới
+    function handleNewQuestionStart(data) {
+        console.log('🎯 Xử lý câu hỏi mới, current index:', currentQuestionIndex);
         
-        // Hiển thị thời gian câu hỏi hiện tại
-        timerEl.textContent = timeLeft;
-        
-        // Hiển thị thời gian tổng còn lại nếu có
-        const totalTimerEl = document.getElementById('total-timer');
-        if (totalTimerEl) {
-            totalTimerEl.textContent = totalTimeRemaining;
+        if (!allQuestions.length) {
+            // Lần đầu nhận data, lưu tất cả câu hỏi và tạo thứ tự ngẫu nhiên
+            allQuestions = data.questionData;
+            myQuestionOrder = shuffleArray([...Array(allQuestions.length).keys()]);
+            console.log('🔀 Thứ tự câu hỏi của tôi:', myQuestionOrder);
         }
         
-        clearInterval(timerInterval);
-        
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            totalTimeRemaining--;
+        // Kiểm tra nếu còn câu hỏi
+        if (currentQuestionIndex < allQuestions.length) {
+            const questionIndex = myQuestionOrder[currentQuestionIndex];
+            const question = allQuestions[questionIndex];
             
-            // Cập nhật thời gian câu hỏi hiện tại
-            timerEl.textContent = timeLeft;
+            console.log('📋 Hiển thị câu hỏi', currentQuestionIndex + 1, '- Index:', questionIndex);
             
-            // Cập nhật thời gian tổng còn lại
-            if (totalTimerEl) {
-                totalTimerEl.textContent = totalTimeRemaining;
-            }
-            
-            // Đổi màu khi còn ít thời gian
-            if (timeLeft <= 5) {
-                timerEl.style.color = '#e74c3c';
-            } else {
-                timerEl.style.color = '';
-            }
+            showQuestion({
+                questionNumber: currentQuestionIndex + 1,
+                totalQuestions: allQuestions.length,
+                question: question,
+                totalTimeLeft: data.totalTimeLeft
+            });
+        }
+    }
+    
+    // Helper function: Shuffle array (giống bên server)
+    function shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }
+    
+    // Cập nhật timer tổng
+    function updateTimer(totalTimeLeft) {
+        const totalTimerEl = document.getElementById('total-timer');
+        if (totalTimerEl) {
+            totalTimerEl.textContent = totalTimeLeft;
             
             // Đổi màu thời gian tổng khi còn ít
-            if (totalTimeRemaining <= 10) {
-                if (totalTimerEl) {
-                    totalTimerEl.style.color = '#e74c3c';
-                }
+            if (totalTimeLeft <= 10) {
+                totalTimerEl.style.color = '#e74c3c';
             } else {
-                if (totalTimerEl) {
-                    totalTimerEl.style.color = '';
-                }
+                totalTimerEl.style.color = '';
             }
-            
-            if (timeLeft <= 0 || totalTimeRemaining <= 0) {
-                clearInterval(timerInterval);
-            }
-        }, 1000);
+        }
     }
     
     // Cập nhật trạng thái người tham gia trong trận đấu

@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultRoom = document.getElementById('result-room');
     const currentQuestionEl = document.getElementById('current-question');
     const totalQuestionsEl = document.getElementById('total-questions');
-    const timerEl = document.getElementById('timer');
+    // Removed timerEl since we only use total timer now
     const totalTimerEl = document.getElementById('total-timer');
     const questionTextEl = document.getElementById('question-text');
     const progressBarEl = document.getElementById('progress-bar');
@@ -43,9 +43,18 @@ document.addEventListener('DOMContentLoaded', function() {
     let totalTimeRemaining = 60; // Tổng thời gian 60 giây cho 12 câu hỏi
     
     // Lấy câu hỏi từ server
-    fetch('/api/questions/random?count=12')
-        .then(response => response.json())
+    fetch('/admin/api/questions/random?count=12')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                throw new Error('Không có câu hỏi nào trong database');
+            }
+            
             questions = data;
             
             // Thiết lập tổng số câu hỏi
@@ -57,82 +66,12 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Lỗi khi lấy câu hỏi:', error);
-            // Sử dụng câu hỏi mẫu nếu không lấy được từ server
-            initSampleQuestions();
+            // Hiển thị thông báo lỗi cho người dùng
+            questionTextEl.textContent = `Lỗi: Không thể tải câu hỏi từ database. ${error.message}`;
+            alert('Không thể tải câu hỏi. Vui lòng thử lại sau hoặc liên hệ admin.');
         });
     
-    // Khởi tạo câu hỏi mẫu nếu không lấy được từ server
-    function initSampleQuestions() {
-        questions = [
-            {
-                id: 1,
-                text: 'Thủ đô của Việt Nam là gì?',
-                answer: 'Hà Nội'
-            },
-            {
-                id: 2,
-                text: 'Ngôn ngữ lập trình nào không phải là ngôn ngữ hướng đối tượng?',
-                answer: 'C'
-            },
-            {
-                id: 3,
-                text: 'Đâu là một hệ điều hành mã nguồn mở?',
-                answer: 'Linux'
-            },
-            {
-                id: 4,
-                text: 'HTML là viết tắt của gì?',
-                answer: 'Hyper Text Markup Language'
-            },
-            {
-                id: 5,
-                text: 'Đâu là một ngôn ngữ lập trình phía máy chủ (server-side)?',
-                answer: 'PHP'
-            },
-            {
-                id: 6,
-                text: 'Hệ quản trị cơ sở dữ liệu nào là mã nguồn mở?',
-                answer: 'MySQL'
-            },
-            {
-                id: 7,
-                text: 'Giao thức nào được sử dụng để truyền tải trang web?',
-                answer: 'HTTP'
-            },
-            {
-                id: 8,
-                text: 'Đơn vị đo tốc độ xử lý của CPU là gì?',
-                answer: 'Hertz'
-            },
-            {
-                id: 9,
-                text: 'Ngôn ngữ lập trình nào được phát triển bởi Google?',
-                answer: 'Go'
-            },
-            {
-                id: 10,
-                text: 'Đâu là một framework JavaScript phổ biến?',
-                answer: 'React'
-            },
-            {
-                id: 11,
-                text: 'Hệ điều hành Android được phát triển dựa trên nhân (kernel) nào?',
-                answer: 'Linux'
-            },
-            {
-                id: 12,
-                text: 'Đâu là một công cụ quản lý phiên bản mã nguồn?',
-                answer: 'Git'
-            }
-        ];
-        
-        // Thiết lập tổng số câu hỏi
-        totalQuestionsEl.textContent = questions.length;
-        maxScoreEl.textContent = questions.length * 10; // Mỗi câu 10 điểm
-        
-        // Bắt đầu với câu hỏi đầu tiên
-        showQuestion(currentQuestionIndex);
-    }
+
     
     // Thêm event listener cho nút submit answer
     document.getElementById('submit-answer').addEventListener('click', function() {
@@ -219,9 +158,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Vô hiệu hóa input và nút trả lời
         answerInput.disabled = true;
         document.getElementById('submit-answer').disabled = true;
-        
-        // Dừng đếm giờ
-        clearInterval(timerInterval);
         
         // Tính thời gian trả lời (giây)
         const answerTime = Math.floor((Date.now() - questionStartTime) / 1000);
