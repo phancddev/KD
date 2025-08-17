@@ -564,9 +564,14 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(selectedCheckboxes).map(cb => cb.getAttribute('data-id'));
     }
     
-    // Xóa toàn bộ câu hỏi
+    // Xóa toàn bộ câu hỏi - select all và xóa từng câu
     function deleteAllQuestions() {
-        if (!confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ KHO ĐỀ?\n\nHành động này sẽ xóa TẤT CẢ câu hỏi và KHÔNG THỂ HOÀN TÁC!')) {
+        if (questions.length === 0) {
+            showNotification('Không có câu hỏi nào để xóa', 'warning');
+            return;
+        }
+        
+        if (!confirm(`⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ ${questions.length} CÂU HỎI?\n\nHành động này sẽ xóa TẤT CẢ câu hỏi và KHÔNG THỂ HOÀN TÁC!`)) {
             return;
         }
         
@@ -574,27 +579,63 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        console.log(`🗑️ Bắt đầu xóa ${questions.length} câu hỏi...`);
+        
         deleteAllBtn.disabled = true;
         deleteAllBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xóa...';
         
-        fetch('/admin/api/questions', {
-            method: 'DELETE'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification(`✅ Đã xóa thành công ${data.deletedCount} câu hỏi`, 'success');
-                fetchQuestions(); // Tải lại danh sách (sẽ rỗng)
+        // Lấy tất cả IDs từ mảng questions
+        const allQuestionIds = questions.map(q => q.id);
+        
+        // Xóa từng câu hỏi (tương tự deleteSelectedQuestions)
+        let deleteCount = 0;
+        let errorCount = 0;
+        let processedCount = 0;
+        const totalCount = allQuestionIds.length;
+        
+        const deletePromises = allQuestionIds.map((id, index) => {
+            return fetch(`/admin/api/questions/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                processedCount++;
+                if (data.success) {
+                    deleteCount++;
+                    console.log(`✅ Xóa thành công câu hỏi ${id} (${processedCount}/${totalCount})`);
+                } else {
+                    errorCount++;
+                    console.error(`❌ Lỗi xóa câu hỏi ${id}:`, data.error);
+                }
+                
+                // Update progress
+                const progress = Math.round((processedCount / totalCount) * 100);
+                deleteAllBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang xóa... ${progress}%`;
+            })
+            .catch(error => {
+                processedCount++;
+                errorCount++;
+                console.error(`❌ Lỗi khi xóa câu hỏi ${id}:`, error);
+            });
+        });
+        
+        Promise.all(deletePromises).then(() => {
+            console.log(`🏁 Hoàn thành: ${deleteCount} thành công, ${errorCount} lỗi`);
+            
+            if (deleteCount > 0) {
+                showNotification(`✅ Đã xóa thành công ${deleteCount}/${totalCount} câu hỏi`, 'success');
+                fetchQuestions(); // Reload danh sách
                 updateSelectedCount(); // Cập nhật số lượng đã chọn
-            } else {
-                throw new Error(data.error || 'Không thể xóa toàn bộ câu hỏi');
             }
-        })
-        .catch(error => {
-            console.error('Lỗi khi xóa toàn bộ câu hỏi:', error);
-            showNotification('Lỗi khi xóa toàn bộ câu hỏi: ' + error.message, 'error');
-        })
-        .finally(() => {
+            
+            if (errorCount > 0) {
+                showNotification(`⚠️ Có ${errorCount} câu hỏi không thể xóa`, 'warning');
+            }
+            
+            if (deleteCount === 0) {
+                showNotification('❌ Không thể xóa câu hỏi nào', 'error');
+            }
+        }).finally(() => {
             deleteAllBtn.disabled = false;
             deleteAllBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Xóa toàn bộ';
         });
