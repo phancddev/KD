@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const participantsStatusEl = document.getElementById('participants-status');
     const resultTableBodyEl = document.getElementById('result-table-body');
     const playAgainBtn = document.getElementById('play-again-btn');
+    const endRoomBtn = document.getElementById('end-room-btn');
+    const endGameBtn = document.getElementById('end-game-btn');
     
     // Khởi tạo biến
     let socket;
@@ -74,16 +76,42 @@ document.addEventListener('DOMContentLoaded', function() {
         socket.on('game_over', function(data) {
             showResults(data.results);
         });
+        
+        // Xử lý sự kiện khi phòng bị kết thúc
+        socket.on('room_ended', function(data) {
+            alert(data.message);
+            window.location.href = '/';
+        });
     }
     
-    // Lấy thông tin người dùng từ session
-    fetch('/api/user')
-        .then(response => response.json())
+    // Lấy thông tin người dùng từ session với retry logic
+    function fetchUserInfo(retryCount = 0) {
+        console.log('🔍 Đang lấy thông tin user, attempt:', retryCount + 1);
+        
+        fetch('/api/user', {
+            credentials: 'include', // Đảm bảo cookies được gửi
+            headers: {
+                'Cache-Control': 'no-cache'
+            }
+        })
+        .then(response => {
+            console.log('📡 User API response status:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('👤 User data received:', data);
+            
             if (data.id && data.username) {
                 userId = data.id;
                 username = data.username;
                 document.getElementById('username-display').textContent = username;
+                
+                // Lưu user info vào localStorage để backup
+                localStorage.setItem('userInfo', JSON.stringify({
+                    id: userId,
+                    username: username,
+                    timestamp: Date.now()
+                }));
                 
                 // Sau khi có thông tin người dùng, kết nối Socket.IO
                 connectSocket();
@@ -91,14 +119,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Kiểm tra thông tin phòng từ localStorage
                 checkRoomInfo();
             } else {
-                // Không có thông tin người dùng, chuyển về trang đăng nhập
-                window.location.href = '/login';
+                handleAuthFailure(retryCount);
             }
         })
         .catch(error => {
-            console.error('Lỗi khi lấy thông tin người dùng:', error);
-            window.location.href = '/login';
+            console.error('❌ Lỗi khi lấy thông tin người dùng:', error);
+            handleAuthFailure(retryCount);
         });
+    }
+    
+    // Xử lý khi authentication thất bại
+    function handleAuthFailure(retryCount) {
+        // Thử backup từ localStorage
+        const storedUserInfo = localStorage.getItem('userInfo');
+        if (storedUserInfo && retryCount < 2) {
+            try {
+                const userInfo = JSON.parse(storedUserInfo);
+                const timeElapsed = Date.now() - userInfo.timestamp;
+                
+                // Nếu thông tin còn mới (dưới 1 giờ), thử retry
+                if (timeElapsed < 60 * 60 * 1000) {
+                    console.log('🔄 Thử retry với backup info...');
+                    setTimeout(() => fetchUserInfo(retryCount + 1), 1000);
+                    return;
+                }
+            } catch (e) {
+                console.log('❌ Backup user info không hợp lệ');
+            }
+        }
+        
+        // Xóa localStorage và chuyển về login
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('currentRoom');
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        window.location.href = '/login';
+    }
+    
+    // Gọi function lấy thông tin user
+    fetchUserInfo();
     
     // Kiểm tra thông tin phòng từ localStorage
     function checkRoomInfo() {
@@ -114,8 +172,10 @@ document.addEventListener('DOMContentLoaded', function() {
         roomCodeDisplay.textContent = roomInfo.code;
         roomNameDisplay.textContent = roomInfo.name || 'Phòng thi đấu';
         
-        // Chỉ hiển thị nút bắt đầu cho người tạo phòng
-        startBattleBtn.style.display = roomInfo.creator ? 'block' : 'none';
+        // Chỉ hiển thị nút bắt đầu và kết thúc cho người tạo phòng
+        const isCreator = roomInfo.creator;
+        startBattleBtn.style.display = isCreator ? 'block' : 'none';
+        if (endRoomBtn) endRoomBtn.style.display = isCreator ? 'block' : 'none';
         
         // Tham gia phòng qua Socket.IO
         joinRoom();
@@ -167,6 +227,24 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/';
     });
     
+    // Nút kết thúc phòng (trong waiting room)
+    if (endRoomBtn) {
+        endRoomBtn.addEventListener('click', function() {
+            if (confirm('Bạn có chắc muốn kết thúc phòng? Tất cả người chơi sẽ bị đưa ra ngoài.')) {
+                endRoom();
+            }
+        });
+    }
+    
+    // Nút kết thúc game (trong battle room)
+    if (endGameBtn) {
+        endGameBtn.addEventListener('click', function() {
+            if (confirm('Bạn có chắc muốn kết thúc trận đấu? Kết quả hiện tại sẽ được lưu.')) {
+                endGame();
+            }
+        });
+    }
+    
     // Bắt đầu trò chơi
     function startBattle() {
         if (!socket || !roomInfo.code) return;
@@ -186,6 +264,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Ẩn phòng chờ, hiển thị phòng thi đấu
         waitingRoom.style.display = 'none';
         battleRoom.style.display = 'block';
+        
+        // Hiển thị nút kết thúc game cho chủ phòng
+        if (roomInfo.creator && endGameBtn) {
+            endGameBtn.style.display = 'block';
+        }
         
         // Reset điểm số
         playerScore = 0;
@@ -475,6 +558,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Kết thúc phòng (chủ phòng)
+    function endRoom() {
+        if (!socket || !roomInfo.code) return;
+        
+        socket.emit('end_room', {
+            roomCode: roomInfo.code,
+            userId: userId
+        }, function(response) {
+            if (response.success) {
+                alert('Đã kết thúc phòng');
+                window.location.href = '/';
+            } else {
+                alert('Không thể kết thúc phòng: ' + response.error);
+            }
+        });
+    }
+    
+    // Kết thúc game (chủ phòng)
+    function endGame() {
+        if (!socket || !roomInfo.code) return;
+        
+        socket.emit('end_game', {
+            roomCode: roomInfo.code,
+            userId: userId
+        }, function(response) {
+            if (response.success) {
+                console.log('Đã yêu cầu kết thúc game');
+            } else {
+                alert('Không thể kết thúc game: ' + response.error);
+            }
+        });
+    }
+    
     // Hiển thị thông báo
     function showNotification(message) {
         const notification = document.createElement('div');
@@ -490,7 +606,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             notification.classList.remove('show');
             setTimeout(() => {
-                document.body.removeChild(notification);
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
             }, 300);
         }, 2000);
     }

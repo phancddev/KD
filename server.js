@@ -39,8 +39,14 @@ app.use(express.static(join(__dirname, 'public')));
 app.use(session({
   secret: config.session.secret,
   resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false } // Set to true if using HTTPS
+  saveUninitialized: false, // Chỉ tạo session khi cần
+  cookie: { 
+    secure: false, // Set to true if using HTTPS
+    httpOnly: true, // Prevent XSS attacks
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' // CSRF protection
+  },
+  name: 'nqd_session' // Custom session name
 }));
 
 // Khởi tạo database khi khởi động server

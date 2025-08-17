@@ -181,6 +181,7 @@ export function initSocketIO(server) {
     // Xử lý khi chủ phòng bắt đầu trò chơi
     socket.on('start_game', async (data, callback) => {
       try {
+        console.log('🎮 start_game event received:', data);
         const { roomCode, userId } = data;
         
         // Kiểm tra phòng có tồn tại không
@@ -201,7 +202,10 @@ export function initSocketIO(server) {
         }
         
         // Lấy câu hỏi ngẫu nhiên từ API (giống solo battle)
+        console.log('🔍 Đang lấy câu hỏi...');
         const questions = await fetchQuestionsFromAPI(12);
+        console.log('✅ Đã lấy', questions.length, 'câu hỏi');
+        
         room.questions = questions;
         room.currentQuestionIndex = -1;
         room.status = 'playing';
@@ -211,6 +215,7 @@ export function initSocketIO(server) {
         
         // Tạo thứ tự câu hỏi khác nhau cho mỗi người tham gia
         for (const participant of room.participants) {
+          console.log('👤 Setup participant:', participant.username);
           const session = await createGameSession(participant.id, room.id, false, questions.length);
           participant.sessionId = session.id;
           
@@ -218,6 +223,7 @@ export function initSocketIO(server) {
           participant.questionOrder = shuffleArray([...Array(questions.length).keys()]);
           participant.currentQuestionIndex = -1;
           participant.answers = [];
+          console.log('🔀 Question order for', participant.username, ':', participant.questionOrder);
         }
         
         // Thông báo cho tất cả người trong phòng
@@ -337,6 +343,65 @@ export function initSocketIO(server) {
       }
     });
     
+    // Xử lý khi chủ phòng kết thúc phòng
+    socket.on('end_room', async (data, callback) => {
+      try {
+        const { roomCode, userId } = data;
+        
+        // Kiểm tra phòng có tồn tại không
+        if (!rooms.has(roomCode)) {
+          return callback({ success: false, error: 'Phòng không tồn tại' });
+        }
+        
+        const room = rooms.get(roomCode);
+        
+        // Kiểm tra người dùng có phải chủ phòng không
+        if (room.createdBy !== userId) {
+          return callback({ success: false, error: 'Chỉ chủ phòng mới có thể kết thúc phòng' });
+        }
+        
+        // Thông báo cho tất cả người trong phòng
+        io.to(roomCode).emit('room_ended', {
+          message: 'Phòng đã được kết thúc bởi chủ phòng'
+        });
+        
+        // Xóa phòng
+        rooms.delete(roomCode);
+        
+        callback({ success: true });
+      } catch (error) {
+        console.error('Lỗi khi kết thúc phòng:', error);
+        callback({ success: false, error: 'Không thể kết thúc phòng' });
+      }
+    });
+    
+    // Xử lý khi chủ phòng kết thúc game
+    socket.on('end_game', async (data, callback) => {
+      try {
+        const { roomCode, userId } = data;
+        
+        // Kiểm tra phòng có tồn tại không
+        if (!rooms.has(roomCode)) {
+          return callback({ success: false, error: 'Phòng không tồn tại' });
+        }
+        
+        const room = rooms.get(roomCode);
+        
+        // Kiểm tra người dùng có phải chủ phòng không
+        if (room.createdBy !== userId) {
+          return callback({ success: false, error: 'Chỉ chủ phòng mới có thể kết thúc game' });
+        }
+        
+        // Kết thúc game ngay lập tức
+        endGame(room);
+        
+        callback({ success: true });
+      } catch (error) {
+        console.error('Lỗi khi kết thúc game:', error);
+        callback({ success: false, error: 'Không thể kết thúc game' });
+      }
+    });
+    
     // Xử lý khi người dùng ngắt kết nối
     socket.on('disconnect', () => {
       console.log('Người dùng ngắt kết nối:', socket.id);
@@ -374,21 +439,9 @@ export function initSocketIO(server) {
 
 // Hàm chuyển sang câu hỏi tiếp theo
 async function nextQuestion(room) {
-  // Tăng chỉ số câu hỏi cho mỗi participant
-  room.participants.forEach(p => {
-    p.currentQuestionIndex++;
-  });
-  
-  // Kiểm tra nếu đã hết câu hỏi cho tất cả participants
-  const maxQuestionIndex = Math.max(...room.participants.map(p => p.currentQuestionIndex));
-  if (maxQuestionIndex >= room.questions.length) {
-    return endGame(room);
-  }
-  
-  // Đặt lại trạng thái trả lời của người tham gia
-  room.participants.forEach(p => {
-    p.hasAnswered = false;
-  });
+  console.log('📋 nextQuestion called for room:', room.code);
+  console.log('📋 Room participants:', room.participants.length);
+  console.log('📋 Room questions:', room.questions.length);
   
   // Ghi nhớ thời gian bắt đầu câu hỏi
   room.startTime = Date.now();
@@ -396,6 +449,12 @@ async function nextQuestion(room) {
   // Gửi thông báo cho tất cả người tham gia rằng có câu hỏi mới
   // Mỗi client sẽ tự lấy câu hỏi theo thứ tự riêng của mình
   console.log('📤 Gửi event new_question_start cho phòng:', room.code);
+  console.log('📤 Data gửi:', {
+    totalQuestions: room.questions.length,
+    totalTimeLeft: room.totalTimeRemaining,
+    hasQuestionData: !!room.questions
+  });
+  
   io.to(room.code).emit('new_question_start', {
     totalQuestions: room.questions.length,
     totalTimeLeft: room.totalTimeRemaining,
