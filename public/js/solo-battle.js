@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let questionStartTime;
     let questions = [];
     let totalTimeRemaining = 60; // Tổng thời gian 60 giây cho 12 câu hỏi
-    let timePerQuestion = 5; // 5 giây cho mỗi câu hỏi (60/12)
     
     // Lấy câu hỏi từ server
     fetch('/api/questions/random?count=12')
@@ -196,8 +195,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const progress = (index / questions.length) * 100;
         progressBarEl.style.width = `${progress}%`;
         
-        // Bắt đầu đếm giờ
-        startTimer();
+        // Chỉ bắt đầu đếm giờ tổng ở câu hỏi đầu tiên
+        if (index === 0) {
+            startTimer();
+        }
+        
+        // Focus vào input để người dùng có thể nhập ngay
+        answerInput.focus();
     }
     
     // Trả lời câu hỏi
@@ -278,56 +282,36 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     }
     
-    // Xử lý khi hết thời gian câu hỏi
-    function handleQuestionTimeout() {
-        // Vô hiệu hóa input và nút trả lời
-        const answerInput = document.getElementById('answer-input');
-        answerInput.disabled = true;
-        document.getElementById('submit-answer').disabled = true;
+    // Xử lý khi hết thời gian tổng (60 giây)
+    function handleGameTimeout() {
+        // Dừng trò chơi ngay lập tức và hiển thị kết quả
+        clearInterval(timerInterval);
         
-        // Hiển thị thông báo
-        const answerResult = document.getElementById('answer-result');
-        answerResult.textContent = 'Hết thời gian! Bạn không nhận được điểm cho câu hỏi này.';
-        answerResult.className = 'answer-result incorrect';
+        // Lưu tất cả câu hỏi còn lại như không trả lời
+        for (let i = currentQuestionIndex; i < questions.length; i++) {
+            const question = questions[i];
+            userAnswers.push({
+                questionId: question.id,
+                questionText: question.text,
+                userAnswer: null,
+                correctAnswer: question.answer,
+                isCorrect: false
+            });
+        }
         
-        const question = questions[currentQuestionIndex];
-        
-        // Lưu câu trả lời là "không trả lời"
-        userAnswers.push({
-            questionId: question.id,
-            questionText: question.text,
-            userAnswer: null,
-            correctAnswer: question.answer,
-            isCorrect: false
-        });
-        
-        // Chờ trước khi chuyển sang câu hỏi tiếp theo
-        setTimeout(() => {
-            currentQuestionIndex++;
-            showQuestion(currentQuestionIndex);
-        }, 2000);
+        // Hiển thị kết quả
+        showResults();
     }
     
-    // Bắt đầu đếm giờ cho câu hỏi hiện tại
+    // Bắt đầu đếm giờ tổng cho tất cả câu hỏi
     function startTimer() {
-        let timeLeft = timePerQuestion; // Thời gian cho câu hỏi hiện tại
-        timerEl.textContent = timeLeft;
         totalTimerEl.textContent = totalTimeRemaining;
         
         clearInterval(timerInterval);
         
         timerInterval = setInterval(() => {
-            timeLeft--;
             totalTimeRemaining--;
-            timerEl.textContent = timeLeft;
             totalTimerEl.textContent = totalTimeRemaining;
-            
-            // Đổi màu khi còn ít thời gian
-            if (timeLeft <= 5) {
-                timerEl.style.color = '#e74c3c';
-            } else {
-                timerEl.style.color = '';
-            }
             
             // Đổi màu thời gian tổng khi còn ít
             if (totalTimeRemaining <= 10) {
@@ -336,9 +320,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 totalTimerEl.style.color = '';
             }
             
-            if (timeLeft <= 0 || totalTimeRemaining <= 0) {
+            // Kết thúc trò chơi khi hết thời gian tổng
+            if (totalTimeRemaining <= 0) {
                 clearInterval(timerInterval);
-                handleQuestionTimeout();
+                handleGameTimeout();
             }
         }, 1000);
     }
