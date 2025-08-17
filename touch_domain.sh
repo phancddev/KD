@@ -146,32 +146,37 @@ else
     exit 1
 fi
 
+# Auto setup nginx proxy
+print_status "Đang tự động setup nginx proxy..."
+if "${SCRIPT_DIR}/setup_nginx_proxy.sh" "$DOMAIN"; then
+    print_status "✅ Nginx proxy đã được setup tự động!"
+else
+    print_warning "⚠️ Nginx proxy setup thất bại, có thể cần setup thủ công"
+fi
+
 print_status "🎉 Setup hoàn tất!"
 echo
 echo "=================================="
 echo "📋 Thông tin setup:"
 echo "=================================="
 echo "🌐 Domain: ${DOMAIN}"
+echo "🔗 Main URL: https://${DOMAIN} (qua nginx proxy)"
 echo "🔗 Direct HTTPS URL: https://${DOMAIN}:1443"
 echo "🔗 Direct HTTP URL: http://${DOMAIN}:1027"
-echo "📁 Nginx config: ${DOMAIN_CONF}"
+echo "📁 Docker nginx config: ${DOMAIN_CONF}"
+echo "📁 System nginx config: /etc/nginx/sites-available/${DOMAIN}"
 echo "🔐 SSL certificates: ${NGINX_SSL_DIR}/${DOMAIN}.{crt,key}"
-echo "📄 Nginx proxy config: ${SCRIPT_DIR}/nginx-proxy-config.conf"
-echo
-echo "📋 Để truy cập bằng domain (không cần port):"
-echo "  1. Copy file nginx-proxy-config.conf vào nginx chính"
-echo "  2. sudo cp nginx-proxy-config.conf /etc/nginx/sites-available/${DOMAIN}"
-echo "  3. sudo ln -s /etc/nginx/sites-available/${DOMAIN} /etc/nginx/sites-enabled/"
-echo "  4. sudo nginx -t && sudo systemctl reload nginx"
 echo
 echo "📋 Các lệnh hữu ích:"
-echo "  - Xem logs nginx: docker-compose logs nginx"
+echo "  - Xem logs docker nginx: docker-compose logs nginx"
+echo "  - Xem logs system nginx: sudo journalctl -u nginx -f"
 echo "  - Xem logs app: docker-compose logs app"
-echo "  - Restart services: docker-compose restart"
+echo "  - Restart docker services: docker-compose restart"
+echo "  - Restart system nginx: sudo systemctl restart nginx"
 echo "  - Stop services: docker-compose down"
 echo
-print_status "Truy cập https://${DOMAIN}:1443 để kiểm tra trực tiếp!"
-print_status "Hoặc setup nginx proxy để dùng https://${DOMAIN}"
+print_status "🚀 Truy cập https://${DOMAIN} để kiểm tra!"
+print_status "App đã sẵn sàng với nginx proxy tự động!"
 
 # Add renewal cron job for Let's Encrypt
 if [ -L "${NGINX_SSL_DIR}/${DOMAIN}.crt" ]; then
