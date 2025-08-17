@@ -3,8 +3,8 @@ version: '3.8'
 services:
   app:
     build: .
-    expose:
-      - "2701"
+    ports:
+      - "2701:2701"
     depends_on:
       - mariadb
     environment:
@@ -16,21 +16,6 @@ services:
       - NODE_ENV=production
     volumes:
       - ./uploads:/app/uploads
-    restart: unless-stopped
-    networks:
-      - app-network
-
-  nginx:
-    build: ./nginx
-    ports:
-      - "1027:80"
-      - "1443:443"
-    depends_on:
-      - app
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/nginx/ssl
-      - /etc/letsencrypt:/etc/letsencrypt:ro
     restart: unless-stopped
     networks:
       - app-network
