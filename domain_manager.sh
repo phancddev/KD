@@ -145,7 +145,7 @@ list_domains() {
     
     local count=0
     echo
-    printf "%-30s %-15s %-20s %s\n" "DOMAIN" "SSL STATUS" "CONFIG FILE" "SSL EXPIRY"
+    printf "%-30s %-15s %-15s %-20s %s\n" "DOMAIN" "SSL STATUS" "PORTS" "CONFIG FILE" "SSL EXPIRY"
     echo "$(printf '%.80s' "$(printf '%*s' 80 | tr ' ' '-')")"
     
     for conf_file in "${NGINX_CONF_DIR}"/*.conf; do
@@ -167,7 +167,7 @@ list_domains() {
                 fi
             fi
             
-            printf "%-30s %-15s %-20s %s\n" "$domain" "$ssl_status" "$(basename "$conf_file")" "$ssl_expiry"
+            printf "%-30s %-15s %-15s %-20s %s\n" "$domain" "$ssl_status" "1027/1443" "$(basename "$conf_file")" "$ssl_expiry"
             ((count++))
         fi
     done
@@ -190,7 +190,7 @@ show_status() {
     echo "🌐 Nginx Status:"
     echo "=================="
     if docker-compose ps nginx | grep -q "Up"; then
-        print_status "✅ Nginx đang chạy"
+        print_status "✅ Nginx đang chạy (Port 1027→80, 1443→443)"
     else
         print_error "❌ Nginx không chạy"
     fi
@@ -199,7 +199,7 @@ show_status() {
     echo "📱 App Status:"
     echo "==============="
     if docker-compose ps app | grep -q "Up"; then
-        print_status "✅ App đang chạy"
+        print_status "✅ App đang chạy (Internal port 2701)"
     else
         print_error "❌ App không chạy"
     fi

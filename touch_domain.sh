@@ -72,6 +72,9 @@ fi
 print_status "Dừng nginx container (nếu đang chạy)..."
 docker-compose -f "${SCRIPT_DIR}/docker-compose.yml" stop nginx 2>/dev/null || true
 
+print_warning "⚠️  App sẽ chạy trên port 1027 (HTTP) và 1443 (HTTPS)"
+print_warning "⚠️  Để truy cập bằng domain mà không cần port, hãy config nginx chính proxy đến port 1443"
+
 # Generate SSL certificate with certbot
 print_status "Đang tạo SSL certificate cho domain ${DOMAIN}..."
 print_warning "Đảm bảo domain ${DOMAIN} đã trỏ về IP của server này!"
@@ -149,9 +152,17 @@ echo "=================================="
 echo "📋 Thông tin setup:"
 echo "=================================="
 echo "🌐 Domain: ${DOMAIN}"
-echo "🔗 HTTPS URL: https://${DOMAIN}"
+echo "🔗 Direct HTTPS URL: https://${DOMAIN}:1443"
+echo "🔗 Direct HTTP URL: http://${DOMAIN}:1027"
 echo "📁 Nginx config: ${DOMAIN_CONF}"
 echo "🔐 SSL certificates: ${NGINX_SSL_DIR}/${DOMAIN}.{crt,key}"
+echo "📄 Nginx proxy config: ${SCRIPT_DIR}/nginx-proxy-config.conf"
+echo
+echo "📋 Để truy cập bằng domain (không cần port):"
+echo "  1. Copy file nginx-proxy-config.conf vào nginx chính"
+echo "  2. sudo cp nginx-proxy-config.conf /etc/nginx/sites-available/${DOMAIN}"
+echo "  3. sudo ln -s /etc/nginx/sites-available/${DOMAIN} /etc/nginx/sites-enabled/"
+echo "  4. sudo nginx -t && sudo systemctl reload nginx"
 echo
 echo "📋 Các lệnh hữu ích:"
 echo "  - Xem logs nginx: docker-compose logs nginx"
@@ -159,7 +170,8 @@ echo "  - Xem logs app: docker-compose logs app"
 echo "  - Restart services: docker-compose restart"
 echo "  - Stop services: docker-compose down"
 echo
-print_status "Truy cập https://${DOMAIN} để kiểm tra!"
+print_status "Truy cập https://${DOMAIN}:1443 để kiểm tra trực tiếp!"
+print_status "Hoặc setup nginx proxy để dùng https://${DOMAIN}"
 
 # Add renewal cron job for Let's Encrypt
 if [ -L "${NGINX_SSL_DIR}/${DOMAIN}.crt" ]; then
