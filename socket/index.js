@@ -8,12 +8,11 @@ let io;
 // Khởi tạo Socket.IO
 // Lưu trữ timer cho từng phòng (global scope)
 const roomTimers = new Map();
+// Lưu trữ thông tin phòng (global scope)
+const rooms = new Map();
 
 export function initSocketIO(server) {
   io = new Server(server);
-  
-  // Lưu trữ thông tin phòng
-  const rooms = new Map();
   
   // Khởi tạo biến toàn cục để theo dõi người dùng online
   if (!global.onlineUsers) {
@@ -264,19 +263,20 @@ export function initSocketIO(server) {
           return callback({ success: false, error: 'Người dùng không trong phòng' });
         }
         
-        // Cập nhật thông tin hoàn thành  
+        // ✅ Cập nhật kết quả từ client (client đã tự tính điểm)
         participant.score = score;
         participant.completionTime = completionTime;
         participant.questionsAnswered = questionsAnswered;
-        participant.allAnswers = allAnswers || []; // Lưu tất cả câu trả lời
+        participant.allAnswers = allAnswers || [];
         participant.finished = true;
-        participant.finishTime = Date.now();
+        participant.resultSubmitted = true; // Đánh dấu đã nhận kết quả
+        participant.submitTime = Date.now();
         
-        console.log(`🏁 ${participant.username} hoàn thành game:`);
-        console.log(`📊 Score received: ${score}`);
+        console.log(`✅ ${participant.username} submitted result:`);
+        console.log(`📊 Final score: ${score}`);
         console.log(`⏱️ Completion time: ${completionTime}s`);
         console.log(`📝 Questions answered: ${questionsAnswered}`);
-        console.log(`🔍 Participant score updated to: ${participant.score}`);
+        console.log(`🕐 Submit time: ${new Date(participant.submitTime).toLocaleTimeString()}`);
         
         // Thông báo cho tất cả người trong phòng
         io.to(roomCode).emit('player_finished', {
@@ -287,51 +287,24 @@ export function initSocketIO(server) {
           questionsAnswered
         });
         
-        // Kiểm tra xem tất cả người chơi đã hoàn thành chưa
-        const allFinished = room.participants.every(p => p.finished);
-        if (allFinished) {
-          console.log('🎯 Tất cả người chơi đã hoàn thành! Hiển thị kết quả...');
+        // Kiểm tra xem tất cả người chơi đã gửi kết quả chưa
+        const allSubmitted = room.participants.every(p => p.resultSubmitted);
+        const submittedCount = room.participants.filter(p => p.resultSubmitted).length;
+        
+        console.log(`📊 Results submitted: ${submittedCount}/${room.participants.length}`);
+        
+        if (allSubmitted) {
+          console.log('🎯 Tất cả người chơi đã gửi kết quả! Hiển thị kết quả ngay...');
           
-          // Debug participants trước khi tính ranking
-          console.log('👥 All participants before ranking:');
-          room.participants.forEach(p => {
-            console.log(`   ${p.username}: score=${p.score}, time=${p.completionTime}, finished=${p.finished}`);
-          });
+          // Clear timer và xử lý kết quả ngay
+          if (roomTimers.has(roomCode)) {
+            clearInterval(roomTimers.get(roomCode));
+            roomTimers.delete(roomCode);
+          }
           
-          // Tính toán ranking
-          const results = room.participants
-            .map(p => ({
-              userId: p.id,
-              username: p.username,
-              score: p.score || 0,
-              completionTime: p.completionTime || 60,
-              questionsAnswered: p.questionsAnswered || 0
-            }))
-            .sort((a, b) => {
-              // Sắp xếp theo điểm số giảm dần, rồi theo thời gian tăng dần
-              if (a.score !== b.score) {
-                return b.score - a.score;
-              }
-              return a.completionTime - b.completionTime;
-            })
-            .map((result, index) => ({
-              ...result,
-              rank: index + 1
-            }));
-          
-          console.log('🏆 Final results:', results);
-          
-          // Gửi kết quả cuối cùng
-          io.to(roomCode).emit('game_results', { results });
-          
-          // Lưu vào database và cleanup
-          setTimeout(() => {
-            rooms.delete(roomCode);
-            if (roomTimers.has(roomCode)) {
-              clearInterval(roomTimers.get(roomCode));
-              roomTimers.delete(roomCode);
-            }
-          }, 30000); // Xóa phòng sau 30 giây
+          processFinalResults(room);
+        } else {
+          console.log(`⏳ Chờ ${room.participants.length - submittedCount} người còn lại gửi kết quả...`);
         }
         
         callback({ success: true });
@@ -463,9 +436,10 @@ async function nextQuestion(room) {
   });
 }
 
-// Bắt đầu timer tổng cho phòng
+// Bắt đầu timer tổng cho phòng với collection period 65 giây
 function startGameTimer(room) {
-  console.log('⏰ Bắt đầu timer cho phòng:', room.code);
+  console.log('⏰ Bắt đầu game timer cho phòng:', room.code);
+  console.log('📊 Participants:', room.participants.map(p => p.username));
   
   // Xóa timer cũ nếu có
   if (roomTimers.has(room.code)) {
@@ -473,36 +447,109 @@ function startGameTimer(room) {
   }
   
   room.gameStartTime = Date.now();
-  room.totalTimeRemaining = 60;
+  room.collectionStartTime = Date.now();
+  room.totalTimeRemaining = 60; // Game time for clients
+  room.collectionTimeRemaining = 65; // Collection time for server
+  room.gamePhase = 'playing'; // playing -> collecting -> finished
+  
+  // Initialize participant tracking
+  room.participants.forEach(p => {
+    p.finished = false;
+    p.score = 0;
+    p.completionTime = null;
+    p.questionsAnswered = 0;
+    p.resultSubmitted = false;
+  });
   
   const timer = setInterval(() => {
-    room.totalTimeRemaining--;
+    room.collectionTimeRemaining--;
     
-    // Log timer để debug
-    if (room.totalTimeRemaining % 10 === 0) {
-      console.log('⏰ Timer update:', room.totalTimeRemaining, 'giây còn lại');
+    // Update game time (60s for clients)
+    if (room.totalTimeRemaining > 0) {
+      room.totalTimeRemaining--;
+      
+      // Gửi timer update cho clients
+      io.to(room.code).emit('timer_update', {
+        totalTimeLeft: room.totalTimeRemaining
+      });
+      
+      // Log every 10s during game
+      if (room.totalTimeRemaining % 10 === 0) {
+        console.log(`⏰ Game timer: ${room.totalTimeRemaining}s left`);
+      }
+      
+      // Game time finished - start collection phase
+      if (room.totalTimeRemaining <= 0) {
+        console.log('🎮 Game time finished! Starting result collection phase...');
+        room.gamePhase = 'collecting';
+        io.to(room.code).emit('game_time_finished');
+      }
     }
     
-    // Gửi cập nhật thời gian cho tất cả người tham gia
-    io.to(room.code).emit('timer_update', {
-      totalTimeLeft: room.totalTimeRemaining
-    });
+    // Collection phase
+    if (room.gamePhase === 'collecting') {
+      const collectingTime = room.collectionTimeRemaining;
+      console.log(`📊 Collection phase: ${collectingTime}s left, submitted: ${room.participants.filter(p => p.resultSubmitted).length}/${room.participants.length}`);
+    }
     
-    // Kết thúc trò chơi khi hết thời gian
-    if (room.totalTimeRemaining <= 0) {
-      console.log('⏰ Hết thời gian! Kết thúc game cho phòng:', room.code);
+    // Collection time finished - show results
+    if (room.collectionTimeRemaining <= 0) {
+      console.log('📋 Collection time finished! Processing final results...');
       clearInterval(timer);
       roomTimers.delete(room.code);
       
-      // Lưu câu trả lời là "không trả lời" cho tất cả câu hỏi còn lại
-      saveRemainingAnswers(room);
-      
-      // Kết thúc trò chơi
-      endGame(room);
+      // Process final results
+      processFinalResults(room);
     }
   }, 1000);
   
   roomTimers.set(room.code, timer);
+}
+
+// Xử lý kết quả cuối cùng
+function processFinalResults(room) {
+  console.log('🏆 Processing final results for room:', room.code);
+  
+  // Log all participants status
+  console.log('👥 Final participants status:');
+  room.participants.forEach(p => {
+    console.log(`   ${p.username}: submitted=${p.resultSubmitted}, score=${p.score}, time=${p.completionTime}, questions=${p.questionsAnswered}`);
+  });
+  
+  // Tính toán ranking với tất cả participants
+  const results = room.participants
+    .map(p => ({
+      userId: p.id,
+      username: p.username,
+      score: p.score || 0,
+      completionTime: p.completionTime || 60,
+      questionsAnswered: p.questionsAnswered || 0,
+      submitted: p.resultSubmitted
+    }))
+    .sort((a, b) => {
+      // Sắp xếp theo điểm số giảm dần, rồi theo thời gian tăng dần
+      if (a.score !== b.score) {
+        return b.score - a.score;
+      }
+      return a.completionTime - b.completionTime;
+    })
+    .map((result, index) => ({
+      ...result,
+      rank: index + 1
+    }));
+  
+  console.log('🏆 Final ranking:', results);
+  
+  // Gửi kết quả cuối cùng
+  io.to(room.code).emit('game_results', { results });
+  
+  // Cleanup sau 30s
+  setTimeout(() => {
+    console.log('🧹 Cleaning up room:', room.code);
+    if (rooms && rooms.has(room.code)) {
+      rooms.delete(room.code);
+    }
+  }, 30000);
 }
 
 // Lưu câu trả lời cho tất cả câu hỏi còn lại

@@ -83,6 +83,24 @@ document.addEventListener('DOMContentLoaded', function() {
             showResults(data.results);
         });
         
+        // Xử lý khi hết thời gian game (60s)
+        socket.on('game_time_finished', function() {
+            console.log('⏰ Server báo hết thời gian game! FORCE FINISHING...');
+            console.log('🔍 Current gameFinished:', gameFinished);
+            console.log('🔍 Current playerScore:', playerScore);
+            console.log('🔍 Current userId:', userId);
+            
+            // FORCE FINISH - luôn gọi finishMyGame() để đảm bảo gửi kết quả
+            if (!gameFinished) {
+                console.log('▶️ Calling finishMyGame() directly from server timeout...');
+                finishMyGame();
+            } else {
+                console.log('⚠️ Game already finished, but ensuring result was sent...');
+                // Đảm bảo kết quả đã được gửi, nếu chưa thì gửi lại
+                console.log('🔄 Double-checking result submission...');
+            }
+        });
+        
         // Xử lý sự kiện khi hết thời gian câu hỏi
         socket.on('question_timeout', function() {
             handleQuestionTimeout();
@@ -371,9 +389,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Chọn câu trả lời
     function submitAnswer() {
         console.log('🔥 submitAnswer called!');
+        console.log('🔍 gameFinished:', gameFinished);
+        console.log('🔍 userId:', userId);
+        console.log('🔍 username:', username);
         console.log('🔍 currentQuestion:', currentQuestion);
         console.log('🔍 allQuestions.length:', allQuestions.length);
         console.log('🔍 currentQuestionIndex:', currentQuestionIndex);
+        
+        if (gameFinished) {
+            console.log('⚠️ Game already finished, ignoring submit...');
+            return;
+        }
         
         if (!currentQuestion) {
             console.log('❌ No currentQuestion!');
@@ -418,10 +444,12 @@ document.addEventListener('DOMContentLoaded', function() {
             answerResult.textContent = 'Đúng! +10 điểm';
             answerResult.className = 'answer-result correct';
             showNotification('Đúng! +10 điểm', 'success');
+            console.log('✅ Score updated! Current playerScore:', playerScore);
         } else {
             answerResult.textContent = `Sai! Đáp án đúng: ${currentQuestion.answer}`;
             answerResult.className = 'answer-result incorrect';
             showNotification('Sai rồi!', 'error');
+            console.log('❌ Wrong answer. Current playerScore:', playerScore);
         }
         
         // Lưu câu trả lời local
@@ -443,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Kiểm tra nếu hết câu hỏi
         if (currentQuestionIndex >= allQuestions.length) {
-            console.log('🏁 Đã hoàn thành tất cả câu hỏi!');
+            console.log('🏁 Đã hoàn thành tất cả câu hỏi! Final score:', playerScore);
             finishMyGame();
             return;
         }
@@ -530,6 +558,11 @@ document.addEventListener('DOMContentLoaded', function() {
             totalTimeRemaining--;
             updateTimer(totalTimeRemaining);
             
+            // Log mỗi 10 giây để debug
+            if (totalTimeRemaining % 10 === 0) {
+                console.log(`⏰ Timer: ${totalTimeRemaining}s left, gameFinished: ${gameFinished}, score: ${playerScore}`);
+            }
+            
             if (totalTimeRemaining <= 0) {
                 clearInterval(timerInterval);
                 if (!gameFinished) {
@@ -545,12 +578,17 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('total-timer').textContent = timeLeft;
     }
     
-    // Xử lý khi hết thời gian tổng
+    // Xử lý khi hết thời gian tổng (LOCAL TIMER)
     function handleGameTimeout() {
-        if (gameFinished) return;
+        console.log('🔥 handleGameTimeout() called from LOCAL TIMER!');
+        console.log('🔍 gameFinished:', gameFinished);
+        console.log('🔍 playerScore:', playerScore);
+        console.log('🔍 userId:', userId);
         
-        gameFinished = true;
-        clearInterval(timerInterval);
+        if (gameFinished) {
+            console.log('⚠️ Game already finished in handleGameTimeout, returning...');
+            return;
+        }
         
         // Vô hiệu hóa input và nút trả lời
         const answerInput = document.getElementById('answer-input');
@@ -558,26 +596,56 @@ document.addEventListener('DOMContentLoaded', function() {
         if (answerInput) answerInput.disabled = true;
         if (submitBtn) submitBtn.disabled = true;
         
+        console.log('⏰ Local Timeout! Final score before finish:', playerScore);
         showNotification('Hết thời gian! Game kết thúc.', 'warning');
         
-        // Kết thúc game của mình
+        // NGAY LẬP TỨC gọi finishMyGame() để gửi kết quả
+        console.log('▶️ Calling finishMyGame() from LOCAL timeout...');
         finishMyGame();
     }
     
     // Kết thúc game của riêng mình 
     function finishMyGame() {
-        if (gameFinished) return;
+        console.log('🔥 finishMyGame() called! From:', new Error().stack.split('\n')[2].trim());
+        console.log('🔍 gameFinished:', gameFinished);
+        console.log('🔍 userId:', userId);
+        console.log('🔍 username:', username);
+        console.log('🔍 roomInfo:', roomInfo);
         
+        if (gameFinished) {
+            console.log('⚠️ Game already finished, skipping...');
+            return;
+        }
+        
+        // SET IMMEDIATELY to prevent double calls
         gameFinished = true;
         clearInterval(timerInterval);
         
         const completionTime = Math.floor((Date.now() - gameStartTime) / 1000);
         
-        console.log('🏁 Gửi kết quả lên server:');
+        console.log('🏁 Chuẩn bị gửi kết quả lên server:');
         console.log('📊 playerScore:', playerScore);
         console.log('⏱️ completionTime:', completionTime);
         console.log('📝 questionsAnswered:', currentQuestionIndex);
-        console.log('📋 gameAnswers:', gameAnswers);
+        console.log('📋 gameAnswers length:', gameAnswers?.length);
+        
+        // Check conditions trước khi gửi
+        if (!socket) {
+            console.error('❌ No socket connection!');
+            return;
+        }
+        
+        if (!roomInfo?.code) {
+            console.error('❌ No room code!');
+            return;
+        }
+        
+        if (!userId) {
+            console.error('❌ No userId!');
+            return;
+        }
+        
+        console.log('✅ All conditions met, sending finish_game...');
         
         // Gửi kết quả đến server (bao gồm all answers)
         socket.emit('finish_game', {
@@ -589,10 +657,12 @@ document.addEventListener('DOMContentLoaded', function() {
             allAnswers: gameAnswers // Gửi tất cả câu trả lời để lưu vào DB
         }, function(response) {
             console.log('📨 Server response:', response);
-            if (response.success) {
+            if (response && response.success) {
+                console.log('✅ Gửi kết quả thành công!');
                 showNotification('Đã gửi kết quả thành công!', 'success');
             } else {
-                console.error('❌ Lỗi gửi kết quả:', response.error);
+                console.error('❌ Lỗi gửi kết quả:', response?.error || 'Unknown error');
+                showNotification('Lỗi gửi kết quả: ' + (response?.error || 'Unknown error'), 'error');
             }
         });
     }
@@ -700,6 +770,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Hiển thị kết quả cuối cùng
     function showResults(results) {
+        console.log('🏆 Showing final results:', results);
+        
         // Ẩn phòng thi đấu, hiển thị phòng kết quả
         battleRoom.style.display = 'none';
         resultRoom.style.display = 'block';
@@ -707,7 +779,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Xóa bộ đếm thời gian
         clearInterval(timerInterval);
         
-        // Hiển thị bảng kết quả
+        // Hiển thị bảng kết quả với thời gian hoàn thành
         resultTableBodyEl.innerHTML = '';
         results.forEach(result => {
             const tr = document.createElement('tr');
@@ -720,7 +792,9 @@ document.addEventListener('DOMContentLoaded', function() {
             tr.innerHTML = `
                 <td>${result.rank}</td>
                 <td>${result.username}</td>
-                <td>${result.score}</td>
+                <td>${result.score} điểm</td>
+                <td>${result.completionTime}s</td>
+                <td>${result.questionsAnswered}/12 câu</td>
             `;
             resultTableBodyEl.appendChild(tr);
         });
