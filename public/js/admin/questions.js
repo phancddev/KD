@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('select-all');
     const deleteSelectedBtn = document.getElementById('delete-selected');
     const selectAllBtn = document.getElementById('select-all-questions');
+    console.log('🔍 selectAllBtn element:', selectAllBtn);
     const selectedCountSpan = document.getElementById('selected-count');
     
     // Lấy thông tin người dùng
@@ -128,6 +129,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.question-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', updateSelectedCount);
         });
+        
+        // Nếu đang trong trạng thái "select all", tự động check tất cả checkboxes
+        if (window.selectAllQuestionsSelected) {
+            document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = true;
+            }
+        }
         
         updateSelectedCount();
     }
@@ -566,6 +577,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Chọn toàn bộ câu hỏi ở tất cả các trang
     function selectAllQuestions() {
+        console.log('🔍 selectAllQuestions() được gọi');
+        console.log('🔍 questions array:', questions);
+        console.log('🔍 questions.length:', questions.length);
+        
         if (questions.length === 0) {
             showNotification('Không có câu hỏi nào để chọn', 'warning');
             return;
@@ -573,10 +588,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log(`✅ Bắt đầu chọn toàn bộ ${questions.length} câu hỏi...`);
         
-        // Tự động select tất cả câu hỏi
+        // Tự động select tất cả câu hỏi trên tất cả các trang
         const allCheckboxes = document.querySelectorAll('.question-checkbox');
-        allCheckboxes.forEach(checkbox => {
+        console.log('🔍 Tìm thấy checkboxes:', allCheckboxes.length);
+        
+        if (allCheckboxes.length === 0) {
+            console.warn('⚠️ Không tìm thấy checkboxes nào!');
+            showNotification('Không tìm thấy checkboxes để select. Vui lòng refresh trang.', 'error');
+            return;
+        }
+        
+        allCheckboxes.forEach((checkbox, index) => {
             checkbox.checked = true;
+            console.log(`✅ Checked checkbox ${index + 1}:`, checkbox);
         });
         
         // Update UI để hiển thị nút "Xóa đã chọn"
@@ -585,6 +609,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hiển thị nút delete selected
         if (deleteSelectedBtn) {
             deleteSelectedBtn.style.display = 'inline-block';
+            // Update text để hiển thị số lượng đã chọn
+            const selectedCountEl = document.getElementById('selected-count');
+            if (selectedCountEl) {
+                selectedCountEl.textContent = questions.length;
+            }
         }
         
         // Update select all checkbox
@@ -592,11 +621,24 @@ document.addEventListener('DOMContentLoaded', function() {
             selectAllCheckbox.checked = true;
         }
         
+        // Lưu trạng thái "select all" để khi chuyển trang vẫn giữ được
+        window.selectAllQuestionsSelected = true;
+        
         showNotification(`✅ Đã chọn toàn bộ ${questions.length} câu hỏi. Bạn có thể bấm "Xóa đã chọn" để xóa.`, 'success');
+        
+        console.log('🔍 Checkboxes đã select:', allCheckboxes.length);
+        console.log('🔍 Questions array length:', questions.length);
+        console.log('🔍 Nút "Xóa đã chọn" đã hiển thị');
     }
 
     function deleteSelectedQuestions() {
-        const selectedIds = getSelectedQuestionIds();
+        let selectedIds = getSelectedQuestionIds();
+        
+        // Nếu đang trong trạng thái "select all", lấy tất cả IDs từ questions array
+        if (window.selectAllQuestionsSelected) {
+            selectedIds = questions.map(q => q.id);
+            console.log(`🗑️ Select all mode: sẽ xóa ${selectedIds.length} câu hỏi từ tất cả các trang`);
+        }
         
         if (selectedIds.length === 0) {
             showNotification('Vui lòng chọn ít nhất một câu hỏi để xóa', 'error');
@@ -610,33 +652,49 @@ document.addEventListener('DOMContentLoaded', function() {
         // Xóa từng câu hỏi
         let deleteCount = 0;
         let errorCount = 0;
+        let processedCount = 0;
+        const totalCount = selectedIds.length;
         
-        const deletePromises = selectedIds.map(id => {
+        const deletePromises = selectedIds.map((id, index) => {
             return fetch(`/admin/api/questions/${id}`, {
                 method: 'DELETE'
             })
             .then(response => response.json())
             .then(data => {
+                processedCount++;
                 if (data.success) {
                     deleteCount++;
+                    console.log(`✅ Xóa thành công câu hỏi ${id} (${processedCount}/${totalCount})`);
                 } else {
                     errorCount++;
+                    console.error(`❌ Lỗi xóa câu hỏi ${id}:`, data.error);
                 }
             })
             .catch(error => {
-                console.error(`Lỗi khi xóa câu hỏi ${id}:`, error);
+                processedCount++;
                 errorCount++;
+                console.error(`❌ Lỗi khi xóa câu hỏi ${id}:`, error);
             });
         });
         
         Promise.all(deletePromises).then(() => {
             if (deleteCount > 0) {
-                showNotification(`Đã xóa thành công ${deleteCount} câu hỏi`);
-                fetchQuestions(); // Reload danh sách
+                showNotification(`✅ Đã xóa thành công ${deleteCount}/${totalCount} câu hỏi`, 'success');
+                
+                // Reset trạng thái select all
+                window.selectAllQuestionsSelected = false;
+                
+                // Reload danh sách
+                fetchQuestions();
+                
+                // Ẩn nút delete selected
+                if (deleteSelectedBtn) {
+                    deleteSelectedBtn.style.display = 'none';
+                }
             }
             
             if (errorCount > 0) {
-                showNotification(`Có ${errorCount} câu hỏi không thể xóa`, 'error');
+                showNotification(`⚠️ Có ${errorCount} câu hỏi không thể xóa`, 'warning');
             }
         });
     }
@@ -657,7 +715,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (selectAllBtn) {
+        console.log('🔍 Gắn event listener cho selectAllBtn');
         selectAllBtn.addEventListener('click', selectAllQuestions);
+    } else {
+        console.error('❌ Không tìm thấy selectAllBtn!');
     }
 
     // Khởi tạo
