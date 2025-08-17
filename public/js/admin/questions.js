@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const editQuestionForm = document.getElementById('edit-question-form');
     const selectAllCheckbox = document.getElementById('select-all');
     const deleteSelectedBtn = document.getElementById('delete-selected');
-    const deleteAllBtn = document.getElementById('delete-all-questions');
+    const selectAllBtn = document.getElementById('select-all-questions');
     const selectedCountSpan = document.getElementById('selected-count');
     
     // Lấy thông tin người dùng
@@ -564,22 +564,14 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(selectedCheckboxes).map(cb => cb.getAttribute('data-id'));
     }
     
-    // Xóa toàn bộ câu hỏi - tự động select all rồi xóa
-    function deleteAllQuestions() {
+    // Chọn toàn bộ câu hỏi ở tất cả các trang
+    function selectAllQuestions() {
         if (questions.length === 0) {
-            showNotification('Không có câu hỏi nào để xóa', 'warning');
+            showNotification('Không có câu hỏi nào để chọn', 'warning');
             return;
         }
         
-        if (!confirm(`⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ ${questions.length} CÂU HỎI?\n\nHành động này sẽ xóa TẤT CẢ câu hỏi và KHÔNG THỂ HOÀN TÁC!`)) {
-            return;
-        }
-        
-        if (!confirm('🚨 XÁC NHẬN LẦN CUỐI!\n\nViệc xóa toàn bộ kho đề sẽ làm mất tất cả câu hỏi. Bạn có thực sự muốn tiếp tục?')) {
-            return;
-        }
-        
-        console.log(`🗑️ Bắt đầu xóa toàn bộ ${questions.length} câu hỏi...`);
+        console.log(`✅ Bắt đầu chọn toàn bộ ${questions.length} câu hỏi...`);
         
         // Tự động select tất cả câu hỏi
         const allCheckboxes = document.querySelectorAll('.question-checkbox');
@@ -595,9 +587,12 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteSelectedBtn.style.display = 'inline-block';
         }
         
-        // Tự động gọi deleteSelectedQuestions() để xóa tất cả
-        console.log('✅ Đã select tất cả câu hỏi, bắt đầu xóa...');
-        deleteSelectedQuestions();
+        // Update select all checkbox
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = true;
+        }
+        
+        showNotification(`✅ Đã chọn toàn bộ ${questions.length} câu hỏi. Bạn có thể bấm "Xóa đã chọn" để xóa.`, 'success');
     }
 
     function deleteSelectedQuestions() {
@@ -661,8 +656,8 @@ document.addEventListener('DOMContentLoaded', function() {
         deleteSelectedBtn.addEventListener('click', deleteSelectedQuestions);
     }
 
-    if (deleteAllBtn) {
-        deleteAllBtn.addEventListener('click', deleteAllQuestions);
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', selectAllQuestions);
     }
 
     // Khởi tạo
