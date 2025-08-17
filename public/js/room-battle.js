@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let gameStartTime; // Thời gian bắt đầu game
     let totalTimeRemaining = 60; // 60 giây tổng
     let gameFinished = false;
+    let gameAnswers = []; // Lưu câu trả lời local
     
     // Kết nối Socket.IO
     function connectSocket() {
@@ -310,12 +311,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Thêm event listener cho nút submit answer
     document.getElementById('submit-answer').addEventListener('click', function() {
+        console.log('🔥 Submit button clicked!');
         submitAnswer();
     });
     
     // Thêm event listener cho phím Enter trong input
     document.getElementById('answer-input').addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
+            console.log('🔥 Enter key pressed!');
             submitAnswer();
         }
     });
@@ -324,7 +327,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function showQuestion(data) {
         const { questionNumber, totalQuestions, question, totalTimeLeft } = data;
         
-        console.log('📋 showQuestion called:', { questionNumber, totalQuestions, questionText: question?.text?.substring(0, 50) + '...' });
+        console.log('📋 showQuestion called:', { 
+            questionNumber, 
+            totalQuestions, 
+            questionText: question?.text?.substring(0, 50) + '...',
+            questionId: question?.id,
+            answer: question?.answer
+        });
         
         // Lưu câu hỏi hiện tại
         currentQuestion = question;
@@ -361,10 +370,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Chọn câu trả lời
     function submitAnswer() {
-        if (!currentQuestion) return;
+        console.log('🔥 submitAnswer called!');
+        console.log('🔍 currentQuestion:', currentQuestion);
+        console.log('🔍 allQuestions.length:', allQuestions.length);
+        console.log('🔍 currentQuestionIndex:', currentQuestionIndex);
+        
+        if (!currentQuestion) {
+            console.log('❌ No currentQuestion!');
+            console.log('❌ allQuestions:', allQuestions);
+            console.log('❌ myQuestionOrder:', myQuestionOrder);
+            showNotification('Không có câu hỏi hiện tại! Check console.', 'error');
+            return;
+        }
         
         const answerInput = document.getElementById('answer-input');
         const userAnswer = answerInput.value.trim();
+        
+        console.log('📝 User answer:', userAnswer);
         
         if (!userAnswer) {
             showNotification('Vui lòng nhập câu trả lời!', 'warning');
@@ -378,55 +400,69 @@ document.addEventListener('DOMContentLoaded', function() {
         // Tính thời gian trả lời (giây)
         const answerTime = Math.floor((Date.now() - questionStartTime) / 1000);
         
-        // Gửi câu trả lời đến server
-        socket.emit('submit_answer', {
-            roomCode: roomInfo.code,
-            userId: userId,
+        // ✅ CHECK ANSWER LOCAL - NO SERVER CALL (Maximum Speed!)
+        const isCorrect = checkAnswer(userAnswer, currentQuestion.answer);
+        const answerResult = document.getElementById('answer-result');
+        
+        console.log('🎯 Answer check:', {
+            userAnswer,
+            correctAnswer: currentQuestion.answer,
+            isCorrect
+        });
+        
+        // Cập nhật điểm số và UI ngay lập tức
+        if (isCorrect) {
+            playerScore += 10; // Cố định 10 điểm cho mỗi câu đúng
+            document.getElementById('user-score').textContent = playerScore;
+            
+            answerResult.textContent = 'Đúng! +10 điểm';
+            answerResult.className = 'answer-result correct';
+            showNotification('Đúng! +10 điểm', 'success');
+        } else {
+            answerResult.textContent = `Sai! Đáp án đúng: ${currentQuestion.answer}`;
+            answerResult.className = 'answer-result incorrect';
+            showNotification('Sai rồi!', 'error');
+        }
+        
+        // Lưu câu trả lời local
+        if (!gameAnswers) gameAnswers = [];
+        gameAnswers.push({
+            questionId: currentQuestion.id,
+            questionText: currentQuestion.text,
             userAnswer: userAnswer,
+            correctAnswer: currentQuestion.answer,
+            isCorrect: isCorrect,
             answerTime: answerTime
-        }, function(response) {
-            if (response.success) {
-                const answerResult = document.getElementById('answer-result');
-                
-                // Cập nhật điểm số - mỗi câu đúng được 10 điểm
-                if (response.isCorrect) {
-                    playerScore += 10; // Cố định 10 điểm cho mỗi câu đúng
-                    document.getElementById('user-score').textContent = playerScore;
-                    
-                    answerResult.textContent = 'Đúng! +10 điểm';
-                    answerResult.className = 'answer-result correct';
-                    showNotification('Đúng! +10 điểm', 'success');
-                } else {
-                    answerResult.textContent = `Sai! Đáp án đúng: ${response.correctAnswer}`;
-                    answerResult.className = 'answer-result incorrect';
-                    showNotification('Sai rồi!', 'error');
-                }
-                
-                // ✅ Tự chuyển câu tiếp theo như solo battle - KHÔNG chờ người khác
-                setTimeout(() => {
-                    currentQuestionIndex++;
-                    
-                    // Kiểm tra nếu hết câu hỏi
-                    if (currentQuestionIndex >= allQuestions.length) {
-                        console.log('🏁 Đã hoàn thành tất cả câu hỏi!');
-                        finishMyGame();
-                        return;
-                    }
-                    
-                    // Hiển thị câu tiếp theo
-                    const questionIndex = myQuestionOrder[currentQuestionIndex];
-                    const nextQuestion = allQuestions[questionIndex];
-                    
-                    showQuestion({
-                        questionNumber: currentQuestionIndex + 1,
-                        totalQuestions: allQuestions.length,
-                        question: nextQuestion,
-                        totalTimeLeft: document.getElementById('total-timer').textContent
-                    });
-                }, 1500);
-            } else {
-                showNotification('Lỗi khi gửi câu trả lời: ' + response.error, 'error');
-            }
+        });
+        
+        console.log('✅ Checked answer locally:', isCorrect ? 'CORRECT' : 'WRONG');
+        
+        // ✅ CHUYỂN CÂU NGAY LẬP TỨC - NO DELAY!
+        currentQuestionIndex++;
+        console.log('➡️ Moving to question index:', currentQuestionIndex);
+        
+        // Kiểm tra nếu hết câu hỏi
+        if (currentQuestionIndex >= allQuestions.length) {
+            console.log('🏁 Đã hoàn thành tất cả câu hỏi!');
+            finishMyGame();
+            return;
+        }
+        
+        // Hiển thị câu tiếp theo NGAY
+        const questionIndex = myQuestionOrder[currentQuestionIndex];
+        const nextQuestion = allQuestions[questionIndex];
+        
+        console.log('📋 Showing next question:', {
+            currentQuestionIndex,
+            questionIndex,
+            questionText: nextQuestion?.text?.substring(0, 50) + '...'
+        });
+        
+        showQuestion({
+            questionNumber: currentQuestionIndex + 1,
+            totalQuestions: allQuestions.length,
+            question: nextQuestion,
+            totalTimeLeft: document.getElementById('total-timer').textContent
         });
     }
     
@@ -448,6 +484,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Xử lý khi có thông báo bắt đầu câu hỏi mới  
     function handleNewQuestionStart(data) {
         console.log('📨 Nhận event new_question_start với data:', data);
+        console.log('📨 questionData length:', data.questionData?.length);
+        console.log('📨 First question:', data.questionData?.[0]);
         
         // Lần đầu nhận data, lưu tất cả câu hỏi và tạo thứ tự ngẫu nhiên
         allQuestions = data.questionData;
@@ -465,7 +503,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const questionIndex = myQuestionOrder[currentQuestionIndex];
         const question = allQuestions[questionIndex];
         
-        console.log('📋 Hiển thị câu hỏi đầu tiên:', currentQuestionIndex + 1);
+        console.log('📋 Hiển thị câu hỏi đầu tiên:', {
+            currentQuestionIndex: currentQuestionIndex + 1,
+            questionIndex,
+            question: question
+        });
         
         showQuestion({
             questionNumber: currentQuestionIndex + 1,
@@ -531,22 +573,49 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const completionTime = Math.floor((Date.now() - gameStartTime) / 1000);
         
-        console.log('🏁 Hoàn thành game! Điểm:', playerScore, '- Thời gian:', completionTime);
+        console.log('🏁 Gửi kết quả lên server:');
+        console.log('📊 playerScore:', playerScore);
+        console.log('⏱️ completionTime:', completionTime);
+        console.log('📝 questionsAnswered:', currentQuestionIndex);
+        console.log('📋 gameAnswers:', gameAnswers);
         
-        // Gửi kết quả đến server
+        // Gửi kết quả đến server (bao gồm all answers)
         socket.emit('finish_game', {
             roomCode: roomInfo.code,
             userId: userId,
             score: playerScore,
             completionTime: completionTime,
-            questionsAnswered: currentQuestionIndex
+            questionsAnswered: currentQuestionIndex,
+            allAnswers: gameAnswers // Gửi tất cả câu trả lời để lưu vào DB
         }, function(response) {
+            console.log('📨 Server response:', response);
             if (response.success) {
                 showNotification('Đã gửi kết quả thành công!', 'success');
             } else {
-                console.error('Lỗi gửi kết quả:', response.error);
+                console.error('❌ Lỗi gửi kết quả:', response.error);
             }
         });
+    }
+    
+    // Kiểm tra câu trả lời local (copy từ solo battle)
+    function checkAnswer(userAnswer, correctAnswer) {
+        // Chuẩn hóa cả hai câu trả lời: loại bỏ dấu cách thừa, chuyển về chữ thường
+        const normalizedUserAnswer = userAnswer.trim().toLowerCase();
+        const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
+        
+        // So sánh trực tiếp
+        if (normalizedUserAnswer === normalizedCorrectAnswer) {
+            return true;
+        }
+        
+        // Kiểm tra nếu câu trả lời của người dùng là một phần của đáp án đúng
+        // Hữu ích cho các câu trả lời có nhiều cách diễn đạt
+        if (normalizedCorrectAnswer.includes(normalizedUserAnswer) && 
+            normalizedUserAnswer.length > normalizedCorrectAnswer.length / 2) {
+            return true;
+        }
+        
+        return false;
     }
     
     // Helper function: Shuffle array (giống bên server)

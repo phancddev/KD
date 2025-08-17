@@ -249,7 +249,7 @@ export function initSocketIO(server) {
     // Xử lý khi người chơi hoàn thành game cá nhân
     socket.on('finish_game', async (data, callback) => {
       try {
-        const { roomCode, userId, score, completionTime, questionsAnswered } = data;
+        const { roomCode, userId, score, completionTime, questionsAnswered, allAnswers } = data;
         
         // Kiểm tra phòng có tồn tại không
         if (!rooms.has(roomCode)) {
@@ -264,14 +264,19 @@ export function initSocketIO(server) {
           return callback({ success: false, error: 'Người dùng không trong phòng' });
         }
         
-        // Cập nhật thông tin hoàn thành
+        // Cập nhật thông tin hoàn thành  
         participant.score = score;
         participant.completionTime = completionTime;
         participant.questionsAnswered = questionsAnswered;
+        participant.allAnswers = allAnswers || []; // Lưu tất cả câu trả lời
         participant.finished = true;
         participant.finishTime = Date.now();
         
-        console.log(`🏁 ${participant.username} hoàn thành game: ${score} điểm trong ${completionTime}s`);
+        console.log(`🏁 ${participant.username} hoàn thành game:`);
+        console.log(`📊 Score received: ${score}`);
+        console.log(`⏱️ Completion time: ${completionTime}s`);
+        console.log(`📝 Questions answered: ${questionsAnswered}`);
+        console.log(`🔍 Participant score updated to: ${participant.score}`);
         
         // Thông báo cho tất cả người trong phòng
         io.to(roomCode).emit('player_finished', {
@@ -286,6 +291,12 @@ export function initSocketIO(server) {
         const allFinished = room.participants.every(p => p.finished);
         if (allFinished) {
           console.log('🎯 Tất cả người chơi đã hoàn thành! Hiển thị kết quả...');
+          
+          // Debug participants trước khi tính ranking
+          console.log('👥 All participants before ranking:');
+          room.participants.forEach(p => {
+            console.log(`   ${p.username}: score=${p.score}, time=${p.completionTime}, finished=${p.finished}`);
+          });
           
           // Tính toán ranking
           const results = room.participants
@@ -308,6 +319,8 @@ export function initSocketIO(server) {
               rank: index + 1
             }));
           
+          console.log('🏆 Final results:', results);
+          
           // Gửi kết quả cuối cùng
           io.to(roomCode).emit('game_results', { results });
           
@@ -328,97 +341,8 @@ export function initSocketIO(server) {
       }
     });
 
-    // Xử lý khi người dùng trả lời câu hỏi
-    socket.on('submit_answer', async (data, callback) => {
-      try {
-        const { roomCode, userId, userAnswer, answerTime } = data;
-        
-        // Kiểm tra phòng có tồn tại không
-        if (!rooms.has(roomCode)) {
-          return callback({ success: false, error: 'Phòng không tồn tại' });
-        }
-        
-        const room = rooms.get(roomCode);
-        
-        // Kiểm tra trạng thái phòng
-        if (room.status !== 'playing') {
-          return callback({ success: false, error: 'Phòng không trong trạng thái chơi' });
-        }
-        
-        // Kiểm tra người dùng có trong phòng không
-        const participant = room.participants.find(p => p.id === userId);
-        if (!participant) {
-          return callback({ success: false, error: 'Người dùng không trong phòng' });
-        }
-        
-        // Đánh dấu người dùng đã trả lời
-        participant.hasAnswered = true;
-        
-        // Lấy câu hỏi hiện tại theo thứ tự của participant
-        if (participant.currentQuestionIndex < 0 || participant.currentQuestionIndex >= participant.questionOrder.length) {
-          return callback({ success: false, error: 'Không có câu hỏi hiện tại' });
-        }
-        
-        const questionIndex = participant.questionOrder[participant.currentQuestionIndex];
-        const currentQuestion = room.questions[questionIndex];
-        if (!currentQuestion) {
-          return callback({ success: false, error: 'Không có câu hỏi hiện tại' });
-        }
-        
-        // Kiểm tra đáp án
-        const isCorrect = checkAnswer(userAnswer, currentQuestion.answer);
-        
-        // Tính điểm - mỗi câu đúng được 10 điểm
-        let points = 0;
-        if (isCorrect) {
-          points = 10; // Cố định 10 điểm cho mỗi câu đúng
-          participant.score += points;
-        }
-        
-        // Lưu kết quả câu trả lời cho người dùng  
-        if (!participant.answers) {
-          participant.answers = [];
-        }
-        participant.answers[participant.currentQuestionIndex] = {
-          questionId: currentQuestion.id,
-          userAnswer,
-          isCorrect,
-          answerTime
-        };
-        
-        // Lưu câu trả lời vào database (nếu có sessionId)
-        if (participant.sessionId) {
-          await saveUserAnswer(
-            participant.sessionId,
-            currentQuestion.id,
-            userAnswer,
-            isCorrect,
-            answerTime
-          );
-        }
-        
-        // Thông báo kết quả cho người dùng
-        callback({
-          success: true,
-          isCorrect,
-          correctAnswer: currentQuestion.answer,
-          points,
-          totalScore: participant.score
-        });
-        
-        // Thông báo cho tất cả người trong phòng về trạng thái mới
-        io.to(roomCode).emit('participant_answered', {
-          userId,
-          username: participant.username,
-          hasAnswered: true
-        });
-        
-        // ❌ Bỏ logic chờ tất cả người chơi - mỗi người tự chuyển câu
-      } catch (error) {
-        console.error('Lỗi khi trả lời câu hỏi:', error);
-        callback({ success: false, error: 'Không thể xử lý câu trả lời' });
-      }
-    });
+    // ❌ Bỏ submit_answer handler - Client tự check answer local để tối ưu tốc độ
+    // Client sẽ chỉ gửi kết quả cuối cùng qua finish_game event
     
     // Xử lý khi chủ phòng kết thúc phòng
     socket.on('end_room', async (data, callback) => {
