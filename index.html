@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .welcome-container {
+            max-width: 800px;
+            margin: 100px auto;
+            text-align: center;
+            padding: 40px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .welcome-title {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-subtitle {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+        }
+        
+        .welcome-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .welcome-button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .welcome-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .welcome-features {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 50px;
+            text-align: left;
+        }
+        
+        .feature {
+            flex: 1;
+            padding: 20px;
+            margin: 0 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .feature h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-container">
+            <h1 class="welcome-title">Hệ thống Thi đấu Kiến thức</h1>
+            <p class="welcome-subtitle">Nền tảng thi đấu kiến thức trực tuyến với nhiều chế độ chơi hấp dẫn</p>
+            
+            <div class="welcome-buttons">
+                <a href="/register" class="welcome-button btn btn-primary">Tạo tài khoản</a>
+                <a href="/login" class="welcome-button btn btn-secondary">Đăng nhập</a>
+            </div>
+            
+            <div class="welcome-features">
+                <div class="feature">
+                    <div class="feature-icon">🏆</div>
+                    <h3>Thi đấu phòng</h3>
+                    <p>Tạo phòng hoặc tham gia phòng có sẵn để thi đấu với bạn bè và những người chơi khác.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Tự đấu</h3>
+                    <p>Luyện tập kiến thức với chế độ tự đấu, trả lời các câu hỏi và cải thiện điểm số của bạn.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📊</div>
+                    <h3>Bảng xếp hạng</h3>
+                    <p>Theo dõi thành tích của bạn và so sánh với những người chơi khác trên bảng xếp hạng.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

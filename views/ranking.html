@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng xếp hạng - Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/ranking.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Bảng xếp hạng</h1>
+            <div class="user-info">
+                <span id="username-display"></span>
+                <a href="/" class="btn btn-small">Trang chủ</a>
+                <a href="/logout" class="btn btn-small">Đăng xuất</a>
+            </div>
+        </header>
+        
+        <nav class="main-nav">
+            <ul>
+                <li><a href="/">Trang chủ</a></li>
+                <li><a href="/history">Lịch sử</a></li>
+                <li class="active"><a href="/ranking">Xếp hạng</a></li>
+            </ul>
+        </nav>
+        
+        <main>
+            <div class="ranking-container">
+                <div class="ranking-header">
+                    <h2>Xếp hạng người chơi theo tháng</h2>
+                    <div class="ranking-filters">
+                        <div class="month-selector">
+                            <label for="month-select">Tháng:</label>
+                            <select id="month-select">
+                                <option value="1">Tháng 1</option>
+                                <option value="2">Tháng 2</option>
+                                <option value="3">Tháng 3</option>
+                                <option value="4">Tháng 4</option>
+                                <option value="5">Tháng 5</option>
+                                <option value="6">Tháng 6</option>
+                                <option value="7">Tháng 7</option>
+                                <option value="8">Tháng 8</option>
+                                <option value="9">Tháng 9</option>
+                                <option value="10">Tháng 10</option>
+                                <option value="11">Tháng 11</option>
+                                <option value="12">Tháng 12</option>
+                            </select>
+                        </div>
+                        <div class="year-selector">
+                            <label for="year-select">Năm:</label>
+                            <select id="year-select">
+                                <!-- Years will be dynamically generated -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ranking-info">
+                    <p>Xếp hạng dựa trên số trận đấu đã hoàn thành trong tháng. Nếu số trận bằng nhau, người chơi có điểm cao hơn sẽ được xếp hạng cao hơn.</p>
+                </div>
+                
+                <div class="ranking-list">
+                    <div class="top-players">
+                        <div class="top-player second-place" id="second-place">
+                            <div class="rank">2</div>
+                            <div class="player-avatar">
+                                <span class="avatar-text">2</span>
+                            </div>
+                            <div class="player-name">---</div>
+                            <div class="player-games">0 trận</div>
+                        </div>
+                        
+                        <div class="top-player first-place" id="first-place">
+                            <div class="rank">1</div>
+                            <div class="player-avatar">
+                                <span class="avatar-text">1</span>
+                            </div>
+                            <div class="player-name">---</div>
+                            <div class="player-games">0 trận</div>
+                            <div class="crown">👑</div>
+                        </div>
+                        
+                        <div class="top-player third-place" id="third-place">
+                            <div class="rank">3</div>
+                            <div class="player-avatar">
+                                <span class="avatar-text">3</span>
+                            </div>
+                            <div class="player-name">---</div>
+                            <div class="player-games">0 trận</div>
+                        </div>
+                    </div>
+                    
+                    <table class="ranking-table">
+                        <thead>
+                            <tr>
+                                <th>Hạng</th>
+                                <th>Người chơi</th>
+                                <th>Số trận</th>
+                                <th>Tổng điểm</th>
+                                <th>Câu đúng</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-table-body">
+                            <!-- Ranking items will be dynamically generated -->
+                        </tbody>
+                    </table>
+                    <div id="no-ranking" class="no-data" style="display: none;">
+                        <p>Chưa có dữ liệu xếp hạng cho tháng này.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/ranking.js"></script>
+</body>
+</html>

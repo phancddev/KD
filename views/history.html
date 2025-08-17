@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch sử trận đấu - Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/history.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Lịch sử trận đấu</h1>
+            <div class="user-info">
+                <span id="username-display"></span>
+                <a href="/" class="btn btn-small">Trang chủ</a>
+                <a href="/logout" class="btn btn-small">Đăng xuất</a>
+            </div>
+        </header>
+        
+        <nav class="main-nav">
+            <ul>
+                <li><a href="/">Trang chủ</a></li>
+                <li class="active"><a href="/history">Lịch sử</a></li>
+                <li><a href="/ranking">Xếp hạng</a></li>
+            </ul>
+        </nav>
+        
+        <main>
+            <div class="history-container">
+                <div class="history-header">
+                    <div class="history-filters">
+                        <div class="month-selector">
+                            <label for="month-select">Tháng:</label>
+                            <select id="month-select">
+                                <option value="1">Tháng 1</option>
+                                <option value="2">Tháng 2</option>
+                                <option value="3">Tháng 3</option>
+                                <option value="4">Tháng 4</option>
+                                <option value="5">Tháng 5</option>
+                                <option value="6">Tháng 6</option>
+                                <option value="7">Tháng 7</option>
+                                <option value="8">Tháng 8</option>
+                                <option value="9">Tháng 9</option>
+                                <option value="10">Tháng 10</option>
+                                <option value="11">Tháng 11</option>
+                                <option value="12">Tháng 12</option>
+                            </select>
+                        </div>
+                        <div class="year-selector">
+                            <label for="year-select">Năm:</label>
+                            <select id="year-select">
+                                <!-- Years will be dynamically generated -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="user-stats">
+                    <div class="stat-card">
+                        <div class="stat-title">Tổng số trận</div>
+                        <div class="stat-value" id="total-games">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Tổng điểm</div>
+                        <div class="stat-value" id="total-score">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Câu đúng</div>
+                        <div class="stat-value" id="correct-answers">0/0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Điểm cao nhất</div>
+                        <div class="stat-value" id="highest-score">0</div>
+                    </div>
+                </div>
+                
+                <div class="history-list">
+                    <h2>Danh sách trận đấu</h2>
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Chế độ</th>
+                                <th>Điểm số</th>
+                                <th>Câu đúng</th>
+                                <th>Chi tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- History items will be dynamically generated -->
+                        </tbody>
+                    </table>
+                    <div id="no-history" class="no-data" style="display: none;">
+                        <p>Bạn chưa có trận đấu nào trong tháng này.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Game Details Modal -->
+    <div id="game-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Chi tiết trận đấu</h2>
+            <div class="game-info">
+                <p><strong>Thời gian:</strong> <span id="modal-time"></span></p>
+                <p><strong>Chế độ:</strong> <span id="modal-mode"></span></p>
+                <p><strong>Điểm số:</strong> <span id="modal-score"></span></p>
+                <p><strong>Câu đúng:</strong> <span id="modal-correct"></span></p>
+            </div>
+            <div class="question-review">
+                <h3>Xem lại câu hỏi</h3>
+                <div id="question-review-list">
+                    <!-- Question review will be dynamically generated -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/history.js"></script>
+</body>
+</html>

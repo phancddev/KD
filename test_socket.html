@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Socket.IO</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input, button { padding: 10px; margin: 5px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Socket.IO - Tạo phòng</h1>
+        
+        <div class="form-group">
+            <label for="room-name">Tên phòng:</label>
+            <input type="text" id="room-name" placeholder="Nhập tên phòng" value="Test Room">
+        </div>
+        
+        <div class="form-group">
+            <button id="create-room-btn">Tạo phòng</button>
+            <button id="test-connection-btn">Test kết nối</button>
+        </div>
+        
+        <div class="log" id="log">
+            <strong>Log:</strong><br>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket;
+        
+        function log(message, type = 'info') {
+            const logContent = document.getElementById('log-content');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logContent.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        function connectSocket() {
+            log('Đang kết nối Socket.IO...');
+            socket = io();
+            
+            socket.on('connect', () => {
+                log('✅ Đã kết nối Socket.IO thành công! ID: ' + socket.id, 'success');
+            });
+            
+            socket.on('connect_error', (error) => {
+                log('❌ Lỗi kết nối Socket.IO: ' + error.message, 'error');
+            });
+            
+            socket.on('disconnect', (reason) => {
+                log('🔌 Socket.IO đã ngắt kết nối: ' + reason);
+            });
+        }
+        
+        document.getElementById('test-connection-btn').addEventListener('click', function() {
+            connectSocket();
+        });
+        
+        document.getElementById('create-room-btn').addEventListener('click', function() {
+            if (!socket) {
+                log('❌ Chưa kết nối Socket.IO. Vui lòng test kết nối trước.', 'error');
+                return;
+            }
+            
+            const roomName = document.getElementById('room-name').value.trim();
+            if (!roomName) {
+                log('❌ Vui lòng nhập tên phòng.', 'error');
+                return;
+            }
+            
+            log('🚀 Đang tạo phòng: ' + roomName);
+            
+            socket.emit('create_room', {
+                userId: 1, // Test user ID
+                username: 'testuser', // Test username
+                roomName: roomName
+            }, function(response) {
+                log('📨 Phản hồi từ server: ' + JSON.stringify(response));
+                
+                if (response.success) {
+                    log('✅ Tạo phòng thành công! Mã phòng: ' + response.room.code, 'success');
+                } else {
+                    log('❌ Không thể tạo phòng: ' + response.error, 'error');
+                }
+            });
+        });
+        
+        // Tự động kết nối khi trang load
+        window.addEventListener('load', function() {
+            log('🌐 Trang đã load, sẵn sàng test...');
+        });
+    </script>
+</body>
+</html> 

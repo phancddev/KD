@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "2701:2701"
+    depends_on:
+      - mariadb
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=nqd_user
+      - DB_PASSWORD=nqd_password
+      - DB_NAME=nqd_database
+      - NODE_ENV=production
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:10.6
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=nqd_database
+      - MYSQL_USER=nqd_user
+      - MYSQL_PASSWORD=nqd_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+
+volumes:
+  mariadb_data:

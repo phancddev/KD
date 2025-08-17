@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang chủ - Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/modern-styles.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    Hệ thống Thi đấu Kiến thức
+                </div>
+                <div class="user-info">
+                    <div class="avatar">
+                        <span id="avatar-text"></span>
+                    </div>
+                    <span id="username-display"></span>
+                    <a href="/logout" class="btn btn-small btn-outline">Đăng xuất</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="main-nav">
+            <ul>
+                <li class="active"><a href="/"><i class="fas fa-home"></i> Trang chủ</a></li>
+                <li><a href="/history"><i class="fas fa-history"></i> Lịch sử</a></li>
+                <li><a href="/ranking"><i class="fas fa-trophy"></i> Xếp hạng</a></li>
+                <li id="admin-upload-link" style="display: none;">
+                    <a href="/admin/questions"><i class="fas fa-upload"></i> Upload đề</a>
+                </li>
+            </ul>
+        </nav>
+        
+        <main>
+            <div class="card">
+                <div class="card-header">
+                    <h2>Chọn chế độ thi đấu</h2>
+                </div>
+                
+                <div class="card-body">
+                    <div class="battle-modes">
+                        <div class="battle-mode-card">
+                            <div class="card-icon">
+                                <i class="fas fa-users fa-3x text-primary"></i>
+                            </div>
+                            <h3>Đấu phòng</h3>
+                            <p>Tạo phòng hoặc tham gia phòng đã có sẵn để thi đấu với người khác. Thách thức bạn bè và xem ai là người giỏi nhất!</p>
+                            <div class="battle-options">
+                                <button id="create-room-btn" class="btn btn-primary">
+                                    <i class="fas fa-plus-circle"></i> Tạo phòng
+                                </button>
+                                <button id="join-room-btn" class="btn btn-outline">
+                                    <i class="fas fa-sign-in-alt"></i> Tham gia phòng
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="battle-mode-card">
+                            <div class="card-icon">
+                                <i class="fas fa-user-graduate fa-3x text-primary"></i>
+                            </div>
+                            <h3>Tự đấu</h3>
+                            <p>Luyện tập một mình với bộ câu hỏi có sẵn. Cải thiện kiến thức và kỹ năng của bạn với các câu hỏi đa dạng.</p>
+                            <button id="solo-battle-btn" class="btn btn-primary btn-block">
+                                <i class="fas fa-play-circle"></i> Bắt đầu ngay
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3>Thống kê của bạn</h3>
+                </div>
+                <div class="card-body">
+                    <div class="user-stats">
+                        <div class="stat-card">
+                            <div class="stat-title">Tổng số trận</div>
+                            <div class="stat-value" id="total-games">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">Tổng điểm</div>
+                            <div class="stat-value" id="total-score">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">Câu đúng</div>
+                            <div class="stat-value" id="correct-answers">--/--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">Điểm cao nhất</div>
+                            <div class="stat-value" id="highest-score">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Admin Panel -->
+            <div id="admin-panel" class="card mt-4" style="display: none;">
+                <div class="card-header">
+                    <h3><i class="fas fa-shield-alt"></i> Quản lý hệ thống (Admin)</h3>
+                </div>
+                <div class="card-body">
+                    <div class="admin-actions">
+                        <div class="admin-action-card">
+                            <div class="card-icon">
+                                <i class="fas fa-upload fa-3x text-success"></i>
+                            </div>
+                            <h4>Upload câu hỏi</h4>
+                            <p>Thêm câu hỏi mới vào hệ thống từ file CSV hoặc nhập tay</p>
+                            <a href="/admin/questions" class="btn btn-success btn-block">
+                                <i class="fas fa-upload"></i> Quản lý câu hỏi
+                            </a>
+                        </div>
+                        
+                        <div class="admin-action-card">
+                            <div class="card-icon">
+                                <i class="fas fa-users-cog fa-3x text-info"></i>
+                            </div>
+                            <h4>Quản lý người dùng</h4>
+                            <p>Xem thống kê và quản lý tài khoản người dùng</p>
+                            <a href="/admin/dashboard" class="btn btn-info btn-block">
+                                <i class="fas fa-chart-bar"></i> Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <div id="room-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <div id="create-room-form">
+                    <h3 class="mb-3">Tạo phòng mới</h3>
+                    <div class="form-group">
+                        <label for="room-name">Tên phòng:</label>
+                        <input type="text" id="room-name" class="form-control" placeholder="Nhập tên phòng" required>
+                    </div>
+                    <button id="create-room-submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-plus-circle"></i> Tạo phòng
+                    </button>
+                </div>
+                
+                <div id="join-room-form" style="display: none;">
+                    <h3 class="mb-3">Tham gia phòng</h3>
+                    <div class="form-group">
+                        <label for="room-code">Mã phòng:</label>
+                        <input type="text" id="room-code" class="form-control" placeholder="Nhập mã phòng" required>
+                    </div>
+                    <button id="join-room-submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-sign-in-alt"></i> Tham gia
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/home.js"></script>
+</body>
+</html>

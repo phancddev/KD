@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đấu phòng - Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/modern-styles.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    Đấu phòng
+                </div>
+                <div class="room-info d-flex gap-3">
+                    <div class="room-badge">
+                        <i class="fas fa-door-open"></i>
+                        <span id="room-name-display">Loading...</span>
+                    </div>
+                    <div class="room-code">
+                        <i class="fas fa-key"></i>
+                        <span id="room-code-display">Loading...</span>
+                    </div>
+                </div>
+                <div class="user-info">
+                    <div class="avatar">
+                        <span id="avatar-text"></span>
+                    </div>
+                    <span id="username-display"></span>
+                    <a href="/" class="btn btn-small btn-outline">
+                        <i class="fas fa-home"></i> Trang chủ
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <main>
+            <!-- Phòng chờ -->
+            <div class="card fade-in" id="waiting-room">
+                <div class="card-header">
+                    <h2><i class="fas fa-hourglass-half"></i> Phòng chờ</h2>
+                </div>
+                <div class="card-body">
+                    <div class="waiting-animation">
+                        <div class="pulse-circle"></div>
+                        <p>Đang chờ người tham gia...</p>
+                    </div>
+                    
+                    <div class="participants-container">
+                        <h3 class="mb-3"><i class="fas fa-users"></i> Người tham gia</h3>
+                        <div class="participants-list" id="participants-list">
+                            <!-- Participants will be dynamically generated here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button id="start-battle-btn" class="btn btn-primary btn-large">
+                        <i class="fas fa-play-circle"></i> Bắt đầu thi đấu
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Phòng đấu -->
+            <div class="battle-room" id="battle-room" style="display: none;">
+                <div class="battle-layout">
+                    <div class="question-container card">
+                        <div class="question-header">
+                            <div class="question-counter">
+                                <span>Câu hỏi <span id="current-question">1</span>/<span id="total-questions">12</span></span>
+                            </div>
+                            <div class="timer-container">
+                                <div class="timer" id="timer">60</div>
+                                <div class="total-timer" id="total-timer">60</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="progress-bar"></div>
+                        </div>
+                        <div class="question-content">
+                            <h3 class="question-text" id="question-text">Nội dung câu hỏi sẽ hiển thị ở đây</h3>
+                        </div>
+                        <div class="answer-input">
+                            <input type="text" id="answer-input" class="form-control" placeholder="Nhập câu trả lời của bạn">
+                            <button id="submit-answer" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Trả lời
+                            </button>
+                        </div>
+                        <div id="answer-result" class="answer-result"></div>
+                    </div>
+                    
+                    <div class="score-sidebar">
+                        <div class="card">
+                            <div class="personal-score">
+                                <h3>Điểm của bạn</h3>
+                                <div class="score-circle">
+                                    <span class="score-value" id="user-score">0</span>
+                                    <span class="score-label">điểm</span>
+                                </div>
+                            </div>
+                            
+                            <div class="room-scores">
+                                <h4><i class="fas fa-trophy"></i> Bảng xếp hạng</h4>
+                                <div id="participants-status" class="participants-status">
+                                    <!-- Participants status will be dynamically generated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Phòng kết quả -->
+            <div class="card result-room" id="result-room" style="display: none;">
+                <div class="card-header text-center">
+                    <h2><i class="fas fa-flag-checkered"></i> Kết quả thi đấu</h2>
+                </div>
+                <div class="card-body">
+                    <div class="result-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Thứ hạng</th>
+                                    <th>Người chơi</th>
+                                    <th>Điểm số</th>
+                                </tr>
+                            </thead>
+                            <tbody id="result-table-body">
+                                <!-- Results will be dynamically generated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="result-actions">
+                        <button id="play-again-btn" class="btn btn-primary">
+                            <i class="fas fa-redo"></i> Chơi lại
+                        </button>
+                        <a href="/" class="btn btn-secondary">
+                            <i class="fas fa-home"></i> Trở về trang chủ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Countdown overlay -->
+    <div id="countdown-overlay" class="countdown-overlay" style="display: none;">
+        <div class="countdown-number" id="countdown">3</div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/room-battle.js"></script>
+</body>
+</html>

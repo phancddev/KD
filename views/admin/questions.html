@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý câu hỏi - Hệ thống Thi đấu Kiến thức</title>
+    <style>
+        /* Added embedded CSS styling for modern admin interface */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        .container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styling */
+        .admin-header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-info span {
+            font-weight: 500;
+        }
+
+        /* Button Styling */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-small {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .btn-small {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-small:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Main Layout */
+        .admin-main {
+            display: flex;
+            flex: 1;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Sidebar Styling */
+        .admin-sidebar {
+            width: 250px;
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        .admin-sidebar h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1e293b;
+        }
+
+        .admin-sidebar ul {
+            list-style: none;
+        }
+
+        .admin-sidebar li {
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-sidebar a {
+            display: block;
+            padding: 0.75rem 1rem;
+            text-decoration: none;
+            color: #64748b;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .admin-sidebar li.active a,
+        .admin-sidebar a:hover {
+            background-color: #f1f5f9;
+            color: #3b82f6;
+        }
+
+        /* Content Area */
+        .admin-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .admin-actions,
+        .admin-list {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-actions h2,
+        .admin-list h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #1e293b;
+        }
+
+        /* Form Styling */
+        .admin-form {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 0.5rem;
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+
+        /* Search Box */
+        .search-box {
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            max-width: 400px;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        /* Table Styling */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background-color: #f9fafb;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+        }
+
+        td {
+            font-size: 0.875rem;
+        }
+
+        tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            color: #9ca3af;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .close:hover {
+            color: #374151;
+            background-color: #f3f4f6;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Bulk delete styles */
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+            border: 1px solid #dc3545;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+        .question-checkbox {
+            cursor: pointer;
+        }
+
+        #select-all {
+            cursor: pointer;
+        }
+
+        .pagination button {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            background: white;
+            color: #374151;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pagination button:hover {
+            background-color: #f3f4f6;
+        }
+
+        .pagination button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .admin-main {
+                flex-direction: column;
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .admin-sidebar {
+                width: 100%;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .user-info {
+                justify-content: center;
+            }
+        }
+
+        /* Action Buttons in Table */
+        .action-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            margin-right: 0.25rem;
+            border-radius: 4px;
+        }
+
+        .btn-edit {
+            background-color: #f59e0b;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background-color: #d97706;
+        }
+
+        .btn-delete {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background-color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="admin-header">
+            <h1>Quản lý câu hỏi</h1>
+            <div class="user-info">
+                <span id="username-display"></span>
+                <a href="/" class="btn btn-small">Trang chủ</a>
+                <a href="/logout" class="btn btn-small">Đăng xuất</a>
+            </div>
+        </header>
+        
+        <main class="admin-main">
+            <div class="admin-sidebar">
+                <h2>Menu</h2>
+                <ul>
+                    <li class="active"><a href="/admin/questions">Quản lý câu hỏi</a></li>
+                    <li><a href="/admin/users">Quản lý người dùng</a></li>
+                </ul>
+            </div>
+            
+            <div class="admin-content">
+                <div class="admin-actions">
+                    <h2>Thêm câu hỏi mới</h2>
+                    <div class="admin-form">
+                        <form id="add-question-form">
+                            <div class="form-group">
+                                <label for="question-text">Câu hỏi:</label>
+                                <textarea id="question-text" name="text" rows="3" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="question-answer">Câu trả lời:</label>
+                                <input type="text" id="question-answer" name="answer" required>
+                            </div>
+
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">Thêm câu hỏi</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Nhập câu hỏi từ file CSV</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="import-questions-form">
+                                <div class="mb-3">
+                                    <label for="csv-file" class="form-label">Chọn file để import</label>
+                                    <input type="file" id="csv-file" name="csvFile" accept=".csv,.txt,.xlsx,.xls" required>
+                                    <div class="form-text">
+                                        <strong>🚀 Mới: Hỗ trợ file Excel trực tiếp!</strong><br><br>
+                                        <strong>1. Cách dễ nhất - File Excel (.xlsx, .xls):</strong><br>
+                                        • <strong>Cột A:</strong> Câu hỏi<br>
+                                        • <strong>Cột B:</strong> Câu trả lời<br>
+                                        • Upload trực tiếp, không cần export ✅<br><br>
+                                        <strong>2. CSV/TXT với Header (khuyến nghị):</strong><br>
+                                        • Dòng 1: <code>Question,Answer</code> hoặc <code>Qus,Ans</code><br>
+                                        • Từ dòng 2: Dữ liệu câu hỏi và đáp án<br><br>
+                                        <strong>3. CSV/TXT không Header (legacy):</strong><br>
+                                        • Mỗi dòng: <code>Câu hỏi,Đáp án</code><br><br>
+                                        <strong>4. Formats hỗ trợ:</strong><br>
+                                        • <strong>Excel:</strong> .xlsx, .xls ⭐ (Khuyến nghị)<br>
+                                        • <strong>CSV:</strong> .csv<br>
+                                        • <strong>Text:</strong> .txt (tab-separated)<br><br>
+                                        <em>💡 Với file Excel, bạn có thể dùng dấu phẩy, xuống dòng tự do!</em>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Nhập câu hỏi</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="admin-list">
+                    <h2>Danh sách câu hỏi</h2>
+                    <div class="search-box" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <input type="text" id="search-questions" placeholder="Tìm kiếm câu hỏi..." style="flex: 1; margin-right: 1rem;">
+                        <button id="delete-selected" class="btn btn-danger" style="display: none;">
+                            <i class="fas fa-trash"></i> Xóa đã chọn (<span id="selected-count">0</span>)
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table id="questions-table">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="select-all" title="Chọn tất cả">
+                                    </th>
+                                    <th>STT</th>
+                                    <th>Câu hỏi</th>
+                                    <th>Câu trả lời</th>
+                                    <th>Thời gian tạo</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="questions-list">
+                                <!-- Questions will be dynamically generated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="questions-pagination">
+                        <!-- Pagination will be dynamically generated here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Edit Question Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Chỉnh sửa câu hỏi</h2>
+            <form id="edit-question-form">
+                <input type="hidden" id="edit-question-id">
+                <div class="form-group">
+                    <label for="edit-question-text">Câu hỏi:</label>
+                    <textarea id="edit-question-text" name="text" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-question-answer">Câu trả lời:</label>
+                    <input type="text" id="edit-question-answer" name="answer" required>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="/js/admin/questions.js"></script>
+</body>
+</html>

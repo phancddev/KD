@@ -1,0 +1,27 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Cài đặt các gói cần thiết
+RUN apt-get update && apt-get install -y \
+    default-mysql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Sao chép requirements.txt
+COPY test_system/requirements.txt .
+
+# Cài đặt các gói Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Sao chép toàn bộ thư mục test_system
+COPY test_system /app/test_system
+
+# Đặt biến môi trường
+ENV PYTHONPATH=/app
+
+# Tạo thư mục làm việc
+WORKDIR /app/test_system
+
+# Mặc định chạy bash khi khởi động container
+CMD ["bash"]

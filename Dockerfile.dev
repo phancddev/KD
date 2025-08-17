@@ -1,0 +1,26 @@
+FROM node:18-alpine
+
+# Cài đặt các công cụ phát triển
+RUN apk add --no-cache bash curl git
+
+# Tạo thư mục làm việc
+WORKDIR /app
+
+# Sao chép package.json và package-lock.json
+COPY package*.json ./
+
+# Cài đặt các gói phụ thuộc bao gồm cả nodemon
+RUN npm install
+RUN npm install -g nodemon
+
+# Sao chép tất cả các file còn lại
+COPY . .
+
+# Tạo thư mục uploads nếu chưa có
+RUN mkdir -p uploads
+
+# Mở cổng 2701
+EXPOSE 2701
+
+# Khởi động ứng dụng với nodemon để tự động reload khi có thay đổi
+CMD ["npm", "run", "dev"]

@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: nqd_app_dev
+    restart: always
+    ports:
+      - "2701:2701"
+    depends_on:
+      - mariadb
+    environment:
+      - PORT=2701
+      - NODE_ENV=development
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=nqd_user
+      - DB_PASSWORD=nqd_password
+      - DB_NAME=nqd_database
+      - SESSION_SECRET=nqd-knowledge-duel-local-secret
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    networks:
+      - nqd_network_dev
+    command: npm run dev
+
+  mariadb:
+    image: mariadb:10.6
+    container_name: nqd_mariadb_dev
+    restart: always
+    ports:
+      - "3307:3306"  # Sử dụng port 3307 trên host để tránh xung đột
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password_dev
+      - MYSQL_DATABASE=nqd_database
+      - MYSQL_USER=nqd_user
+      - MYSQL_PASSWORD=nqd_password
+    volumes:
+      - mariadb_data_dev:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d  # Thư mục chứa script khởi tạo
+    networks:
+      - nqd_network_dev
+
+  adminer:
+    image: adminer
+    container_name: nqd_adminer_dev
+    restart: always
+    ports:
+      - "8081:8080"  # Sử dụng port 8081 trên host để tránh xung đột
+    depends_on:
+      - mariadb
+    networks:
+      - nqd_network_dev
+
+volumes:
+  mariadb_data_dev:
+    name: nqd_mariadb_data_dev
+
+networks:
+  nqd_network_dev:
+    name: nqd_network_dev
+    driver: bridge

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tự đấu - Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tự đấu</h1>
+            <div class="user-info">
+                <span id="username-display"></span>
+                <a href="/" class="btn btn-small">Trở về trang chủ</a>
+            </div>
+        </header>
+        
+        <main>
+            <div class="battle-area">
+                <div class="solo-battle-room" id="solo-battle-room">
+                    <div class="battle-layout">
+                        <div class="question-container">
+                            <div class="question-header">
+                                <span class="question-number">Câu hỏi <span id="current-question">1</span>/<span id="total-questions">12</span></span>
+                                <div class="timer-container">
+                                    <div class="timer" id="timer">5</div>
+                                    <div class="total-timer" id="total-timer">60</div>
+                                </div>
+                            </div>
+                            <div class="question-content">
+                                <h3 id="question-text">Nội dung câu hỏi sẽ hiển thị ở đây</h3>
+                            </div>
+                            <div class="answer-input">
+                                <input type="text" id="answer-input" placeholder="Nhập câu trả lời của bạn">
+                                <button id="submit-answer" class="btn btn-primary">Trả lời</button>
+                            </div>
+                            <div id="answer-result" class="answer-result"></div>
+                            
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="progress-bar"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="score-sidebar">
+                            <div class="personal-score">
+                                <h3>Điểm của bạn</h3>
+                                <div class="score-display">
+                                    <span id="user-score">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="result-room" id="result-room" style="display: none;">
+                    <h2>Kết quả</h2>
+                    <div class="score-display">
+                        <div class="score-circle">
+                            <span id="final-score">0</span>/<span id="max-score">10</span>
+                        </div>
+                        <p>Điểm của bạn</p>
+                    </div>
+                    
+                    <div class="question-review">
+                        <h3>Xem lại các câu hỏi</h3>
+                        <div id="question-review-list">
+                            <!-- Question review will be dynamically generated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="result-actions">
+                        <button id="play-again-btn" class="btn btn-primary">Chơi lại</button>
+                        <a href="/" class="btn btn-secondary">Trở về trang chủ</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/solo-battle.js"></script>
+</body>
+</html>

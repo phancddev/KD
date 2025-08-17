@@ -1,0 +1,74 @@
+services:
+  python_env:
+    build:
+      context: ..
+      dockerfile: test_system/Dockerfile.python
+    container_name: nqd_python_env
+    volumes:
+      - ..:/app
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=nqd_user
+      - DB_PASSWORD=nqd_password
+      - DB_NAME=nqd_database
+      - APP_URL=http://app:2701
+    depends_on:
+      - mariadb
+      - app
+    networks:
+      - nqd_network_test
+    tty: true
+    stdin_open: true
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile.dev
+    container_name: nqd_app_test
+    restart: always
+    ports:
+      - "2701:2701"
+    depends_on:
+      - mariadb
+    environment:
+      - PORT=2701
+      - NODE_ENV=development
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=nqd_user
+      - DB_PASSWORD=nqd_password
+      - DB_NAME=nqd_database
+      - SESSION_SECRET=nqd-knowledge-duel-test-secret
+    volumes:
+      - ..:/app
+      - /app/node_modules
+    networks:
+      - nqd_network_test
+    command: npm run dev
+
+  mariadb:
+    image: mariadb:10.6
+    container_name: nqd_mariadb_test
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=nqd_database
+      - MYSQL_USER=nqd_user
+      - MYSQL_PASSWORD=nqd_password
+    volumes:
+      - mariadb_data_test:/var/lib/mysql
+      - ../db/init:/docker-entrypoint-initdb.d
+    networks:
+      - nqd_network_test
+
+volumes:
+  mariadb_data_test:
+    name: nqd_mariadb_data_test
+
+networks:
+  nqd_network_test:
+    name: nqd_network_test
+    driver: bridge

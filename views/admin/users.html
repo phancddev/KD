@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý người dùng - Admin - Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/modern-styles.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <div class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    <span>Admin Panel</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    </li>
+                    <li>
+                        <a href="/admin/questions"><i class="fas fa-question-circle"></i> Quản lý câu hỏi</a>
+                    </li>
+                    <li class="active">
+                        <a href="/admin/users"><i class="fas fa-users"></i> Quản lý người dùng</a>
+                    </li>
+                    <li>
+                        <a href="/admin/game-history"><i class="fas fa-history"></i> Lịch sử trận đấu</a>
+                    </li>
+                    <li>
+                        <a href="/"><i class="fas fa-home"></i> Trang chủ</a>
+                    </li>
+                    <li>
+                        <a href="/logout"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="admin-content">
+            <div class="admin-header">
+                <h1><i class="fas fa-users"></i> Quản lý người dùng</h1>
+                <div class="admin-user">
+                    <span id="admin-name">Admin</span>
+                    <div class="avatar">
+                        <span id="avatar-text">A</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="admin-actions">
+                <button id="add-user-btn" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i> Thêm người dùng
+                </button>
+                <div class="search-box">
+                    <input type="text" id="user-search" placeholder="Tìm kiếm người dùng..." class="form-control">
+                    <button id="search-btn" class="btn btn-primary">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Users List -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-user-friends"></i> Danh sách người dùng</h2>
+                    <div class="card-actions">
+                        <button id="export-users" class="btn btn-small btn-outline">
+                            <i class="fas fa-file-csv"></i> Xuất CSV
+                        </button>
+                        <div class="refresh-btn" id="refresh-users">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Họ tên</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Trạng thái</th>
+                                    <th>Admin</th>
+                                    <th>Ngày tạo</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table">
+                                <!-- Users will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-users" class="no-data" style="display: none;">
+                        <p>Không có người dùng nào.</p>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="users-pagination">
+                        <!-- Pagination will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit User Modal -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="user-modal-title">Thêm người dùng mới</h2>
+            <form id="user-form">
+                <input type="hidden" id="user-id">
+                <div class="form-group">
+                    <label for="username">Tên đăng nhập:</label>
+                    <input type="text" id="username" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mật khẩu:</label>
+                    <input type="password" id="password" class="form-control">
+                    <small class="form-text text-muted">Để trống nếu không muốn thay đổi mật khẩu.</small>
+                </div>
+                <div class="form-group">
+                    <label for="full-name">Họ tên đầy đủ:</label>
+                    <input type="text" id="full-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="is-admin">
+                        <span class="checkbox-text">Cấp quyền admin</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="is-active" checked>
+                        <span class="checkbox-text">Kích hoạt tài khoản</span>
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-user">Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Details Modal -->
+    <div id="user-details-modal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close">&times;</span>
+            <h2>Thông tin chi tiết người dùng</h2>
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <span id="detail-avatar-text">A</span>
+                </div>
+                <div class="user-info-grid">
+                    <div class="user-info-item">
+                        <span class="info-label">ID:</span>
+                        <span class="info-value" id="detail-user-id"></span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="info-label">Họ tên:</span>
+                        <span class="info-value" id="detail-full-name"></span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="info-label">Username:</span>
+                        <span class="info-value" id="detail-username"></span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value" id="detail-email"></span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="info-label">Trạng thái:</span>
+                        <span class="info-value" id="detail-status"></span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="info-label">Admin:</span>
+                        <span class="info-value" id="detail-admin"></span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="info-label">Ngày tạo:</span>
+                        <span class="info-value" id="detail-created-at"></span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="info-label">Đăng nhập cuối:</span>
+                        <span class="info-value" id="detail-last-login"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>Thống kê người dùng</h3>
+            <div class="user-stats-grid">
+                <div class="stat-card">
+                    <div class="stat-title">Tổng số trận</div>
+                    <div class="stat-value" id="detail-total-games">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Tổng điểm</div>
+                    <div class="stat-value" id="detail-total-score">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Câu đúng</div>
+                    <div class="stat-value" id="detail-correct-answers">0/0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Điểm cao nhất</div>
+                    <div class="stat-value" id="detail-highest-score">0</div>
+                </div>
+            </div>
+            
+            <h3>Lịch sử đăng nhập</h3>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Địa chỉ IP</th>
+                            <th>Thiết bị</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="login-history-table">
+                        <!-- Login history will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="view-user-games">Xem lịch sử trận đấu</button>
+                <button class="btn btn-secondary" id="close-user-details">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin/users.js"></script>
+</body>
+</html>

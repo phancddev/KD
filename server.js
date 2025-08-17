@@ -1,0 +1,384 @@
+import express from 'express';
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { createServer } from 'http';
+import config from './config.js';
+import { testConnection, initDatabase } from './db/index.js';
+import { createUser, findUserByUsername, authenticateUser, isUserAdmin } from './db/users.js';
+import { initSocketIO, getIO, addOnlineUser, removeOnlineUser } from './socket/index.js';
+import adminRoutes from './routes/admin.js';
+import adminApiRoutes from './routes/admin-api.js';
+import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails } from './db/game-sessions.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const app = express();
+const PORT = config.server.port;
+
+// Middleware
+app.use(cookieParser());
+
+// Parse JSON và form data (nhưng không xử lý multipart/form-data)
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Debug middleware để xem request sau khi đã parse body
+app.use((req, res, next) => {
+  console.log('🔍 Request method:', req.method);
+  console.log('🔍 Request URL:', req.url);
+  console.log('🔍 Request headers:', req.headers);
+  console.log('🔍 Request body type:', typeof req.body);
+  console.log('🔍 Request body:', req.body);
+  next();
+});
+
+app.use(express.static(join(__dirname, 'public')));
+app.use(session({
+  secret: config.session.secret,
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // Set to true if using HTTPS
+}));
+
+// Khởi tạo database khi khởi động server
+async function initApp() {
+  try {
+    const connected = await testConnection();
+    if (connected) {
+      await initDatabase();
+      console.log('Khởi tạo ứng dụng thành công!');
+    } else {
+      console.error('Không thể kết nối đến database. Vui lòng kiểm tra cấu hình.');
+    }
+  } catch (error) {
+    console.error('Lỗi khởi tạo ứng dụng:', error);
+  }
+}
+
+// Routes
+app.get('/', (req, res) => {
+  if (req.session.user) {
+    res.sendFile(join(__dirname, 'views', 'home.html'));
+  } else {
+    res.sendFile(join(__dirname, 'index.html'));
+  }
+});
+
+app.get('/login', (req, res) => {
+  if (req.session.user) {
+    return res.redirect('/');
+  }
+  
+  res.sendFile(join(__dirname, 'views', 'login.html'));
+});
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  try {
+    if (!username || !password) {
+      return res.redirect('/login?error=1');
+    }
+    
+    const user = await authenticateUser(username, password, req.ip);
+    
+    if (user) {
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.full_name
+      };
+      
+      // Thêm người dùng vào danh sách online
+      addOnlineUser(user.id, user.username, req.ip);
+      
+      return res.redirect('/');
+    } else {
+      return res.redirect('/login?error=2');
+    }
+  } catch (error) {
+    console.error('Lỗi đăng nhập:', error);
+    return res.redirect('/login?error=3');
+  }
+});
+
+app.get('/register', (req, res) => {
+  if (req.session.user) {
+    return res.redirect('/');
+  }
+  
+  res.sendFile(join(__dirname, 'views', 'register.html'));
+});
+
+app.post('/register', async (req, res) => {
+  const { username, password, confirmPassword, email, fullName } = req.body;
+  
+  try {
+    // Kiểm tra dữ liệu đầu vào
+    if (!username || !password || !confirmPassword) {
+      return res.redirect('/register?error=4');
+    }
+    
+    if (password !== confirmPassword) {
+      return res.redirect('/register?error=2');
+    }
+    
+    // Kiểm tra username đã tồn tại chưa
+    const existingUser = await findUserByUsername(username);
+    if (existingUser) {
+      return res.redirect('/register?error=1');
+    }
+    
+    // Tạo người dùng mới
+    const newUser = await createUser(username, password, email, fullName);
+    
+    // Đăng nhập tự động sau khi đăng ký
+    req.session.user = {
+      id: newUser.id,
+      username: newUser.username,
+      email: newUser.email,
+      fullName: newUser.fullName
+    };
+    
+    return res.redirect('/');
+  } catch (error) {
+    console.error('Lỗi đăng ký:', error);
+    return res.redirect('/register?error=5');
+  }
+});
+
+app.get('/logout', (req, res) => {
+  // Lấy thông tin người dùng trước khi xóa session
+  const userId = req.session.user?.id;
+  
+  // Xóa session
+  req.session.destroy();
+  
+  // Xóa người dùng khỏi danh sách online
+  if (userId) {
+    removeOnlineUser(userId);
+  }
+  
+  res.redirect('/login');
+});
+
+app.get('/room-battle', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  
+  res.sendFile(join(__dirname, 'views', 'room-battle.html'));
+});
+
+app.get('/solo-battle', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  
+  res.sendFile(join(__dirname, 'views', 'solo-battle.html'));
+});
+
+app.get('/history', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  
+  res.sendFile(join(__dirname, 'views', 'history.html'));
+});
+
+app.get('/ranking', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  
+  res.sendFile(join(__dirname, 'views', 'ranking.html'));
+});
+
+// Test socket route
+app.get('/test-socket', (req, res) => {
+  res.sendFile(join(__dirname, 'test_socket.html'));
+});
+
+// API lấy thông tin người dùng hiện tại
+app.get('/api/user', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const isAdmin = await isUserAdmin(req.session.user.id);
+    
+    res.json({
+      ...req.session.user,
+      isAdmin
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin người dùng:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// API lịch sử trận đấu của người dùng
+app.get('/api/user/history', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const { month, year } = req.query;
+    
+    let history;
+    if (month && year) {
+      history = await getUserGameHistoryByMonth(req.session.user.id, parseInt(month), parseInt(year));
+    } else {
+      history = await getUserGameHistory(req.session.user.id);
+    }
+    
+    res.json(history);
+  } catch (error) {
+    console.error('Lỗi khi lấy lịch sử trận đấu:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// API lấy chi tiết trận đấu
+app.get('/api/game/:gameId', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const gameId = parseInt(req.params.gameId);
+    const gameDetails = await getGameSessionDetails(gameId);
+    
+    if (!gameDetails) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    
+    // Kiểm tra xem người dùng có quyền xem trận đấu này không
+    if (gameDetails.userId !== req.session.user.id) {
+      const isAdmin = await isUserAdmin(req.session.user.id);
+      if (!isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
+    
+    res.json(gameDetails);
+  } catch (error) {
+    console.error('Lỗi khi lấy chi tiết trận đấu:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// API lấy bảng xếp hạng
+app.get('/api/ranking', async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    
+    if (!month || !year) {
+      return res.status(400).json({ error: 'Month and year are required' });
+    }
+    
+    const ranking = await getPlayerRankingByMonth(parseInt(month), parseInt(year));
+    
+    res.json(ranking);
+  } catch (error) {
+    console.error('Lỗi khi lấy bảng xếp hạng:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// API lấy thống kê người dùng
+app.get('/api/user/stats', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const stats = await getUserGameStats(req.session.user.id);
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('Lỗi khi lấy thống kê người dùng:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// API lưu kết quả trận đấu solo
+app.post('/api/solo-game/finish', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const { score, correctAnswers, totalQuestions } = req.body;
+    
+    if (score === undefined || correctAnswers === undefined || totalQuestions === undefined) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    // TODO: Lưu kết quả trận đấu solo
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Lỗi khi lưu kết quả trận đấu solo:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin routes
+app.use('/admin', adminRoutes);
+app.use('/api/admin', adminApiRoutes);
+
+// Test route để kiểm tra routing (sau khi admin routes được đăng ký)
+app.get('/test', (req, res) => {
+  res.json({ message: 'Server routing is working!' });
+});
+
+// Khởi tạo HTTP server
+const server = createServer(app);
+
+// Khởi tạo Socket.IO
+initSocketIO(server);
+
+// Khởi động server
+server.listen(PORT, () => {
+  console.log(`Server đang chạy tại http://localhost:${PORT}`);
+  initApp();
+});
+
+// Middleware kiểm tra quyền admin
+async function checkAdmin(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  
+  try {
+    const isAdmin = await isUserAdmin(req.session.user.id);
+    if (!isAdmin) {
+      return res.status(403).send('Bạn không có quyền truy cập trang này');
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Lỗi khi kiểm tra quyền admin:', error);
+    return res.status(500).send('Đã xảy ra lỗi khi xác thực quyền admin');
+  }
+}
+
+// Admin dashboard routes
+app.get('/admin/dashboard', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'dashboard.html'));
+});
+
+app.get('/admin/users', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'users.html'));
+});
+
+app.get('/admin/game-history', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'game-history.html'));
+});

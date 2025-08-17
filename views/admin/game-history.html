@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch sử trận đấu - Admin - Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/modern-styles.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <div class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    <span>Admin Panel</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    </li>
+                    <li>
+                        <a href="/admin/questions"><i class="fas fa-question-circle"></i> Quản lý câu hỏi</a>
+                    </li>
+                    <li>
+                        <a href="/admin/users"><i class="fas fa-users"></i> Quản lý người dùng</a>
+                    </li>
+                    <li class="active">
+                        <a href="/admin/game-history"><i class="fas fa-history"></i> Lịch sử trận đấu</a>
+                    </li>
+                    <li>
+                        <a href="/"><i class="fas fa-home"></i> Trang chủ</a>
+                    </li>
+                    <li>
+                        <a href="/logout"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="admin-content">
+            <div class="admin-header">
+                <h1><i class="fas fa-history"></i> Lịch sử trận đấu</h1>
+                <div class="admin-user">
+                    <span id="admin-name">Admin</span>
+                    <div class="avatar">
+                        <span id="avatar-text">A</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-filter"></i> Bộ lọc</h2>
+                </div>
+                <div class="card-body">
+                    <div class="filter-grid">
+                        <div class="filter-group">
+                            <label for="filter-user">Người dùng:</label>
+                            <select id="filter-user" class="form-control">
+                                <option value="">Tất cả người dùng</option>
+                                <!-- Users will be dynamically inserted here -->
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-type">Loại trận đấu:</label>
+                            <select id="filter-type" class="form-control">
+                                <option value="">Tất cả</option>
+                                <option value="solo">Tự đấu</option>
+                                <option value="room">Đấu phòng</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-date-from">Từ ngày:</label>
+                            <input type="date" id="filter-date-from" class="form-control">
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-date-to">Đến ngày:</label>
+                            <input type="date" id="filter-date-to" class="form-control">
+                        </div>
+                        <div class="filter-actions">
+                            <button id="apply-filters" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Áp dụng
+                            </button>
+                            <button id="reset-filters" class="btn btn-outline">
+                                <i class="fas fa-redo"></i> Đặt lại
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game History -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-gamepad"></i> Danh sách trận đấu</h2>
+                    <div class="card-actions">
+                        <button id="export-csv" class="btn btn-small btn-outline">
+                            <i class="fas fa-file-csv"></i> Xuất CSV
+                        </button>
+                        <div class="refresh-btn" id="refresh-history">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Người chơi</th>
+                                    <th>Loại trận</th>
+                                    <th>Điểm số</th>
+                                    <th>Câu đúng</th>
+                                    <th>Thời gian</th>
+                                    <th>Trạng thái</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="game-history-table">
+                                <!-- Game history will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-game-history" class="no-data" style="display: none;">
+                        <p>Không có lịch sử trận đấu nào.</p>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="history-pagination">
+                        <!-- Pagination will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Details Modal -->
+    <div id="game-details-modal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close">&times;</span>
+            <h2>Chi tiết trận đấu</h2>
+            <div class="game-info-grid">
+                <div class="game-info-item">
+                    <span class="info-label">ID trận đấu:</span>
+                    <span class="info-value" id="modal-game-id"></span>
+                </div>
+                <div class="game-info-item">
+                    <span class="info-label">Người chơi:</span>
+                    <span class="info-value" id="modal-player"></span>
+                </div>
+                <div class="game-info-item">
+                    <span class="info-label">Loại trận:</span>
+                    <span class="info-value" id="modal-type"></span>
+                </div>
+                <div class="game-info-item">
+                    <span class="info-label">Điểm số:</span>
+                    <span class="info-value" id="modal-score"></span>
+                </div>
+                <div class="game-info-item">
+                    <span class="info-label">Câu đúng:</span>
+                    <span class="info-value" id="modal-correct"></span>
+                </div>
+                <div class="game-info-item">
+                    <span class="info-label">Bắt đầu:</span>
+                    <span class="info-value" id="modal-start-time"></span>
+                </div>
+                <div class="game-info-item">
+                    <span class="info-label">Kết thúc:</span>
+                    <span class="info-value" id="modal-end-time"></span>
+                </div>
+                <div class="game-info-item">
+                    <span class="info-label">Thời gian chơi:</span>
+                    <span class="info-value" id="modal-duration"></span>
+                </div>
+            </div>
+            
+            <h3>Chi tiết câu trả lời</h3>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Câu hỏi</th>
+                            <th>Đáp án đúng</th>
+                            <th>Câu trả lời</th>
+                            <th>Kết quả</th>
+                            <th>Thời gian</th>
+                        </tr>
+                    </thead>
+                    <tbody id="answer-details-table">
+                        <!-- Answer details will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin/game-history.js"></script>
+</body>
+</html>
