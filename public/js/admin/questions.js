@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSelectedCount();
     }
     
-    // Hiển thị phân trang
+    // Hiển thị phân trang với smart pagination
     function renderPagination(filteredQuestions = null) {
         const displayQuestions = filteredQuestions || questions;
         const totalPages = Math.ceil(displayQuestions.length / questionsPerPage);
@@ -143,10 +143,31 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Container wrapper
+        const paginationWrapper = document.createElement('div');
+        paginationWrapper.style.display = 'flex';
+        paginationWrapper.style.alignItems = 'center';
+        paginationWrapper.style.gap = '0.5rem';
+        paginationWrapper.style.flexWrap = 'wrap';
+        paginationWrapper.style.justifyContent = 'center';
+        
+        // Nút First
+        const firstButton = document.createElement('button');
+        firstButton.innerHTML = '<i class="fas fa-angle-double-left"></i>';
+        firstButton.disabled = currentPage === 1;
+        firstButton.title = 'Trang đầu';
+        firstButton.addEventListener('click', function() {
+            currentPage = 1;
+            renderQuestions(filteredQuestions);
+            renderPagination(filteredQuestions);
+        });
+        paginationWrapper.appendChild(firstButton);
+        
         // Nút Previous
         const prevButton = document.createElement('button');
-        prevButton.textContent = 'Trước';
+        prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
         prevButton.disabled = currentPage === 1;
+        prevButton.title = 'Trang trước';
         prevButton.addEventListener('click', function() {
             if (currentPage > 1) {
                 currentPage--;
@@ -154,25 +175,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderPagination(filteredQuestions);
             }
         });
-        questionsPagination.appendChild(prevButton);
+        paginationWrapper.appendChild(prevButton);
         
-        // Các nút số trang
-        for (let i = 1; i <= totalPages; i++) {
+        // Smart page numbers với ellipsis
+        function addPageButton(pageNum) {
             const pageButton = document.createElement('button');
-            pageButton.textContent = i;
-            pageButton.classList.toggle('active', i === currentPage);
+            pageButton.textContent = pageNum;
+            pageButton.classList.toggle('active', pageNum === currentPage);
             pageButton.addEventListener('click', function() {
-                currentPage = i;
+                currentPage = pageNum;
                 renderQuestions(filteredQuestions);
                 renderPagination(filteredQuestions);
             });
-            questionsPagination.appendChild(pageButton);
+            return pageButton;
+        }
+        
+        function addEllipsis() {
+            const ellipsis = document.createElement('span');
+            ellipsis.textContent = '...';
+            ellipsis.style.padding = '0.5rem';
+            ellipsis.style.color = '#6b7280';
+            return ellipsis;
+        }
+        
+        // Logic hiển thị pages: 3 đầu ... current-1, current, current+1 ... 3 cuối
+        if (totalPages <= 9) {
+            // Nếu ít trang, hiển thị tất cả
+            for (let i = 1; i <= totalPages; i++) {
+                paginationWrapper.appendChild(addPageButton(i));
+            }
+        } else {
+            // Luôn hiển thị 3 trang đầu
+            for (let i = 1; i <= 3; i++) {
+                paginationWrapper.appendChild(addPageButton(i));
+            }
+            
+            if (currentPage > 6) {
+                paginationWrapper.appendChild(addEllipsis());
+            }
+            
+            // Hiển thị current page và xung quanh (nếu không overlap với đầu/cuối)
+            const start = Math.max(4, currentPage - 1);
+            const end = Math.min(totalPages - 3, currentPage + 1);
+            
+            for (let i = start; i <= end; i++) {
+                if (i > 3 && i < totalPages - 2) {
+                    paginationWrapper.appendChild(addPageButton(i));
+                }
+            }
+            
+            if (currentPage < totalPages - 5) {
+                paginationWrapper.appendChild(addEllipsis());
+            }
+            
+            // Luôn hiển thị 3 trang cuối
+            for (let i = totalPages - 2; i <= totalPages; i++) {
+                paginationWrapper.appendChild(addPageButton(i));
+            }
         }
         
         // Nút Next
         const nextButton = document.createElement('button');
-        nextButton.textContent = 'Sau';
+        nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
         nextButton.disabled = currentPage === totalPages;
+        nextButton.title = 'Trang sau';
         nextButton.addEventListener('click', function() {
             if (currentPage < totalPages) {
                 currentPage++;
@@ -180,7 +246,83 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderPagination(filteredQuestions);
             }
         });
-        questionsPagination.appendChild(nextButton);
+        paginationWrapper.appendChild(nextButton);
+        
+        // Nút Last
+        const lastButton = document.createElement('button');
+        lastButton.innerHTML = '<i class="fas fa-angle-double-right"></i>';
+        lastButton.disabled = currentPage === totalPages;
+        lastButton.title = 'Trang cuối';
+        lastButton.addEventListener('click', function() {
+            currentPage = totalPages;
+            renderQuestions(filteredQuestions);
+            renderPagination(filteredQuestions);
+        });
+        paginationWrapper.appendChild(lastButton);
+        
+        questionsPagination.appendChild(paginationWrapper);
+        
+        // Thêm Page Input Section
+        const pageInputSection = document.createElement('div');
+        pageInputSection.style.display = 'flex';
+        pageInputSection.style.alignItems = 'center';
+        pageInputSection.style.gap = '0.5rem';
+        pageInputSection.style.marginTop = '1rem';
+        pageInputSection.style.justifyContent = 'center';
+        pageInputSection.style.fontSize = '0.875rem';
+        
+        const pageLabel = document.createElement('span');
+        pageLabel.textContent = 'Trang';
+        pageLabel.style.color = '#6b7280';
+        
+        const pageInput = document.createElement('input');
+        pageInput.type = 'number';
+        pageInput.min = '1';
+        pageInput.max = totalPages.toString();
+        pageInput.value = currentPage.toString();
+        pageInput.style.width = '60px';
+        pageInput.style.padding = '0.25rem 0.5rem';
+        pageInput.style.border = '1px solid #d1d5db';
+        pageInput.style.borderRadius = '4px';
+        pageInput.style.textAlign = 'center';
+        pageInput.style.fontSize = '0.875rem';
+        
+        const totalLabel = document.createElement('span');
+        totalLabel.textContent = `/ ${totalPages}`;
+        totalLabel.style.color = '#6b7280';
+        
+        const goButton = document.createElement('button');
+        goButton.textContent = 'Đi';
+        goButton.style.padding = '0.25rem 0.75rem';
+        goButton.style.fontSize = '0.875rem';
+        goButton.style.border = '1px solid #ef4444';
+        goButton.style.background = '#ef4444';
+        goButton.style.color = 'white';
+        goButton.style.borderRadius = '4px';
+        goButton.style.cursor = 'pointer';
+        
+        function goToPage() {
+            const targetPage = parseInt(pageInput.value);
+            if (targetPage >= 1 && targetPage <= totalPages && targetPage !== currentPage) {
+                currentPage = targetPage;
+                renderQuestions(filteredQuestions);
+                renderPagination(filteredQuestions);
+            }
+        }
+        
+        goButton.addEventListener('click', goToPage);
+        pageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                goToPage();
+            }
+        });
+        
+        pageInputSection.appendChild(pageLabel);
+        pageInputSection.appendChild(pageInput);
+        pageInputSection.appendChild(totalLabel);
+        pageInputSection.appendChild(goButton);
+        
+        questionsPagination.appendChild(pageInputSection);
     }
     
     // Tìm kiếm câu hỏi

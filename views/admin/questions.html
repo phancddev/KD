@@ -385,8 +385,9 @@
         /* Pagination */
         .pagination {
             display: flex;
-            justify-content: center;
-            gap: 0.5rem;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
             margin-top: 1.5rem;
         }
 
@@ -398,18 +399,45 @@
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
+            min-width: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .pagination button:hover {
+        .pagination button:hover:not(:disabled) {
             background: rgba(239, 68, 68, 0.1);
             border-color: #ef4444;
             color: #ef4444;
+            transform: translateY(-1px);
         }
 
         .pagination button.active {
             background: #ef4444;
             color: white;
             border-color: #ef4444;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f9fafb;
+        }
+
+        /* Page input styling */
+        .pagination input[type="number"] {
+            transition: all 0.3s ease;
+        }
+
+        .pagination input[type="number"]:focus {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+            outline: none;
+        }
+
+        .pagination button:hover {
+            transform: translateY(-1px);
         }
 
         /* Updated danger button with red theme */
