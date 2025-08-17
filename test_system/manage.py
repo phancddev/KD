@@ -127,7 +127,7 @@ def main():
     # Lấy thông tin kết nối từ biến môi trường hoặc sử dụng giá trị mặc định
     config = {
         'host': os.environ.get('DB_HOST', 'localhost'),
-        'port': int(os.environ.get('DB_PORT', 3306)),
+        'port': int(os.environ.get('DB_PORT', 3307)),
         'user': os.environ.get('DB_USER', 'nqd_user'),
         'password': os.environ.get('DB_PASSWORD', 'nqd_password'),
         'database': os.environ.get('DB_NAME', 'nqd_database')
