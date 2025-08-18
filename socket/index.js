@@ -597,6 +597,55 @@ function processFinalResults(room) {
   
   console.log('🏆 Final ranking:', results);
   
+  // Lưu kết quả vào DB cho từng người chơi
+  (async () => {
+    try {
+      for (const participant of room.participants) {
+        // Tránh lưu nhiều lần nếu đã lưu rồi
+        if (participant.sessionSaved) continue;
+        
+        const sessionId = participant.sessionId;
+        if (!sessionId) continue;
+        
+        const submittedAnswers = Array.isArray(participant.allAnswers) ? participant.allAnswers : [];
+        const correctCount = submittedAnswers.filter(a => a && a.isCorrect).length;
+        
+        // Lưu từng câu trả lời được gửi từ client
+        if (submittedAnswers.length > 0) {
+          const saveOps = submittedAnswers.map(a => {
+            const questionId = a.questionId;
+            const userAnswer = a.userAnswer === undefined || a.userAnswer === null ? 'none' : String(a.userAnswer);
+            const isCorrect = !!a.isCorrect;
+            const answerTime = Number.isFinite(a.answerTime) ? a.answerTime : null;
+            return saveUserAnswer(sessionId, questionId, userAnswer, isCorrect, answerTime);
+          });
+          await Promise.allSettled(saveOps);
+        }
+        
+        // Nếu còn thiếu câu chưa trả lời, có thể lưu là không trả lời (tùy chọn)
+        // const totalQuestions = Array.isArray(room.questions) ? room.questions.length : 0;
+        // if (totalQuestions > submittedAnswers.length) {
+        //   const answeredIds = new Set(submittedAnswers.map(a => a.questionId));
+        //   const missingOps = room.questions
+        //     .filter(q => !answeredIds.has(q.id))
+        //     .map(q => saveUserAnswer(sessionId, q.id, null, false, 0));
+        //   await Promise.allSettled(missingOps);
+        // }
+        
+        // Kết thúc phiên chơi với điểm và số câu đúng
+        await finishGameSession(sessionId, participant.score || 0, correctCount);
+        participant.sessionSaved = true;
+      }
+      
+      // Tăng bộ đếm trận đấu hôm nay
+      if (typeof global.todayGames === 'number') {
+        global.todayGames += 1;
+      }
+    } catch (err) {
+      console.error('Lỗi khi lưu lịch sử phòng vào DB:', err);
+    }
+  })();
+  
   // Lưu kết quả vào lịch sử phòng
   if (room.currentGame) {
     room.gameHistory.push({

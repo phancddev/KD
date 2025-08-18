@@ -1,7 +1,7 @@
 import express from 'express';
 import { getAllUsers, findUserById, createUser, updateUser, deleteUser, setAdminStatus } from '../db/users.js';
 import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, importQuestionsFromCSV } from '../db/questions.js';
-import { getUserGameStats, getUserGameHistory, getUserGameHistoryByMonth, getGameSessionDetails } from '../db/game-sessions.js';
+import { getUserGameStats, getUserGameHistory, getUserGameHistoryByMonth, getGameSessionDetails, getGameHistory, countGameHistory } from '../db/game-sessions.js';
 import multer from 'multer';
 import { isUserAdmin } from '../db/users.js';
 
@@ -349,54 +349,35 @@ router.get('/game-history', checkAdmin, async (req, res) => {
   try {
     const { userId, type, from, to, page = 1, limit = 10 } = req.query;
     
-    // Lọc theo người dùng
-    let userFilter = {};
-    if (userId) {
-      userFilter = { userId: parseInt(userId) };
-    }
+    const isSolo = type === 'solo' ? true : (type === 'room' ? false : null);
+    const pageNumber = Math.max(parseInt(page) || 1, 1);
+    const pageSize = Math.max(parseInt(limit) || 10, 1);
+    const offset = (pageNumber - 1) * pageSize;
     
-    // Lọc theo loại trận đấu
-    let typeFilter = {};
-    if (type === 'solo') {
-      typeFilter = { isSolo: true };
-    } else if (type === 'room') {
-      typeFilter = { isSolo: false };
-    }
-    
-    // Lọc theo thời gian
-    let timeFilter = {};
-    if (from && to) {
-      timeFilter = {
-        startedAt: {
-          $gte: new Date(from),
-          $lte: new Date(to)
-        }
-      };
-    }
-    
-    // Kết hợp các điều kiện lọc
-    const filter = {
-      ...userFilter,
-      ...typeFilter,
-      ...timeFilter
-    };
-    
-    // Lấy tổng số trận đấu
-    const totalGames = 0; // Cần thay bằng hàm đếm thực tế
-    
-    // Tính toán phân trang
-    const skip = (page - 1) * limit;
-    
-    // Lấy danh sách trận đấu
-    const gameHistory = []; // Cần thay bằng hàm lấy dữ liệu thực tế
+    const [total, games] = await Promise.all([
+      countGameHistory({
+        userId: userId ? parseInt(userId) : null,
+        isSolo,
+        from: from ? new Date(from) : null,
+        to: to ? new Date(to) : null
+      }),
+      getGameHistory({
+        userId: userId ? parseInt(userId) : null,
+        isSolo,
+        from: from ? new Date(from) : null,
+        to: to ? new Date(to) : null,
+        offset,
+        limit: pageSize
+      })
+    ]);
     
     res.json({
-      games: gameHistory,
+      games,
       pagination: {
-        total: totalGames,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(totalGames / limit)
+        total,
+        page: pageNumber,
+        limit: pageSize,
+        pages: Math.ceil(total / pageSize)
       }
     });
   } catch (error) {

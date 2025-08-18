@@ -270,3 +270,106 @@ export {
   getPlayerRankingByMonth,
   getUserGameStats
 };
+
+// Các hàm cho admin: lấy lịch sử tất cả trận đấu với lọc/phân trang
+async function getGameHistory({ userId = null, isSolo = null, from = null, to = null, offset = 0, limit = 10 }) {
+  try {
+    const conditions = [];
+    const params = [];
+    
+    if (userId) {
+      conditions.push('gs.user_id = ?');
+      params.push(userId);
+    }
+    if (isSolo !== null && isSolo !== undefined) {
+      conditions.push('gs.is_solo = ?');
+      params.push(isSolo ? 1 : 0);
+    }
+    if (from) {
+      conditions.push('gs.started_at >= ?');
+      params.push(from);
+    }
+    if (to) {
+      conditions.push('gs.started_at <= ?');
+      params.push(to);
+    }
+    
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    const [rows] = await pool.query(
+      `SELECT 
+         gs.id,
+         gs.user_id,
+         u.username,
+         u.full_name,
+         gs.is_solo,
+         gs.score,
+         gs.correct_answers,
+         gs.total_questions,
+         gs.room_id,
+         r.name AS room_name,
+         r.code AS room_code,
+         gs.started_at,
+         gs.finished_at
+       FROM game_sessions gs
+       JOIN users u ON u.id = gs.user_id
+       LEFT JOIN rooms r ON r.id = gs.room_id
+       ${whereClause}
+       ORDER BY gs.started_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, Number(limit), Number(offset)]
+    );
+    
+    return rows.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      username: row.username,
+      fullName: row.full_name,
+      isSolo: row.is_solo === 1,
+      score: row.score,
+      correctAnswers: row.correct_answers,
+      totalQuestions: row.total_questions,
+      roomId: row.room_id,
+      roomName: row.room_name,
+      roomCode: row.room_code,
+      startedAt: row.started_at,
+      finishedAt: row.finished_at
+    }));
+  } catch (error) {
+    console.error('Lỗi khi lấy lịch sử tất cả trận đấu:', error);
+    throw error;
+  }
+}
+
+async function countGameHistory({ userId = null, isSolo = null, from = null, to = null }) {
+  try {
+    const conditions = [];
+    const params = [];
+    
+    if (userId) {
+      conditions.push('user_id = ?');
+      params.push(userId);
+    }
+    if (isSolo !== null && isSolo !== undefined) {
+      conditions.push('is_solo = ?');
+      params.push(isSolo ? 1 : 0);
+    }
+    if (from) {
+      conditions.push('started_at >= ?');
+      params.push(from);
+    }
+    if (to) {
+      conditions.push('started_at <= ?');
+      params.push(to);
+    }
+    
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const [rows] = await pool.query(`SELECT COUNT(*) AS total FROM game_sessions ${whereClause}`, params);
+    return rows[0]?.total || 0;
+  } catch (error) {
+    console.error('Lỗi khi đếm lịch sử tất cả trận đấu:', error);
+    throw error;
+  }
+}
+
+export { getGameHistory, countGameHistory };
