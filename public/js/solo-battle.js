@@ -385,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             currentQuestionIndex++;
             showQuestion(currentQuestionIndex);
-        }, 2000);
+        }, 1000);
     }
     
     // Kiểm tra câu trả lời (chỉ khớp hoàn toàn sau khi chuẩn hóa)
