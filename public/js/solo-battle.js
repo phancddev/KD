@@ -532,7 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>Câu ${i + 1}: ${answer.questionText}</h4>
                     <p>Câu trả lời của bạn: <strong>${answerText}</strong></p>
                     <p>Câu trả lời đúng: <strong>${answer.correctAnswer}</strong></p>
-                    <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
                 `;
             } else {
                 // Không có câu trả lời (câu hỏi bị bỏ qua)
@@ -542,7 +541,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>Câu ${i + 1}: ${question.text}</h4>
                     <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
                     <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
-                    <p>Điểm: <strong>0</strong></p>
                 `;
             }
             

@@ -1460,8 +1460,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>Câu ${i + 1}: ${question.text || question.question}</h4>
                     <p>Câu trả lời của bạn: <strong>${answer.userAnswer || 'Không trả lời'}</strong></p>
                     <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
-                    <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
-                    ${answer.answerTime ? `<p>Thời gian trả lời: <strong>${answer.answerTime}s</strong></p>` : ''}
                 `;
             } else {
                 // Không có câu trả lời (câu hỏi bị bỏ qua)
@@ -1471,8 +1469,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>Câu ${i + 1}: ${question.text || question.question}</h4>
                     <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
                     <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
-                    <p>Điểm: <strong>0</strong></p>
-                    <p>Thời gian trả lời: <strong>Không trả lời</strong></p>
                 `;
             }
             
