@@ -197,34 +197,40 @@ document.addEventListener('DOMContentLoaded', function() {
     let questions = [];
     let totalTimeRemaining = 60; // Tổng thời gian (có thể điều chỉnh theo số câu hỏi nếu cần)
     
-    // Lấy câu hỏi từ server
-    fetch('/admin/api/questions/random?count=20')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (!data || !Array.isArray(data) || data.length === 0) {
-                throw new Error('Không có câu hỏi nào trong database');
-            }
-            
-            questions = data;
-            
-            // Thiết lập tổng số câu hỏi
-            totalQuestionsEl.textContent = questions.length;
-            maxScoreEl.textContent = questions.length * 10; // Mỗi câu 10 điểm
-            
-            // Bắt đầu với câu hỏi đầu tiên
-            showQuestion(currentQuestionIndex);
-        })
-        .catch(error => {
-            console.error('Lỗi khi lấy câu hỏi:', error);
-            // Hiển thị thông báo lỗi cho người dùng
-            questionTextEl.textContent = `Lỗi: Không thể tải câu hỏi từ database. ${error.message}`;
-            alert('Không thể tải câu hỏi. Vui lòng thử lại sau hoặc liên hệ admin.');
-        });
+    // Hàm lấy câu hỏi từ server và bắt đầu trò chơi
+    function fetchQuestionsAndStart() {
+        fetch('/admin/api/questions/random?count=20')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    throw new Error('Không có câu hỏi nào trong database');
+                }
+                
+                questions = data;
+                
+                // Thiết lập tổng số câu hỏi
+                totalQuestionsEl.textContent = questions.length;
+                maxScoreEl.textContent = questions.length * 10; // Mỗi câu 10 điểm
+                
+                // Bắt đầu với câu hỏi đầu tiên
+                currentQuestionIndex = 0;
+                showQuestion(currentQuestionIndex);
+            })
+            .catch(error => {
+                console.error('Lỗi khi lấy câu hỏi:', error);
+                // Hiển thị thông báo lỗi cho người dùng
+                questionTextEl.textContent = `Lỗi: Không thể tải câu hỏi từ database. ${error.message}`;
+                alert('Không thể tải câu hỏi. Vui lòng thử lại sau hoặc liên hệ admin.');
+            });
+    }
+
+    // Lấy câu hỏi lần đầu
+    fetchQuestionsAndStart();
     
 
     
@@ -274,8 +280,9 @@ document.addEventListener('DOMContentLoaded', function() {
         resultRoom.style.display = 'none';
         userScoreEl.textContent = '0';
         
-        // Bắt đầu với câu hỏi đầu tiên
-        showQuestion(currentQuestionIndex);
+        // Lấy bộ câu hỏi mới và bắt đầu
+        questions = [];
+        fetchQuestionsAndStart();
     });
     
     // Hiển thị câu hỏi
