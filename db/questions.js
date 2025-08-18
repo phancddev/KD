@@ -107,23 +107,9 @@ async function getRandomQuestions(count = 12, category = null) {
 
 // Kiểm tra câu trả lời
 function checkAnswer(userAnswer, correctAnswer) {
-  // Chuẩn hóa cả hai câu trả lời: loại bỏ dấu cách thừa, chuyển về chữ thường
   const normalizedUserAnswer = userAnswer.trim().toLowerCase();
   const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
-  
-  // So sánh trực tiếp
-  if (normalizedUserAnswer === normalizedCorrectAnswer) {
-    return true;
-  }
-  
-  // Kiểm tra nếu câu trả lời của người dùng là một phần của đáp án đúng
-  // Hữu ích cho các câu trả lời có nhiều cách diễn đạt
-  if (normalizedCorrectAnswer.includes(normalizedUserAnswer) && 
-      normalizedUserAnswer.length > normalizedCorrectAnswer.length / 2) {
-    return true;
-  }
-  
-  return false;
+  return normalizedUserAnswer === normalizedCorrectAnswer;
 }
 
 // Nhập câu hỏi từ file CSV hoặc TXT (tab-separated)

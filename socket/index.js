@@ -8,8 +8,10 @@ let io;
 // Khởi tạo Socket.IO
 // Lưu trữ timer cho từng phòng (global scope)
 const roomTimers = new Map();
-// Lưu trữ thông tin phòng (global scope)
+// Lưu trữ thông tin phòng (global scope) - PERSISTENT để giữ người dùng kể cả reload
 const rooms = new Map();
+// Lưu trữ thông tin người dùng đang online để reconnect
+const userSessions = new Map();
 
 export function initSocketIO(server) {
   io = new Server(server);
@@ -53,7 +55,7 @@ export function initSocketIO(server) {
         // Tạo phòng trong database
         const room = await createRoom(roomName, userId);
         
-        // Lưu thông tin phòng trong bộ nhớ
+        // Lưu thông tin phòng trong bộ nhớ - PERSISTENT
         rooms.set(room.code, {
           id: room.id,
           code: room.code,
@@ -71,7 +73,18 @@ export function initSocketIO(server) {
           currentQuestionIndex: -1,
           startTime: null,
           totalTimeRemaining: 60, // 60 giây tổng cho tất cả câu hỏi
-          gameStartTime: null
+          gameStartTime: null,
+          gameHistory: [], // Lưu lịch sử các trận đấu
+          currentGame: null // Trận đấu hiện tại nếu có
+        });
+        
+        // Lưu session người dùng để reconnect
+        userSessions.set(userId, {
+          socketId: socket.id,
+          roomCode: room.code,
+          username: username,
+          isCreator: true,
+          lastSeen: Date.now()
         });
         
         // Tham gia socket vào room
@@ -116,22 +129,28 @@ export function initSocketIO(server) {
             status: roomInfo.status,
             questions: [],
             currentQuestionIndex: -1,
-            startTime: null
+            startTime: null,
+            gameHistory: [],
+            currentGame: null
           });
         }
         
         const room = rooms.get(roomCode);
         
         // Kiểm tra trạng thái phòng
-        if (room.status !== 'waiting') {
+        if (room.status !== 'waiting' && room.status !== 'finished') {
           return callback({ success: false, error: 'Phòng đã bắt đầu hoặc kết thúc' });
         }
         
         // Kiểm tra người dùng đã tham gia phòng chưa
         const existingParticipant = room.participants.find(p => p.id === userId);
         if (existingParticipant) {
-          // Cập nhật socketId nếu người dùng đã tham gia trước đó
+          // Cập nhật socketId nếu người dùng đã tham gia trước đó (reconnect)
           existingParticipant.socketId = socket.id;
+          existingParticipant.lastSeen = Date.now();
+          existingParticipant.disconnected = false;
+          
+          console.log(`🔄 ${username} reconnect vào phòng ${roomCode}`);
         } else {
           // Tham gia phòng trong database
           await joinRoom(room.id, userId);
@@ -142,9 +161,20 @@ export function initSocketIO(server) {
             username: username,
             socketId: socket.id,
             score: 0,
-            isCreator: false
+            isCreator: false,
+            lastSeen: Date.now(),
+            disconnected: false
           });
         }
+        
+        // Lưu session người dùng để reconnect
+        userSessions.set(userId, {
+          socketId: socket.id,
+          roomCode: roomCode,
+          username: username,
+          isCreator: room.createdBy === userId,
+          lastSeen: Date.now()
+        });
         
         // Tham gia socket vào room
         socket.join(roomCode);
@@ -164,11 +194,14 @@ export function initSocketIO(server) {
             id: room.id,
             code: room.code,
             name: room.name,
+            createdBy: room.createdBy, // Thêm createdBy vào response
             participants: room.participants.map(p => ({
               id: p.id,
               username: p.username,
               isCreator: p.isCreator
-            }))
+            })),
+            status: room.status,
+            currentGame: room.currentGame
           }
         });
       } catch (error) {
@@ -202,8 +235,24 @@ export function initSocketIO(server) {
         
         // Lấy câu hỏi ngẫu nhiên từ API (giống solo battle)
         console.log('🔍 Đang lấy câu hỏi...');
-        const questions = await fetchQuestionsFromAPI(12);
+        const questions = await fetchQuestionsFromAPI(20);
         console.log('✅ Đã lấy', questions.length, 'câu hỏi');
+        
+        // Tạo trận đấu mới
+        const gameId = Date.now();
+        room.currentGame = {
+          id: gameId,
+          startTime: Date.now(),
+          questions: questions,
+          status: 'starting',
+          participants: room.participants.map(p => ({
+            id: p.id,
+            username: p.username,
+            score: 0,
+            finished: false,
+            resultSubmitted: false
+          }))
+        };
         
         room.questions = questions;
         room.currentQuestionIndex = -1;
@@ -342,6 +391,11 @@ export function initSocketIO(server) {
         // Xóa phòng
         rooms.delete(roomCode);
         
+        // Xóa session của tất cả người dùng trong phòng
+        room.participants.forEach(p => {
+          userSessions.delete(p.id);
+        });
+        
         callback({ success: true });
       } catch (error) {
         console.error('Lỗi khi kết thúc phòng:', error);
@@ -387,8 +441,16 @@ export function initSocketIO(server) {
         if (participantIndex !== -1) {
           const participant = room.participants[participantIndex];
           
-          // Đánh dấu người dùng đã ngắt kết nối
+          // Đánh dấu người dùng đã ngắt kết nối nhưng KHÔNG xóa khỏi phòng
           participant.disconnected = true;
+          participant.lastSeen = Date.now();
+          
+          // Cập nhật session
+          if (userSessions.has(participant.id)) {
+            const session = userSessions.get(participant.id);
+            session.lastSeen = Date.now();
+            session.disconnected = true;
+          }
           
           // Thông báo cho tất cả người trong phòng
           io.to(roomCode).emit('participant_disconnected', {
@@ -396,12 +458,7 @@ export function initSocketIO(server) {
             username: participant.username
           });
           
-          // Nếu tất cả người dùng đã ngắt kết nối, dọn dẹp phòng
-          const allDisconnected = room.participants.every(p => p.disconnected);
-          if (allDisconnected) {
-            rooms.delete(roomCode);
-          }
-          
+          // KHÔNG xóa phòng khi người dùng disconnect - giữ phòng để reconnect
           break;
         }
       }
@@ -540,16 +597,44 @@ function processFinalResults(room) {
   
   console.log('🏆 Final ranking:', results);
   
-  // Gửi kết quả cuối cùng
-  io.to(room.code).emit('game_results', { results });
+  // Lưu kết quả vào lịch sử phòng
+  if (room.currentGame) {
+    room.gameHistory.push({
+      gameId: room.currentGame.id,
+      startTime: room.currentGame.startTime,
+      endTime: Date.now(),
+      results: results,
+      participants: room.participants.length
+    });
+  }
   
-  // Cleanup sau 30s
-  setTimeout(() => {
-    console.log('🧹 Cleaning up room:', room.code);
-    if (rooms && rooms.has(room.code)) {
-      rooms.delete(room.code);
-    }
-  }, 30000);
+  // Cập nhật trạng thái phòng về waiting để có thể chơi tiếp
+  room.status = 'waiting';
+  room.currentGame = null;
+  
+  // Reset trạng thái người tham gia để chuẩn bị trận mới
+  room.participants.forEach(p => {
+    p.score = 0;
+    p.finished = false;
+    p.resultSubmitted = false;
+    p.completionTime = null;
+    p.questionsAnswered = 0;
+    p.answers = [];
+    p.currentQuestionIndex = -1;
+  });
+  
+  // Cập nhật trạng thái phòng trong database
+  updateRoomStatus(room.id, 'waiting').catch(console.error);
+  
+  // Gửi kết quả cuối cùng
+  io.to(room.code).emit('game_results', { 
+    results,
+    canPlayAgain: true,
+    message: 'Trận đấu kết thúc! Bạn có thể chơi tiếp hoặc quay về phòng chờ.'
+  });
+  
+  // KHÔNG xóa phòng - giữ phòng để chơi tiếp
+  console.log('✅ Phòng được giữ lại để chơi tiếp:', room.code);
 }
 
 // Lưu câu trả lời cho tất cả câu hỏi còn lại
@@ -582,41 +667,32 @@ async function endGame(room) {
       roomTimers.delete(room.code);
     }
     
-    // Cập nhật trạng thái phòng
-    room.status = 'finished';
-    await updateRoomStatus(room.id, 'finished');
+    // Cập nhật trạng thái phòng về waiting để có thể chơi tiếp
+    room.status = 'waiting';
+    room.currentGame = null;
     
-    // Cập nhật điểm số của người tham gia trong database
-    for (const participant of room.participants) {
-      if (!participant.disconnected) {
-        // Đếm số câu trả lời đúng
-        let correctAnswers = 0;
-        room.questions.forEach((question, index) => {
-          const isCorrect = participant.answers && participant.answers[index] && participant.answers[index].isCorrect;
-          if (isCorrect) {
-            correctAnswers++;
-          }
-        });
-        
-        await updateParticipantScore(room.id, participant.id, participant.score);
-        await finishGameSession(participant.sessionId, participant.score, correctAnswers);
-      }
-    }
-    
-    // Lấy kết quả từ database
-    const results = await getRoomResults(room.id);
-    
-    // Gửi kết quả cho tất cả người tham gia
-    io.to(room.code).emit('game_over', {
-      results: results
+    // Reset trạng thái người tham gia để chuẩn bị trận mới
+    room.participants.forEach(p => {
+      p.score = 0;
+      p.finished = false;
+      p.resultSubmitted = false;
+      p.completionTime = null;
+      p.questionsAnswered = 0;
+      p.answers = [];
+      p.currentQuestionIndex = -1;
     });
     
-    // Giữ phòng trong bộ nhớ một thời gian trước khi xóa
-    setTimeout(() => {
-      if (rooms.has(room.code)) {
-        rooms.delete(room.code);
-      }
-    }, 3600000); // 1 giờ
+    // Cập nhật trạng thái phòng trong database
+    await updateRoomStatus(room.id, 'waiting');
+    
+    // Gửi thông báo kết thúc game cho tất cả người tham gia
+    io.to(room.code).emit('game_ended', {
+      message: 'Trận đấu đã kết thúc! Bạn có thể chơi tiếp hoặc quay về phòng chờ.',
+      canPlayAgain: true
+    });
+    
+    // KHÔNG xóa phòng - giữ phòng để chơi tiếp
+    console.log('✅ Phòng được giữ lại để chơi tiếp sau khi end game:', room.code);
   } catch (error) {
     console.error('Lỗi khi kết thúc trò chơi:', error);
   }
@@ -715,7 +791,7 @@ function addActivity(activity) {
 }
 
 // Helper function: Lấy câu hỏi từ API (giống solo battle)
-async function fetchQuestionsFromAPI(count = 12) {
+async function fetchQuestionsFromAPI(count = 20) {
   try {
     console.log('🔍 Fetching questions from database, count:', count);
     // Sử dụng direct database call thay vì HTTP API để tránh vấn đề circular call

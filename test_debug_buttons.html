@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Room Buttons</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .debug-section {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .debug-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .debug-button:hover {
+            background: #0056b3;
+        }
+        .debug-button.danger {
+            background: #dc3545;
+        }
+        .debug-button.success {
+            background: #28a745;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .button-demo {
+            margin: 10px 0;
+            padding: 15px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .button-demo button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button-demo button.creator-only {
+            background: #28a745;
+            color: white;
+        }
+        .button-demo button.player-only {
+            background: #6c757d;
+            color: white;
+        }
+        .log-container {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+        .log-entry.error { color: #ff6b6b; }
+        .log-entry.warning { color: #ffd93d; }
+        .log-entry.success { color: #6bcf7f; }
+        .log-entry.info { color: #4ecdc4; }
+    </style>
+</head>
+<body>
+    <h1>🐛 Debug Room Buttons Visibility</h1>
+    
+    <div class="debug-section">
+        <h2>📋 Debug Info</h2>
+        <p>Kiểm tra chi tiết vấn đề hiển thị nút cho chủ phòng:</p>
+        <ul>
+            <li>🔍 Kiểm tra localStorage</li>
+            <li>🔍 Kiểm tra quyền chủ phòng</li>
+            <li>🔍 Kiểm tra hiển thị nút</li>
+            <li>🔍 Mô phỏng các trường hợp</li>
+        </ul>
+    </div>
+    
+    <div class="debug-section">
+        <h2>🔗 Test LocalStorage</h2>
+        <button class="debug-button" onclick="checkLocalStorage()">Kiểm tra LocalStorage</button>
+        <button class="debug-button success" onclick="createCreatorRoom()">Tạo phòng chủ phòng</button>
+        <button class="debug-button" onclick="createPlayerRoom()">Tạo phòng người chơi</button>
+        <button class="debug-button danger" onclick="clearLocalStorage()">Xóa LocalStorage</button>
+        <div id="localStorage-status"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>🎮 Demo Buttons (Current State)</h2>
+        <div class="button-demo">
+            <h3>Phòng chờ (Waiting Room)</h3>
+            <button id="start-battle-btn" class="creator-only" style="display: none;">🎮 Bắt đầu thi đấu</button>
+            <button id="end-room-btn" class="creator-only" style="display: none;">⏹️ Kết thúc phòng</button>
+            <p>Status: <span id="waiting-status">Chưa có phòng</span></p>
+            <p>Creator: <span id="creator-status">Unknown</span></p>
+        </div>
+        
+        <div class="button-demo">
+            <h3>Phòng thi đấu (Battle Room)</h3>
+            <button id="end-game-btn" class="creator-only" style="display: none;">⏹️ Kết thúc game</button>
+            <p>Status: <span id="battle-status">Chưa có phòng</span></p>
+        </div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>🧪 Test Scenarios</h2>
+        <button class="debug-button" onclick="testCreatorLogic()">Test Creator Logic</button>
+        <button class="debug-button" onclick="testButtonVisibility()">Test Button Visibility</button>
+        <button class="debug-button" onclick="simulateRoomJoin()">Simulate Room Join</button>
+        <div id="test-status"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>📊 Debug Logs</h2>
+        <button class="debug-button" onclick="clearLogs()">Clear Logs</button>
+        <button class="debug-button" onclick="exportLogs()">Export Logs</button>
+        <div id="log-container" class="log-container">
+            <div class="log-entry info">🚀 Debug system started...</div>
+        </div>
+    </div>
+
+    <script>
+        let debugLogs = [];
+        
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLogs.push({ message: logEntry, type, timestamp });
+            
+            const logContainer = document.getElementById('log-container');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log-entry ${type}`;
+            logDiv.textContent = logEntry;
+            logContainer.appendChild(logDiv);
+            
+            // Auto-scroll to bottom
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        // Check LocalStorage
+        function checkLocalStorage() {
+            const statusDiv = document.getElementById('localStorage-status');
+            const currentRoom = localStorage.getItem('currentRoom');
+            const userInfo = localStorage.getItem('userInfo');
+            
+            log('Checking LocalStorage...', 'info');
+            
+            let html = '<div class="status info">';
+            html += '<strong>LocalStorage Status:</strong><br>';
+            html += `Current Room: ${currentRoom ? '✅ Có' : '❌ Không có'}<br>`;
+            html += `User Info: ${userInfo ? '✅ Có' : '❌ Không có'}<br>`;
+            
+            if (currentRoom) {
+                try {
+                    const roomData = JSON.parse(currentRoom);
+                    html += `<br><strong>Room Data:</strong><br>`;
+                    html += `Code: ${roomData.code || 'N/A'}<br>`;
+                    html += `Name: ${roomData.name || 'N/A'}<br>`;
+                    html += `Creator: ${roomData.creator ? '✅' : '❌'}<br>`;
+                    html += `CreatedBy: ${roomData.createdBy || 'N/A'}<br>`;
+                    html += `Status: ${roomData.status || 'N/A'}<br>`;
+                    
+                    log(`Room data found: ${roomData.code}, Creator: ${roomData.creator}, CreatedBy: ${roomData.createdBy}`, 'success');
+                    
+                    // Update demo buttons
+                    updateDemoButtons(roomData);
+                } catch (e) {
+                    html += `<br>❌ Lỗi parse room data: ${e.message}`;
+                    log(`Error parsing room data: ${e.message}`, 'error');
+                }
+            }
+            
+            if (userInfo) {
+                try {
+                    const userData = JSON.parse(userInfo);
+                    html += `<br><strong>User Data:</strong><br>`;
+                    html += `ID: ${userData.id || 'N/A'}<br>`;
+                    html += `Username: ${userData.username || 'N/A'}<br>`;
+                    html += `Timestamp: ${userData.timestamp ? new Date(userData.timestamp).toLocaleString() : 'N/A'}<br>`;
+                    
+                    log(`User data found: ${userData.username}, ID: ${userData.id}`, 'success');
+                } catch (e) {
+                    html += `<br>❌ Lỗi parse user data: ${e.message}`;
+                    log(`Error parsing user data: ${e.message}`, 'error');
+                }
+            }
+            
+            html += '</div>';
+            statusDiv.innerHTML = html;
+        }
+        
+        // Create creator room
+        function createCreatorRoom() {
+            const testRoom = {
+                code: 'CREATOR' + Math.floor(Math.random() * 1000),
+                name: 'Phòng Chủ phòng Test',
+                creator: true,
+                createdBy: 'test_creator_' + Date.now(),
+                status: 'waiting'
+            };
+            
+            const testUser = {
+                id: 'creator_user_' + Date.now(),
+                username: 'CreatorUser',
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('currentRoom', JSON.stringify(testRoom));
+            localStorage.setItem('userInfo', JSON.stringify(testUser));
+            
+            log(`Created creator room: ${testRoom.code}`, 'success');
+            
+            document.getElementById('localStorage-status').innerHTML = 
+                '<div class="status success">✅ Đã tạo phòng chủ phòng: ' + testRoom.code + '</div>';
+            
+            // Update demo buttons
+            updateDemoButtons(testRoom);
+        }
+        
+        // Create player room
+        function createPlayerRoom() {
+            const testRoom = {
+                code: 'PLAYER' + Math.floor(Math.random() * 1000),
+                name: 'Phòng Người chơi Test',
+                creator: false,
+                createdBy: null,
+                status: 'waiting'
+            };
+            
+            const testUser = {
+                id: 'player_user_' + Date.now(),
+                username: 'PlayerUser',
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('currentRoom', JSON.stringify(testRoom));
+            localStorage.setItem('userInfo', JSON.stringify(testUser));
+            
+            log(`Created player room: ${testRoom.code}`, 'success');
+            
+            document.getElementById('localStorage-status').innerHTML = 
+                '<div class="status success">✅ Đã tạo phòng người chơi: ' + testRoom.code + '</div>';
+            
+            // Update demo buttons
+            updateDemoButtons(testRoom);
+        }
+        
+        // Update demo buttons
+        function updateDemoButtons(roomData) {
+            const startBattleBtn = document.getElementById('start-battle-btn');
+            const endRoomBtn = document.getElementById('end-room-btn');
+            const endGameBtn = document.getElementById('end-game-btn');
+            
+            log(`Updating demo buttons for room: ${roomData.code}, Creator: ${roomData.creator}`, 'info');
+            
+            if (roomData.status === 'waiting') {
+                // Phòng chờ
+                startBattleBtn.style.display = roomData.creator ? 'inline-block' : 'none';
+                endRoomBtn.style.display = roomData.creator ? 'inline-block' : 'none';
+                endGameBtn.style.display = 'none';
+                
+                document.getElementById('waiting-status').textContent = 
+                    `Phòng chờ - Chủ phòng: ${roomData.creator ? '✅' : '❌'}`;
+                document.getElementById('battle-status').textContent = 'Chưa bắt đầu';
+                document.getElementById('creator-status').textContent = 
+                    `${roomData.creator ? '✅ Creator' : '❌ Not Creator'} (CreatedBy: ${roomData.createdBy || 'N/A'})`;
+                
+                log(`Waiting room buttons updated - Creator: ${roomData.creator}`, 'success');
+            } else if (roomData.status === 'playing') {
+                // Phòng thi đấu
+                startBattleBtn.style.display = 'none';
+                endRoomBtn.style.display = 'none';
+                endGameBtn.style.display = roomData.creator ? 'inline-block' : 'none';
+                
+                document.getElementById('waiting-status').textContent = 'Đã bắt đầu';
+                document.getElementById('battle-status').textContent = 
+                    `Đang thi đấu - Chủ phòng: ${roomData.creator ? '✅' : '❌'}`;
+                
+                log(`Playing room buttons updated - Creator: ${roomData.creator}`, 'success');
+            }
+        }
+        
+        // Test creator logic
+        function testCreatorLogic() {
+            const statusDiv = document.getElementById('test-status');
+            const currentRoom = localStorage.getItem('currentRoom');
+            const userInfo = localStorage.getItem('currentRoom');
+            
+            if (!currentRoom || !userInfo) {
+                statusDiv.innerHTML = '<div class="status error">❌ Không có đủ thông tin để test</div>';
+                return;
+            }
+            
+            try {
+                const roomData = JSON.parse(currentRoom);
+                const userData = JSON.parse(userInfo);
+                
+                const testUserId = userData.id;
+                const roomCreatedBy = roomData.createdBy;
+                const roomCreator = roomData.creator;
+                
+                log(`Testing creator logic:`, 'info');
+                log(`  User ID: ${testUserId}`, 'info');
+                log(`  Room CreatedBy: ${roomCreatedBy}`, 'info');
+                log(`  Room Creator: ${roomCreator}`, 'info');
+                
+                let isCreator = false;
+                let reason = '';
+                
+                if (roomCreator === true) {
+                    isCreator = true;
+                    reason = 'roomInfo.creator === true';
+                } else if (roomCreatedBy === testUserId) {
+                    isCreator = true;
+                    reason = 'roomInfo.createdBy === userId';
+                } else if (roomCreatedBy && roomCreatedBy.toString() === testUserId.toString()) {
+                    isCreator = true;
+                    reason = 'string comparison';
+                }
+                
+                log(`Result: ${isCreator ? '✅ Creator' : '❌ Not Creator'}`, isCreator ? 'success' : 'error');
+                log(`Reason: ${reason}`, 'info');
+                
+                statusDiv.innerHTML = `
+                    <div class="status ${isCreator ? 'success' : 'error'}">
+                        <strong>Creator Logic Test:</strong><br>
+                        User ID: ${testUserId}<br>
+                        Room CreatedBy: ${roomCreatedBy}<br>
+                        Room Creator: ${roomCreator}<br>
+                        Is Creator: ${isCreator ? '✅' : '❌'}<br>
+                        Reason: ${reason}
+                    </div>
+                `;
+                
+            } catch (e) {
+                log(`Error in creator logic test: ${e.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">❌ Lỗi test: ${e.message}</div>`;
+            }
+        }
+        
+        // Test button visibility
+        function testButtonVisibility() {
+            const statusDiv = document.getElementById('test-status');
+            const startBattleBtn = document.getElementById('start-battle-btn');
+            const endRoomBtn = document.getElementById('end-room-btn');
+            const endGameBtn = document.getElementById('end-game-btn');
+            
+            log('Testing button visibility...', 'info');
+            
+            const results = {
+                startBattleBtn: startBattleBtn.style.display,
+                endRoomBtn: endRoomBtn ? endRoomBtn.style.display : 'N/A',
+                endGameBtn: endGameBtn ? endGameBtn.style.display : 'N/A'
+            };
+            
+            log(`Button visibility results:`, 'info');
+            log(`  Start Battle: ${results.startBattleBtn}`, 'info');
+            log(`  End Room: ${results.endRoomBtn}`, 'info');
+            log(`  End Game: ${results.endGameBtn}`, 'info');
+            
+            statusDiv.innerHTML = `
+                <div class="status info">
+                    <strong>Button Visibility Test:</strong><br>
+                    Start Battle: ${results.startBattleBtn}<br>
+                    End Room: ${results.endRoomBtn}<br>
+                    End Game: ${results.endGameBtn}
+                </div>
+            `;
+        }
+        
+        // Simulate room join
+        function simulateRoomJoin() {
+            const statusDiv = document.getElementById('test-status');
+            const currentRoom = localStorage.getItem('currentRoom');
+            
+            if (!currentRoom) {
+                statusDiv.innerHTML = '<div class="status error">❌ Không có thông tin phòng để simulate</div>';
+                return;
+            }
+            
+            try {
+                const roomData = JSON.parse(currentRoom);
+                
+                log('Simulating room join...', 'info');
+                log(`Room data: ${JSON.stringify(roomData, null, 2)}`, 'info');
+                
+                // Simulate the logic from room-battle.js
+                const testUserId = 'test_user_' + Date.now();
+                const isCreator = roomData.createdBy === testUserId || roomData.creator === true;
+                
+                log(`Simulated user ID: ${testUserId}`, 'info');
+                log(`Simulated isCreator: ${isCreator}`, 'info');
+                
+                statusDiv.innerHTML = `
+                    <div class="status info">
+                        <strong>Room Join Simulation:</strong><br>
+                        Simulated User ID: ${testUserId}<br>
+                        Room CreatedBy: ${roomData.createdBy}<br>
+                        Room Creator: ${roomData.creator}<br>
+                        Simulated Is Creator: ${isCreator ? '✅' : '❌'}
+                    </div>
+                `;
+                
+            } catch (e) {
+                log(`Error in room join simulation: ${e.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">❌ Lỗi simulation: ${e.message}</div>`;
+            }
+        }
+        
+        // Clear LocalStorage
+        function clearLocalStorage() {
+            localStorage.removeItem('currentRoom');
+            localStorage.removeItem('userInfo');
+            
+            log('LocalStorage cleared', 'warning');
+            
+            document.getElementById('localStorage-status').innerHTML = 
+                '<div class="status success">✅ Đã xóa LocalStorage</div>';
+            
+            // Reset demo buttons
+            document.getElementById('start-battle-btn').style.display = 'none';
+            document.getElementById('end-room-btn').style.display = 'none';
+            document.getElementById('end-game-btn').style.display = 'none';
+            document.getElementById('waiting-status').textContent = 'Chưa có phòng';
+            document.getElementById('battle-status').textContent = 'Chưa có phòng';
+            document.getElementById('creator-status').textContent = 'Unknown';
+        }
+        
+        // Clear logs
+        function clearLogs() {
+            const logContainer = document.getElementById('log-container');
+            logContainer.innerHTML = '<div class="log-entry info">🚀 Debug system started...</div>';
+            debugLogs = [];
+        }
+        
+        // Export logs
+        function exportLogs() {
+            const logText = debugLogs.map(log => `[${log.timestamp}] ${log.message}`).join('\n');
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'debug_logs.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Auto-test khi load trang
+        window.addEventListener('load', function() {
+            log('Debug page loaded', 'success');
+            checkLocalStorage();
+        });
+    </script>
+</body>
+</html> 

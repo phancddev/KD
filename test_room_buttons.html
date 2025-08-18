@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Room Buttons</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .button-demo {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .button-demo button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Room Buttons Visibility</h1>
+    
+    <div class="test-section">
+        <h2>📋 Test Cases</h2>
+        <p>Kiểm tra hiển thị nút cho chủ phòng:</p>
+        <ul>
+            <li>✅ Nút "Bắt đầu thi đấu" cho chủ phòng</li>
+            <li>✅ Nút "Kết thúc phòng" cho chủ phòng</li>
+            <li>✅ Nút "Kết thúc" game cho chủ phòng</li>
+            <li>✅ Ẩn nút cho người chơi thường</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🔗 Test LocalStorage</h2>
+        <button class="test-button" onclick="testLocalStorage()">Kiểm tra LocalStorage</button>
+        <button class="test-button" onclick="createCreatorRoom()">Tạo phòng chủ phòng</button>
+        <button class="test-button" onclick="createPlayerRoom()">Tạo phòng người chơi</button>
+        <button class="test-button" onclick="clearLocalStorage()">Xóa LocalStorage</button>
+        <div id="localStorage-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎮 Demo Buttons</h2>
+        <div class="button-demo">
+            <h3>Phòng chờ (Waiting Room)</h3>
+            <button id="start-battle-btn" style="display: none;">🎮 Bắt đầu thi đấu</button>
+            <button id="end-room-btn" style="display: none;">⏹️ Kết thúc phòng</button>
+            <p>Status: <span id="waiting-status">Chưa có phòng</span></p>
+        </div>
+        
+        <div class="button-demo">
+            <h3>Phòng thi đấu (Battle Room)</h3>
+            <button id="end-game-btn" style="display: none;">⏹️ Kết thúc game</button>
+            <p>Status: <span id="battle-status">Chưa có phòng</span></p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🏠 Test Navigation</h2>
+        <button class="test-button" onclick="goToHome()">Về trang chủ</button>
+        <button class="test-button" onclick="goToRoomBattle()">Vào phòng đấu</button>
+        <div id="navigation-status"></div>
+    </div>
+
+    <script>
+        // Test LocalStorage
+        function testLocalStorage() {
+            const statusDiv = document.getElementById('localStorage-status');
+            const currentRoom = localStorage.getItem('currentRoom');
+            const userInfo = localStorage.getItem('userInfo');
+            
+            let html = '<div class="status info">';
+            html += '<strong>LocalStorage Status:</strong><br>';
+            html += `Current Room: ${currentRoom ? '✅ Có' : '❌ Không có'}<br>`;
+            html += `User Info: ${userInfo ? '✅ Có' : '❌ Không có'}<br>`;
+            
+            if (currentRoom) {
+                try {
+                    const roomData = JSON.parse(currentRoom);
+                    html += `<br><strong>Room Data:</strong><br>`;
+                    html += `Code: ${roomData.code || 'N/A'}<br>`;
+                    html += `Name: ${roomData.name || 'N/A'}<br>`;
+                    html += `Creator: ${roomData.creator ? '✅' : '❌'}<br>`;
+                    html += `Status: ${roomData.status || 'N/A'}<br>`;
+                    
+                    // Cập nhật demo buttons
+                    updateDemoButtons(roomData);
+                } catch (e) {
+                    html += `<br>❌ Lỗi parse room data: ${e.message}`;
+                }
+            }
+            
+            if (userInfo) {
+                try {
+                    const userData = JSON.parse(userInfo);
+                    html += `<br><strong>User Data:</strong><br>`;
+                    html += `ID: ${userData.id || 'N/A'}<br>`;
+                    html += `Username: ${userData.username || 'N/A'}<br>`;
+                    html += `Timestamp: ${userData.timestamp ? new Date(userData.timestamp).toLocaleString() : 'N/A'}<br>`;
+                } catch (e) {
+                    html += `<br>❌ Lỗi parse user data: ${e.message}`;
+                }
+            }
+            
+            html += '</div>';
+            statusDiv.innerHTML = html;
+        }
+        
+        // Create creator room
+        function createCreatorRoom() {
+            const testRoom = {
+                code: 'CREATOR' + Math.floor(Math.random() * 1000),
+                name: 'Phòng Chủ phòng Test',
+                creator: true,
+                status: 'waiting'
+            };
+            
+            const testUser = {
+                id: 'creator_user_' + Date.now(),
+                username: 'CreatorUser',
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('currentRoom', JSON.stringify(testRoom));
+            localStorage.setItem('userInfo', JSON.stringify(testUser));
+            
+            document.getElementById('localStorage-status').innerHTML = 
+                '<div class="status success">✅ Đã tạo phòng chủ phòng: ' + testRoom.code + '</div>';
+            
+            // Cập nhật demo buttons
+            updateDemoButtons(testRoom);
+        }
+        
+        // Create player room
+        function createPlayerRoom() {
+            const testRoom = {
+                code: 'PLAYER' + Math.floor(Math.random() * 1000),
+                name: 'Phòng Người chơi Test',
+                creator: false,
+                status: 'waiting'
+            };
+            
+            const testUser = {
+                id: 'player_user_' + Date.now(),
+                username: 'PlayerUser',
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('currentRoom', JSON.stringify(testRoom));
+            localStorage.setItem('userInfo', JSON.stringify(testUser));
+            
+            document.getElementById('localStorage-status').innerHTML = 
+                '<div class="status success">✅ Đã tạo phòng người chơi: ' + testRoom.code + '</div>';
+            
+            // Cập nhật demo buttons
+            updateDemoButtons(testRoom);
+        }
+        
+        // Update demo buttons
+        function updateDemoButtons(roomData) {
+            const startBattleBtn = document.getElementById('start-battle-btn');
+            const endRoomBtn = document.getElementById('end-room-btn');
+            const endGameBtn = document.getElementById('end-game-btn');
+            
+            if (roomData.status === 'waiting') {
+                // Phòng chờ
+                startBattleBtn.style.display = roomData.creator ? 'inline-block' : 'none';
+                endRoomBtn.style.display = roomData.creator ? 'inline-block' : 'none';
+                endGameBtn.style.display = 'none';
+                
+                document.getElementById('waiting-status').textContent = 
+                    `Phòng chờ - Chủ phòng: ${roomData.creator ? '✅' : '❌'}`;
+                document.getElementById('battle-status').textContent = 'Chưa bắt đầu';
+            } else if (roomData.status === 'playing') {
+                // Phòng thi đấu
+                startBattleBtn.style.display = 'none';
+                endRoomBtn.style.display = 'none';
+                endGameBtn.style.display = roomData.creator ? 'inline-block' : 'none';
+                
+                document.getElementById('waiting-status').textContent = 'Đã bắt đầu';
+                document.getElementById('battle-status').textContent = 
+                    `Đang thi đấu - Chủ phòng: ${roomData.creator ? '✅' : '❌'}`;
+            }
+        }
+        
+        // Clear LocalStorage
+        function clearLocalStorage() {
+            localStorage.removeItem('currentRoom');
+            localStorage.removeItem('userInfo');
+            document.getElementById('localStorage-status').innerHTML = 
+                '<div class="status success">✅ Đã xóa LocalStorage</div>';
+            
+            // Reset demo buttons
+            document.getElementById('start-battle-btn').style.display = 'none';
+            document.getElementById('end-room-btn').style.display = 'none';
+            document.getElementById('end-game-btn').style.display = 'none';
+            document.getElementById('waiting-status').textContent = 'Chưa có phòng';
+            document.getElementById('battle-status').textContent = 'Chưa có phòng';
+        }
+        
+        // Navigation functions
+        function goToHome() {
+            window.location.href = '/';
+        }
+        
+        function goToRoomBattle() {
+            const currentRoom = localStorage.getItem('currentRoom');
+            if (currentRoom) {
+                window.location.href = '/room-battle';
+            } else {
+                document.getElementById('navigation-status').innerHTML = 
+                    '<div class="status error">❌ Không có thông tin phòng, vui lòng tạo hoặc tham gia phòng trước</div>';
+            }
+        }
+        
+        // Auto-test khi load trang
+        window.addEventListener('load', function() {
+            console.log('🧪 Test page loaded');
+            testLocalStorage();
+        });
+    </script>
+</body>
+</html> 

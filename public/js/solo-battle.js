@@ -195,10 +195,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let userAnswers = [];
     let questionStartTime;
     let questions = [];
-    let totalTimeRemaining = 60; // Tổng thời gian 60 giây cho 12 câu hỏi
+    let totalTimeRemaining = 60; // Tổng thời gian (có thể điều chỉnh theo số câu hỏi nếu cần)
     
     // Lấy câu hỏi từ server
-    fetch('/admin/api/questions/random?count=12')
+    fetch('/admin/api/questions/random?count=20')
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -330,11 +330,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentQuestionIndex >= questions.length) return;
         
         const answerInput = document.getElementById('answer-input');
-        const userAnswer = answerInput.value.trim();
+        let userAnswer = answerInput.value.trim();
         
+        // Nếu người chơi bấm Enter khi không nhập gì => coi như "không trả lời"
         if (!userAnswer) {
-            alert('Vui lòng nhập câu trả lời!');
-            return;
+            userAnswer = 'không trả lời';
         }
         
         // Vô hiệu hóa input và nút trả lời
@@ -381,25 +381,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 2000);
     }
     
-    // Kiểm tra câu trả lời
+    // Kiểm tra câu trả lời (chỉ khớp hoàn toàn sau khi chuẩn hóa)
     function checkAnswer(userAnswer, correctAnswer) {
-        // Chuẩn hóa cả hai câu trả lời: loại bỏ dấu cách thừa, chuyển về chữ thường
         const normalizedUserAnswer = userAnswer.trim().toLowerCase();
         const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
-        
-        // So sánh trực tiếp
-        if (normalizedUserAnswer === normalizedCorrectAnswer) {
-            return true;
-        }
-        
-        // Kiểm tra nếu câu trả lời của người dùng là một phần của đáp án đúng
-        // Hữu ích cho các câu trả lời có nhiều cách diễn đạt
-        if (normalizedCorrectAnswer.includes(normalizedUserAnswer) && 
-            normalizedUserAnswer.length > normalizedCorrectAnswer.length / 2) {
-            return true;
-        }
-        
-        return false;
+        return normalizedUserAnswer === normalizedCorrectAnswer;
     }
     
     // Xử lý khi hết thời gian tổng (60 giây)
