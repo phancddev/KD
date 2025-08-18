@@ -1212,29 +1212,51 @@ document.addEventListener('DOMContentLoaded', function() {
         // Xóa nội dung cũ
         questionReviewListEl.innerHTML = '';
         
-        // Kiểm tra xem có câu trả lời không
-        if (!gameAnswers || gameAnswers.length === 0) {
-            questionReviewListEl.innerHTML = '<p class="text-muted">Không có câu trả lời nào để hiển thị.</p>';
+        // Kiểm tra xem có câu hỏi không
+        if (!allQuestions || allQuestions.length === 0) {
+            questionReviewListEl.innerHTML = '<p class="text-muted">Không có câu hỏi nào để hiển thị.</p>';
             return;
         }
         
-        // Hiển thị từng câu trả lời theo thứ tự đã trả lời
-        gameAnswers.forEach((answer, index) => {
+        // Hiển thị đáp án cho tất cả 12 câu hỏi
+        for (let i = 0; i < allQuestions.length; i++) {
             const div = document.createElement('div');
-            div.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
             
-            div.innerHTML = `
-                <h4>Câu ${index + 1}: ${answer.questionText || `Câu hỏi ${index + 1}`}</h4>
-                <p>Câu trả lời của bạn: <strong>${answer.userAnswer || 'Không trả lời'}</strong></p>
-                <p>Câu trả lời đúng: <strong>${answer.correctAnswer || 'Không có đáp án'}</strong></p>
-                <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
-                ${answer.answerTime ? `<p>Thời gian trả lời: <strong>${answer.answerTime}s</strong></p>` : ''}
-            `;
+            // Lấy câu hỏi theo thứ tự đã được sắp xếp
+            const questionIndex = myQuestionOrder[i];
+            const question = allQuestions[questionIndex];
+            
+            // Tìm câu trả lời tương ứng (nếu có)
+            const answer = gameAnswers.find(a => a.questionId === question.id);
+            
+            if (answer) {
+                // Có câu trả lời
+                div.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
+                
+                div.innerHTML = `
+                    <h4>Câu ${i + 1}: ${question.text || question.question}</h4>
+                    <p>Câu trả lời của bạn: <strong>${answer.userAnswer || 'Không trả lời'}</strong></p>
+                    <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                    <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
+                    ${answer.answerTime ? `<p>Thời gian trả lời: <strong>${answer.answerTime}s</strong></p>` : ''}
+                `;
+            } else {
+                // Không có câu trả lời (câu hỏi bị bỏ qua)
+                div.className = 'question-review-item unanswered';
+                
+                div.innerHTML = `
+                    <h4>Câu ${i + 1}: ${question.text || question.question}</h4>
+                    <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
+                    <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                    <p>Điểm: <strong>0</strong></p>
+                    <p>Thời gian trả lời: <strong>Không trả lời</strong></p>
+                `;
+            }
             
             questionReviewListEl.appendChild(div);
-        });
+        }
         
-        console.log('✅ Đã hiển thị đáp án cho', gameAnswers.length, 'câu hỏi');
+        console.log('✅ Đã hiển thị đáp án cho tất cả', allQuestions.length, 'câu hỏi');
     }
     
     // Kết thúc phòng (chủ phòng)

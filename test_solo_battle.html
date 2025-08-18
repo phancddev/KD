@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Solo Battle - Hiển Thị Đáp Án</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        
+        .btn-warning { background: #ffc107; }
+        .btn-warning:hover { background: #e0a800; }
+        
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        
+        /* Question review styles */
+        .question-review-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .question-review-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .question-review-item.correct {
+            border-left: 4px solid #28a745;
+            background: #f8fff9;
+        }
+        
+        .question-review-item.incorrect {
+            border-left: 4px solid #dc3545;
+            background: #fff8f8;
+        }
+        
+        .question-review-item.unanswered {
+            border-left: 4px solid #6c757d;
+            background: #f8f9fa;
+            opacity: 0.7;
+        }
+        
+        .question-review-item h4 {
+            color: #495057;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        
+        .question-review-item p {
+            margin: 0.5rem 0;
+            color: #6c757d;
+        }
+        
+        .question-review-item p:first-of-type {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-warning { background: #ffc107; }
+        .status-info { background: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Solo Battle - Hiển Thị Đáp Án</h1>
+        
+        <div class="test-section">
+            <h3>🎯 Logic Mới</h3>
+            <p><strong>1.</strong> Hiển thị đáp án cho tất cả 12 câu hỏi</p>
+            <p><strong>2.</strong> Câu đúng: Màu xanh với border-left xanh</p>
+            <p><strong>3.</strong> Câu sai: Màu đỏ với border-left đỏ</p>
+            <p><strong>4.</strong> Câu không trả lời: Màu xám mờ với border-left xám</p>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎮 Test Flow</h3>
+            <button id="test-answers-btn" class="btn btn-success">Test Hiển Thị Đáp Án</button>
+            <button id="reset-btn" class="btn btn-danger">Reset</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Trạng Thái</h3>
+            <div id="status-display">
+                <div>Questions Length: <span id="questions-length-text">0</span></div>
+                <div>User Answers Length: <span id="user-answers-length-text">0</span></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 Console Log</h3>
+            <div id="console-log" class="debug-info" style="max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+                <div>Console log sẽ hiện ở đây...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Container để hiển thị đáp án -->
+    <div id="answers-container" class="container" style="display: none;">
+        <h2>📚 Đáp Án Từng Câu</h2>
+        <div id="question-review-list">
+            <!-- Question review will be dynamically generated here -->
+        </div>
+    </div>
+    
+    <script>
+        // Console log override để hiển thị trong UI
+        const originalLog = console.log;
+        const consoleLogDiv = document.getElementById('console-log');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const logEntry = document.createElement('div');
+            logEntry.textContent = new Date().toLocaleTimeString() + ': ' + args.join(' ');
+            consoleLogDiv.appendChild(logEntry);
+            consoleLogDiv.scrollTop = consoleLogDiv.scrollHeight;
+        };
+        
+        // Dữ liệu test giả lập
+        let questions = [];
+        let userAnswers = [];
+        
+        // Hàm tạo dữ liệu test
+        function createTestData() {
+            // Tạo 12 câu hỏi
+            questions = [
+                { id: 1, text: 'Thủ đô của Việt Nam là gì?', answer: 'Hà Nội' },
+                { id: 2, text: 'Thủ đô của Trung Quốc là gì?', answer: 'Bắc Kinh' },
+                { id: 3, text: 'Thủ đô của Pháp là gì?', answer: 'Paris' },
+                { id: 4, text: 'Thủ đô của Đức là gì?', answer: 'Berlin' },
+                { id: 5, text: 'Thủ đô của Ý là gì?', answer: 'Roma' },
+                { id: 6, text: 'Thủ đô của Tây Ban Nha là gì?', answer: 'Madrid' },
+                { id: 7, text: 'Thủ đô của Nhật Bản là gì?', answer: 'Tokyo' },
+                { id: 8, text: 'Thủ đô của Hàn Quốc là gì?', answer: 'Seoul' },
+                { id: 9, text: 'Thủ đô của Thái Lan là gì?', answer: 'Bangkok' },
+                { id: 10, text: 'Thủ đô của Anh là gì?', answer: 'London' },
+                { id: 11, text: 'Thủ đô của Nga là gì?', answer: 'Moscow' },
+                { id: 12, text: 'Thủ đô của Canada là gì?', answer: 'Ottawa' }
+            ];
+            
+            // Tạo một số câu trả lời (giả lập người chơi trả lời 4 câu)
+            userAnswers = [
+                {
+                    questionId: 1,
+                    questionText: 'Thủ đô của Việt Nam là gì?',
+                    userAnswer: 'Hà Nội',
+                    correctAnswer: 'Hà Nội',
+                    isCorrect: true
+                },
+                {
+                    questionId: 3,
+                    questionText: 'Thủ đô của Pháp là gì?',
+                    userAnswer: 'Paris',
+                    correctAnswer: 'Paris',
+                    isCorrect: true
+                },
+                {
+                    questionId: 7,
+                    questionText: 'Thủ đô của Nhật Bản là gì?',
+                    userAnswer: 'Tokyo',
+                    correctAnswer: 'Tokyo',
+                    isCorrect: true
+                },
+                {
+                    questionId: 10,
+                    questionText: 'Thủ đô của Anh là gì?',
+                    userAnswer: 'London',
+                    correctAnswer: 'London',
+                    isCorrect: true
+                }
+            ];
+            
+            // Lưu tất cả câu hỏi còn lại như không trả lời (giống solo battle)
+            for (let i = 0; i < questions.length; i++) {
+                const question = questions[i];
+                const existingAnswer = userAnswers.find(a => a.questionId === question.id);
+                
+                if (!existingAnswer) {
+                    userAnswers.push({
+                        questionId: question.id,
+                        questionText: question.text,
+                        userAnswer: null,
+                        correctAnswer: question.answer,
+                        isCorrect: false
+                    });
+                }
+            }
+            
+            console.log('✅ Đã tạo dữ liệu test:', {
+                questionsLength: questions.length,
+                userAnswersLength: userAnswers.length
+            });
+            
+            updateStatus();
+        }
+        
+        // Hàm hiển thị đáp án (copy từ solo-battle.js đã sửa)
+        function showQuestionReview() {
+            console.log('📚 Hiển thị đáp án từng câu...');
+            console.log('📚 questions:', questions);
+            console.log('📚 userAnswers:', userAnswers);
+            
+            const questionReviewListEl = document.getElementById('question-review-list');
+            if (!questionReviewListEl) {
+                console.error('❌ Không tìm thấy question-review-list element!');
+                return;
+            }
+            
+            // Xóa nội dung cũ
+            questionReviewListEl.innerHTML = '';
+            
+            // Kiểm tra xem có câu hỏi không
+            if (!questions || questions.length === 0) {
+                questionReviewListEl.innerHTML = '<p class="text-muted">Không có câu hỏi nào để hiển thị.</p>';
+                return;
+            }
+            
+            // Hiển thị đáp án cho tất cả câu hỏi
+            for (let i = 0; i < questions.length; i++) {
+                const div = document.createElement('div');
+                const question = questions[i];
+                
+                // Tìm câu trả lời tương ứng (nếu có)
+                const answer = userAnswers.find(a => a.questionId === question.id);
+                
+                if (answer && answer.userAnswer !== null) {
+                    // Có câu trả lời
+                    div.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
+                    
+                    div.innerHTML = `
+                        <h4>Câu ${i + 1}: ${answer.questionText}</h4>
+                        <p>Câu trả lời của bạn: <strong>${answer.userAnswer}</strong></p>
+                        <p>Câu trả lời đúng: <strong>${answer.correctAnswer}</strong></p>
+                        <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
+                    `;
+                } else {
+                    // Không có câu trả lời (câu hỏi bị bỏ qua)
+                    div.className = 'question-review-item unanswered';
+                    
+                    div.innerHTML = `
+                        <h4>Câu ${i + 1}: ${question.text}</h4>
+                        <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
+                        <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                        <p>Điểm: <strong>0</strong></p>
+                    `;
+                }
+                
+                questionReviewListEl.appendChild(div);
+            }
+            
+            console.log('✅ Đã hiển thị đáp án cho tất cả', questions.length, 'câu hỏi');
+        }
+        
+        // Update status display
+        function updateStatus() {
+            document.getElementById('questions-length-text').textContent = questions.length;
+            document.getElementById('user-answers-length-text').textContent = userAnswers.length;
+        }
+        
+        // Event listeners
+        document.getElementById('test-answers-btn').addEventListener('click', function() {
+            console.log('📚 Test hiển thị đáp án được click');
+            
+            if (questions.length === 0) {
+                console.log('📚 Tạo dữ liệu test trước...');
+                createTestData();
+            }
+            
+            // Hiển thị container đáp án
+            document.getElementById('answers-container').style.display = 'block';
+            
+            // Gọi hàm hiển thị đáp án
+            showQuestionReview();
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            console.log('🔄 Reset được click');
+            questions = [];
+            userAnswers = [];
+            document.getElementById('answers-container').style.display = 'none';
+            updateStatus();
+        });
+        
+        // Initialize
+        console.log('🚀 Test solo battle page đã load');
+        updateStatus();
+    </script>
+</body>
+</html> 

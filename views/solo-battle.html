@@ -491,6 +491,22 @@
             transition: all 0.3s ease;
             width: 100%;
         }
+        
+        .question-review-item.correct {
+            border-left: 4px solid #28a745;
+            background: #f8fff9;
+        }
+        
+        .question-review-item.incorrect {
+            border-left: 4px solid #dc3545;
+            background: #fff8f8;
+        }
+        
+        .question-review-item.unanswered {
+            border-left: 4px solid #6c757d;
+            background: #f8f9fa;
+            opacity: 0.7;
+        }
 
         .question-review-item:hover {
             transform: translateY(-2px);

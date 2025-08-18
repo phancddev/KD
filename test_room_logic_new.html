@@ -361,6 +361,8 @@
         function showQuestionReview() {
             console.log('📚 Hiển thị đáp án từng câu...');
             console.log('📚 gameAnswers:', window.gameAnswers);
+            console.log('📚 allQuestions:', window.allQuestions);
+            console.log('📚 myQuestionOrder:', window.myQuestionOrder);
             
             // Tạo container để hiển thị đáp án
             let answersContainer = document.getElementById('answers-container');
@@ -375,29 +377,51 @@
             // Xóa nội dung cũ
             answersContainer.innerHTML = '<h3>📚 Đáp án từng câu</h3>';
             
-            // Kiểm tra xem có câu trả lời không
-            if (!window.gameAnswers || window.gameAnswers.length === 0) {
-                answersContainer.innerHTML += '<p class="text-muted">Không có câu trả lời nào để hiển thị.</p>';
+            // Kiểm tra xem có câu hỏi không
+            if (!window.allQuestions || window.allQuestions.length === 0) {
+                answersContainer.innerHTML += '<p class="text-muted">Không có câu hỏi nào để hiển thị.</p>';
                 return;
             }
             
-            // Hiển thị từng câu trả lời theo thứ tự đã trả lời
-            window.gameAnswers.forEach((answer, index) => {
+            // Hiển thị đáp án cho tất cả 12 câu hỏi
+            for (let i = 0; i < window.allQuestions.length; i++) {
                 const div = document.createElement('div');
-                div.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
                 
-                div.innerHTML = `
-                    <h4>Câu ${index + 1}: ${answer.questionText || `Câu hỏi ${index + 1}`}</h4>
-                    <p>Câu trả lời của bạn: <strong>${answer.userAnswer || 'Không trả lời'}</strong></p>
-                    <p>Câu trả lời đúng: <strong>${answer.correctAnswer || 'Không có đáp án'}</strong></p>
-                    <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
-                    ${answer.answerTime ? `<p>Thời gian trả lời: <strong>${answer.answerTime}s</strong></p>` : ''}
-                `;
+                // Lấy câu hỏi theo thứ tự đã được sắp xếp
+                const questionIndex = window.myQuestionOrder[i];
+                const question = window.allQuestions[questionIndex];
+                
+                // Tìm câu trả lời tương ứng (nếu có)
+                const answer = window.gameAnswers.find(a => a.questionId === question.id);
+                
+                if (answer) {
+                    // Có câu trả lời
+                    div.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
+                    
+                    div.innerHTML = `
+                        <h4>Câu ${i + 1}: ${question.text || question.question}</h4>
+                        <p>Câu trả lời của bạn: <strong>${answer.userAnswer || 'Không trả lời'}</strong></p>
+                        <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                        <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
+                        ${answer.answerTime ? `<p>Thời gian trả lời: <strong>${answer.answerTime}s</strong></p>` : ''}
+                    `;
+                } else {
+                    // Không có câu trả lời (câu hỏi bị bỏ qua)
+                    div.className = 'question-review-item unanswered';
+                    
+                    div.innerHTML = `
+                        <h4>Câu ${i + 1}: ${question.text || question.question}</h4>
+                        <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
+                        <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                        <p>Điểm: <strong>0</strong></p>
+                        <p>Thời gian trả lời: <strong>Không trả lời</strong></p>
+                    `;
+                }
                 
                 answersContainer.appendChild(div);
-            });
+            }
             
-            console.log('✅ Đã hiển thị đáp án cho', window.gameAnswers.length, 'câu hỏi');
+            console.log('✅ Đã hiển thị đáp án cho tất cả', window.allQuestions.length, 'câu hỏi');
         }
         
         // Simulate question data
@@ -594,8 +618,28 @@
                 }
             ];
             
+            // Tạo dữ liệu câu hỏi giả lập (12 câu)
+            const mockAllQuestions = [
+                { id: 1, text: 'Thủ đô của Việt Nam là gì?', answer: 'Hà Nội' },
+                { id: 2, text: 'Thủ đô của Trung Quốc là gì?', answer: 'Bắc Kinh' },
+                { id: 3, text: 'Thủ đô của Pháp là gì?', answer: 'Paris' },
+                { id: 4, text: 'Thủ đô của Đức là gì?', answer: 'Berlin' },
+                { id: 5, text: 'Thủ đô của Ý là gì?', answer: 'Roma' },
+                { id: 6, text: 'Thủ đô của Tây Ban Nha là gì?', answer: 'Madrid' },
+                { id: 7, text: 'Thủ đô của Nhật Bản là gì?', answer: 'Tokyo' },
+                { id: 8, text: 'Thủ đô của Hàn Quốc là gì?', answer: 'Seoul' },
+                { id: 9, text: 'Thủ đô của Thái Lan là gì?', answer: 'Bangkok' },
+                { id: 10, text: 'Thủ đô của Anh là gì?', answer: 'London' },
+                { id: 11, text: 'Thủ đô của Nga là gì?', answer: 'Moscow' },
+                { id: 12, text: 'Thủ đô của Canada là gì?', answer: 'Ottawa' }
+            ];
+            
+            const mockMyQuestionOrder = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+            
             // Gán dữ liệu test
             window.gameAnswers = mockGameAnswers;
+            window.allQuestions = mockAllQuestions;
+            window.myQuestionOrder = mockMyQuestionOrder;
             
             // Gọi hàm hiển thị đáp án
             if (typeof showQuestionReview === 'function') {

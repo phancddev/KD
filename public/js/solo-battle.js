@@ -517,24 +517,44 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Tạo danh sách xem lại câu hỏi
         questionReviewListEl.innerHTML = '';
-        userAnswers.forEach((answer, index) => {
+        
+        // Hiển thị đáp án cho tất cả câu hỏi
+        for (let i = 0; i < questions.length; i++) {
             const div = document.createElement('div');
-            div.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
+            const question = questions[i];
             
-            let answerText = 'Không trả lời';
-            if (answer.userAnswer !== null) {
-                answerText = answer.userAnswer;
+            // Tìm câu trả lời tương ứng (nếu có)
+            const answer = userAnswers.find(a => a.questionId === question.id);
+            
+            if (answer) {
+                // Có câu trả lời
+                div.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
+                
+                let answerText = 'Không trả lời';
+                if (answer.userAnswer !== null) {
+                    answerText = answer.userAnswer;
+                }
+                
+                div.innerHTML = `
+                    <h4>Câu ${i + 1}: ${answer.questionText}</h4>
+                    <p>Câu trả lời của bạn: <strong>${answerText}</strong></p>
+                    <p>Câu trả lời đúng: <strong>${answer.correctAnswer}</strong></p>
+                    <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
+                `;
+            } else {
+                // Không có câu trả lời (câu hỏi bị bỏ qua)
+                div.className = 'question-review-item unanswered';
+                
+                div.innerHTML = `
+                    <h4>Câu ${i + 1}: ${question.text}</h4>
+                    <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
+                    <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                    <p>Điểm: <strong>0</strong></p>
+                `;
             }
             
-            div.innerHTML = `
-                <h4>Câu ${index + 1}: ${answer.questionText}</h4>
-                <p>Câu trả lời của bạn: ${answerText}</p>
-                <p>Câu trả lời đúng: ${answer.correctAnswer}</p>
-                <p>Điểm: ${answer.isCorrect ? '10' : '0'}</p>
-            `;
-            
             questionReviewListEl.appendChild(div);
-        });
+        }
     }
     
     // Lưu kết quả trận đấu solo vào server
