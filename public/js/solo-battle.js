@@ -16,11 +16,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Audio element for battle sound
     const battleSound = document.getElementById('battle-sound');
+    const preBattleSound = document.getElementById('pre-battle-sound');
     const soundToggleBtn = document.getElementById('sound-toggle');
     const soundIcon = document.getElementById('sound-icon');
     
+    // Countdown popup elements
+    const countdownPopup = document.getElementById('countdown-popup');
+    const countdownNumber = document.getElementById('countdown-number');
+    
     // Biến để theo dõi trạng thái âm thanh
     let soundEnabled = true;
+    
+    // Biến để theo dõi trạng thái đếm ngược
+    let isCountdownActive = false;
     
     // Hàm để kiểm tra và chuẩn bị âm thanh
     function prepareBattleSound() {
@@ -29,6 +37,12 @@ document.addEventListener('DOMContentLoaded', function() {
             battleSound.volume = 0.7;
             // Preload âm thanh
             battleSound.load();
+        }
+        if (preBattleSound) {
+            // Đặt âm lượng mặc định
+            preBattleSound.volume = 0.7;
+            // Preload âm thanh
+            preBattleSound.load();
         }
     }
     
@@ -55,6 +69,52 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Chuẩn bị âm thanh khi trang load
     prepareBattleSound();
+    
+    // Hàm hiển thị popup đếm ngược 5 giây
+    function showCountdownPopup() {
+        if (!soundEnabled || isCountdownActive) return;
+        
+        isCountdownActive = true;
+        
+        // Hiển thị popup
+        countdownPopup.style.display = 'flex';
+        countdownNumber.textContent = '5';
+        
+        // Phát âm thanh pre-battle
+        if (preBattleSound) {
+            preBattleSound.currentTime = 0;
+            preBattleSound.volume = 0.7;
+            preBattleSound.play().catch(error => {
+                console.log('Không thể phát âm thanh pre-battle:', error);
+            });
+        }
+        
+        // Tranh thủ gọi câu hỏi về trong lúc đếm ngược
+        console.log('🔄 Đang chuẩn bị câu hỏi trong lúc đếm ngược...');
+        
+        // Chuẩn bị câu hỏi đầu tiên ngay lập tức
+        if (questions.length > 0) {
+            showQuestion(currentQuestionIndex);
+        }
+        
+        // Đếm ngược từ 5 đến 1
+        let count = 5;
+        const countdownInterval = setInterval(() => {
+            count--;
+            countdownNumber.textContent = count;
+            
+            if (count <= 0) {
+                clearInterval(countdownInterval);
+                isCountdownActive = false;
+                // Ẩn popup sau 1 giây
+                setTimeout(() => {
+                    countdownPopup.style.display = 'none';
+                    // Bắt đầu trận đấu ngay lập tức với câu hỏi đã sẵn sàng
+                    startTimer();
+                }, 1000);
+            }
+        }, 1000);
+    }
     
     // Biến lưu thông tin người dùng
     let userId;
@@ -134,12 +194,17 @@ document.addEventListener('DOMContentLoaded', function() {
             battleSound.pause();
             battleSound.currentTime = 0;
         }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
+        }
         
         // Reset trạng thái trò chơi
         currentQuestionIndex = 0;
         playerScore = 0;
         userAnswers = [];
         totalTimeRemaining = 60; // Khôi phục thời gian tổng
+        isCountdownActive = false; // Reset trạng thái đếm ngược
         
         // Reset giao diện
         soloBattleRoom.style.display = 'block';
@@ -184,11 +249,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Chỉ bắt đầu đếm giờ tổng ở câu hỏi đầu tiên
         if (index === 0) {
-            startTimer();
+            // Không gọi startTimer() ở đây nữa, sẽ gọi sau khi đếm ngược
+            // Chỉ hiển thị câu hỏi
         }
         
         // Focus vào input để người dùng có thể nhập ngay
         answerInput.focus();
+        
+        // Nếu là câu hỏi đầu tiên, bắt đầu đếm ngược
+        if (index === 0) {
+            showCountdownPopup();
+        }
     }
     
     // Trả lời câu hỏi
@@ -276,6 +347,10 @@ document.addEventListener('DOMContentLoaded', function() {
             battleSound.pause();
             battleSound.currentTime = 0;
         }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
+        }
         
         // Lưu tất cả câu hỏi còn lại như không trả lời
         for (let i = currentQuestionIndex; i < questions.length; i++) {
@@ -340,6 +415,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (battleSound) {
             battleSound.pause();
             battleSound.currentTime = 0;
+        }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
         }
         
         // Cập nhật điểm số

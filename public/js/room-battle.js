@@ -20,19 +20,56 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Audio element for battle sound
     const battleSound = document.getElementById('battle-sound');
+    const preBattleSound = document.getElementById('pre-battle-sound');
     const soundToggleBtn = document.getElementById('sound-toggle');
     const soundIcon = document.getElementById('sound-icon');
+    
+    // Battle countdown elements
+    const battleCountdown = document.getElementById('battle-countdown');
+    const battleCountdownNumber = document.getElementById('battle-countdown-number');
+    
+    // Debug: Kiểm tra các element
+    console.log('🔍 battleCountdown:', battleCountdown);
+    console.log('🔍 battleCountdownNumber:', battleCountdownNumber);
+    console.log('🔍 battleSound:', battleSound);
+    console.log('🔍 preBattleSound:', preBattleSound);
+    
+    // Kiểm tra xem các element có tồn tại không
+    if (!battleCountdown) {
+        console.error('❌ battleCountdown không tìm thấy!');
+    }
+    if (!battleCountdownNumber) {
+        console.error('❌ battleCountdownNumber không tìm thấy!');
+    }
     
     // Biến để theo dõi trạng thái âm thanh
     let soundEnabled = true;
     
+    // Biến để theo dõi trạng thái đếm ngược
+    let isCountdownActive = false;
+    
     // Hàm để kiểm tra và chuẩn bị âm thanh
     function prepareBattleSound() {
+        console.log('🔊 prepareBattleSound được gọi');
+        
         if (battleSound) {
             // Đặt âm lượng mặc định
             battleSound.volume = 0.7;
             // Preload âm thanh
             battleSound.load();
+            console.log('✅ battleSound đã được chuẩn bị');
+        } else {
+            console.log('❌ battleSound không tồn tại');
+        }
+        
+        if (preBattleSound) {
+            // Đặt âm lượng mặc định
+            preBattleSound.volume = 0.7;
+            // Preload âm thanh
+            preBattleSound.load();
+            console.log('✅ preBattleSound đã được chuẩn bị');
+        } else {
+            console.log('❌ preBattleSound không tồn tại');
         }
     }
     
@@ -55,12 +92,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listener cho nút bật/tắt âm thanh
     if (soundToggleBtn) {
         soundToggleBtn.addEventListener('click', toggleSound);
+        console.log('✅ Event listener cho soundToggleBtn đã được thêm');
+    } else {
+        console.log('❌ soundToggleBtn không tìm thấy');
     }
     
     // Chuẩn bị âm thanh khi trang load
+    console.log('🚀 Chuẩn bị âm thanh khi trang load...');
     prepareBattleSound();
     
-    // Khởi tạo biến
+    // Khởi tạo biến TRƯỚC khi định nghĩa các hàm
     let socket;
     let userId;
     let username;
@@ -77,13 +118,116 @@ document.addEventListener('DOMContentLoaded', function() {
     let gameFinished = false;
     let gameAnswers = []; // Lưu câu trả lời local
     
+    // Hàm hiển thị countdown 5 giây trực tiếp trong battle room
+    function showBattleCountdown() {
+        console.log('🎯 showBattleCountdown được gọi!');
+        console.log('🔊 soundEnabled:', soundEnabled);
+        console.log('⏰ isCountdownActive:', isCountdownActive);
+        console.log('📚 allQuestions length:', allQuestions.length);
+        console.log('🔢 myQuestionOrder:', myQuestionOrder);
+        console.log('📍 currentQuestionIndex:', currentQuestionIndex);
+        
+        if (!soundEnabled || isCountdownActive) {
+            console.log('❌ Không thể hiện countdown - soundEnabled:', soundEnabled, 'isCountdownActive:', isCountdownActive);
+            return;
+        }
+        
+        // Kiểm tra xem có câu hỏi không
+        if (allQuestions.length === 0) {
+            console.log('❌ Không thể hiện countdown - chưa có câu hỏi');
+            return;
+        }
+        
+        // Kiểm tra xem các element có tồn tại không
+        if (!battleCountdown) {
+            console.error('❌ battleCountdown không tồn tại!');
+            return;
+        }
+        if (!battleCountdownNumber) {
+            console.error('❌ battleCountdownNumber không tìm thấy!');
+            return;
+        }
+        
+        isCountdownActive = true;
+        console.log('✅ Bắt đầu hiển thị countdown 5 giây!');
+        
+        // Hiển thị countdown
+        battleCountdown.style.display = 'flex';
+        battleCountdownNumber.textContent = '5';
+        console.log('📱 Countdown đã hiện, số đếm: 5');
+        
+        // Phát âm thanh pre-battle ngay lập tức
+        if (preBattleSound) {
+            preBattleSound.currentTime = 0;
+            preBattleSound.volume = 0.7;
+            preBattleSound.play().catch(error => {
+                console.log('❌ Không thể phát âm thanh pre-battle:', error);
+            });
+            console.log('🔊 Đang phát âm thanh pre-battle...');
+        } else {
+            console.log('❌ preBattleSound không tồn tại!');
+            console.error('❌ preBattleSound element không tìm thấy!');
+        }
+        
+        // Tranh thủ gọi câu hỏi về trong lúc đếm ngược
+        console.log('🔄 Đang chuẩn bị câu hỏi trong lúc đếm ngược...');
+        
+        // Chuẩn bị câu hỏi đầu tiên ngay lập tức
+        const questionIndex = myQuestionOrder[currentQuestionIndex];
+        const question = allQuestions[questionIndex];
+        console.log('✅ Chuẩn bị câu hỏi đầu tiên:', question);
+        console.log('🔢 questionIndex:', questionIndex);
+        console.log('📚 question object:', question);
+        
+        if (question) {
+            showQuestion({
+                questionNumber: currentQuestionIndex + 1,
+                totalQuestions: allQuestions.length,
+                question: question,
+                totalTimeLeft: totalTimeRemaining
+            });
+        } else {
+            console.error('❌ Không thể lấy câu hỏi từ allQuestions!');
+        }
+        
+        // Đếm ngược từ 5 giây
+        let count = 5;
+        const countdownInterval = setInterval(() => {
+            count--;
+            battleCountdownNumber.textContent = count;
+            console.log('⏰ Đếm ngược:', count);
+            
+            if (count <= 0) {
+                clearInterval(countdownInterval);
+                isCountdownActive = false;
+                console.log('✅ Đếm ngược hoàn thành, ẩn countdown sau 1 giây...');
+                // Ẩn countdown sau 1 giây
+                setTimeout(() => {
+                    if (battleCountdown) {
+                        battleCountdown.style.display = 'none';
+                        console.log('📱 Countdown đã ẩn, bắt đầu trận đấu...');
+                        // Bắt đầu trận đấu ngay lập tức với câu hỏi đã sẵn sàng
+                        startTotalTimer();
+                    } else {
+                        console.error('❌ battleCountdown không tồn tại khi ẩn!');
+                    }
+                }, 1000);
+            }
+        }, 1000);
+    }
+    
     // Kết nối Socket.IO
     function connectSocket() {
         socket = io();
         
         // Xử lý sự kiện khi người tham gia mới vào phòng
         socket.on('participant_joined', function(data) {
+            console.log('👥 Người tham gia mới vào phòng:', data);
             renderParticipants(data.participants);
+            
+            // Preload sound khi tham gia phòng
+            console.log('🔊 Preload sound khi tham gia phòng...');
+            prepareBattleSound();
         });
         
         // Xử lý sự kiện khi người tham gia ngắt kết nối
@@ -93,13 +237,66 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Xử lý sự kiện khi trò chơi sắp bắt đầu
         socket.on('game_starting', function(data) {
-            showCountdown(data.countDown);
+            console.log('🎮 Event game_starting được nhận:', data);
+            console.log('⏰ countDown:', data.countDown);
+            console.log('📚 allQuestions length hiện tại:', allQuestions.length);
+            
+            // Giữ nguyên ở trang phòng chờ để load sound trong 3 giây
+            console.log('📱 Giữ nguyên ở trang phòng chờ để load sound...');
+            
+            // Hiển thị thông báo đang load
+            const waitingRoom = document.getElementById('waiting-room');
+            const loadingMessage = document.createElement('div');
+            loadingMessage.className = 'loading-message';
+            loadingMessage.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <h3>Đang chuẩn bị trận đấu...</h3>
+                    <p>Vui lòng chờ trong giây lát</p>
+                </div>
+            `;
+            waitingRoom.appendChild(loadingMessage);
+            
+            // Load sound trong 3 giây
+            console.log('🔊 Bắt đầu load sound trong 3 giây...');
+            setTimeout(() => {
+                console.log('✅ Đã load sound xong, chuyển vào trang thi đấu...');
+                
+                // Xóa thông báo loading
+                if (loadingMessage.parentNode) {
+                    loadingMessage.parentNode.removeChild(loadingMessage);
+                }
+                
+                // Chuyển vào trang thi đấu
+                waitingRoom.style.display = 'none';
+                battleRoom.style.display = 'block';
+                
+                // Hiển thị nút kết thúc game cho chủ phòng
+                if (roomInfo.creator && endGameBtn) {
+                    endGameBtn.style.display = 'block';
+                }
+                
+                // Reset điểm số
+                playerScore = 0;
+                document.getElementById('user-score').textContent = '0';
+                
+                console.log('✅ Đã chuyển sang phòng thi đấu, chờ event new_question_start...');
+            }, 3000);
         });
         
         // Xử lý sự kiện khi có câu hỏi mới (approach mới)
         socket.on('new_question_start', function(data) {
             console.log('📨 Nhận event new_question_start:', data);
+            console.log('📚 questionData length:', data.questionData?.length);
+            console.log('📚 allQuestions length trước khi cập nhật:', allQuestions.length);
+            
             handleNewQuestionStart(data);
+            
+            console.log('📚 allQuestions length sau khi cập nhật:', allQuestions.length);
+            
+            // Gọi ngay countdown 5 giây + sound pre cho tất cả người chơi
+            console.log('🎯 Gọi ngay showBattleCountdown cho tất cả người chơi...');
+            showBattleCountdown();
         });
         
         // Xử lý sự kiện cập nhật timer
@@ -304,6 +501,13 @@ document.addEventListener('DOMContentLoaded', function() {
             battleSound.pause();
             battleSound.currentTime = 0;
         }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
+        }
+        
+        // Reset trạng thái đếm ngược
+        isCountdownActive = false;
         
         // Quay lại trang chủ
         window.location.href = '/';
@@ -339,40 +543,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Không thể bắt đầu trò chơi: ' + response.error);
             }
         });
-    }
-    
-    // Hiển thị đếm ngược
-    function showCountdown(seconds) {
-        // Ẩn phòng chờ, hiển thị phòng thi đấu
-        waitingRoom.style.display = 'none';
-        battleRoom.style.display = 'block';
-        
-        // Hiển thị nút kết thúc game cho chủ phòng
-        if (roomInfo.creator && endGameBtn) {
-            endGameBtn.style.display = 'block';
-        }
-        
-        // Reset điểm số
-        playerScore = 0;
-        document.getElementById('user-score').textContent = '0';
-        
-        // Tạo phần tử đếm ngược
-        const countdownEl = document.createElement('div');
-        countdownEl.className = 'countdown';
-        countdownEl.textContent = seconds;
-        battleRoom.appendChild(countdownEl);
-        
-        // Đếm ngược
-        let count = seconds;
-        const countInterval = setInterval(() => {
-            count--;
-            countdownEl.textContent = count;
-            
-            if (count <= 0) {
-                clearInterval(countInterval);
-                battleRoom.removeChild(countdownEl);
-            }
-        }, 1000);
     }
     
     // Thêm event listener cho nút submit answer
@@ -567,30 +737,18 @@ document.addEventListener('DOMContentLoaded', function() {
         allQuestions = data.questionData;
         myQuestionOrder = shuffleArray([...Array(allQuestions.length).keys()]);
         console.log('🔀 Thứ tự câu hỏi của tôi:', myQuestionOrder);
+        console.log('📚 allQuestions sau khi cập nhật:', allQuestions);
+        
+        // Khởi tạo mảng câu trả lời với cấu trúc giống solo-battle
+        gameAnswers = [];
         
         currentQuestionIndex = 0; // Reset về câu đầu tiên
         gameStartTime = Date.now();
         gameFinished = false;
         
-        // Bắt đầu timer 60 giây tổng
-        startTotalTimer();
-        
-        // Hiển thị câu hỏi đầu tiên
-        const questionIndex = myQuestionOrder[currentQuestionIndex];
-        const question = allQuestions[questionIndex];
-        
-        console.log('📋 Hiển thị câu hỏi đầu tiên:', {
-            currentQuestionIndex: currentQuestionIndex + 1,
-            questionIndex,
-            question: question
-        });
-        
-        showQuestion({
-            questionNumber: currentQuestionIndex + 1,
-            totalQuestions: allQuestions.length,
-            question: question,
-            totalTimeLeft: totalTimeRemaining
-        });
+        // Không cần gọi showBattleCountdown ở đây nữa, sẽ được gọi từ event listener
+        // để đảm bảo đồng loạt cho tất cả người chơi
+        console.log('✅ handleNewQuestionStart hoàn thành, countdown sẽ được gọi từ event listener...');
     }
     
     // Bắt đầu timer 60 giây tổng (từ solo battle)
@@ -604,8 +762,11 @@ document.addEventListener('DOMContentLoaded', function() {
             battleSound.volume = 0.7; // Đặt âm lượng 70%
             battleSound.loop = true; // Lặp lại để phát trong 60 giây
             battleSound.play().catch(error => {
-                console.log('Không thể phát nhạc:', error);
+                console.log('❌ Không thể phát nhạc battle:', error);
             });
+            console.log('🔊 Đang phát nhạc battle...');
+        } else {
+            console.log('❌ Không thể phát nhạc battle - battleSound:', !!battleSound, 'soundEnabled:', soundEnabled);
         }
         
         if (timerInterval) {
@@ -631,10 +792,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
     
-    // Cập nhật hiển thị timer
-    function updateTimer(timeLeft) {
-        document.getElementById('total-timer').textContent = timeLeft;
-    }
+    // Cập nhật hiển thị timer (đã được định nghĩa ở dưới)
+    // function updateTimer(timeLeft) {
+    //     document.getElementById('total-timer').textContent = timeLeft;
+    // }
     
     // Xử lý khi hết thời gian tổng (LOCAL TIMER)
     function handleGameTimeout() {
@@ -652,6 +813,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (battleSound) {
             battleSound.pause();
             battleSound.currentTime = 0;
+            console.log('🔇 Đã dừng nhạc battle');
+        }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
+            console.log('🔇 Đã dừng nhạc pre-battle');
         }
         
         // Vô hiệu hóa input và nút trả lời
@@ -689,6 +856,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (battleSound) {
             battleSound.pause();
             battleSound.currentTime = 0;
+            console.log('🔇 Đã dừng nhạc battle trong finishMyGame');
+        }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
+            console.log('🔇 Đã dừng nhạc pre-battle trong finishMyGame');
         }
         
         const completionTime = Math.floor((Date.now() - gameStartTime) / 1000);
@@ -853,6 +1026,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (battleSound) {
             battleSound.pause();
             battleSound.currentTime = 0;
+            console.log('🔇 Đã dừng nhạc battle trong showResults');
+        }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
+            console.log('🔇 Đã dừng nhạc pre-battle trong showResults');
         }
         
         // Hiển thị bảng kết quả với thời gian hoàn thành
@@ -874,6 +1053,49 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             resultTableBodyEl.appendChild(tr);
         });
+        
+        // Hiển thị đáp án từng câu của người chơi hiện tại
+        showQuestionReview();
+    }
+    
+    // Hiển thị đáp án từng câu của người chơi
+    function showQuestionReview() {
+        console.log('📚 Hiển thị đáp án từng câu...');
+        console.log('📚 gameAnswers:', gameAnswers);
+        console.log('📚 allQuestions:', allQuestions);
+        
+        const questionReviewListEl = document.getElementById('question-review-list');
+        if (!questionReviewListEl) {
+            console.error('❌ Không tìm thấy question-review-list element!');
+            return;
+        }
+        
+        // Xóa nội dung cũ
+        questionReviewListEl.innerHTML = '';
+        
+        // Kiểm tra xem có câu trả lời không
+        if (!gameAnswers || gameAnswers.length === 0) {
+            questionReviewListEl.innerHTML = '<p class="text-muted">Không có câu trả lời nào để hiển thị.</p>';
+            return;
+        }
+        
+        // Hiển thị từng câu trả lời theo thứ tự đã trả lời
+        gameAnswers.forEach((answer, index) => {
+            const div = document.createElement('div');
+            div.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
+            
+            div.innerHTML = `
+                <h4>Câu ${index + 1}: ${answer.questionText || `Câu hỏi ${index + 1}`}</h4>
+                <p>Câu trả lời của bạn: <strong>${answer.userAnswer || 'Không trả lời'}</strong></p>
+                <p>Câu trả lời đúng: <strong>${answer.correctAnswer || 'Không có đáp án'}</strong></p>
+                <p>Điểm: <strong>${answer.isCorrect ? '10' : '0'}</strong></p>
+                ${answer.answerTime ? `<p>Thời gian trả lời: <strong>${answer.answerTime}s</strong></p>` : ''}
+            `;
+            
+            questionReviewListEl.appendChild(div);
+        });
+        
+        console.log('✅ Đã hiển thị đáp án cho', gameAnswers.length, 'câu hỏi');
     }
     
     // Kết thúc phòng (chủ phòng)
@@ -910,9 +1132,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Hiển thị thông báo
-    function showNotification(message) {
+    function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        notification.className = 'notification';
+        notification.className = `notification notification-${type}`;
         notification.textContent = message;
         
         document.body.appendChild(notification);

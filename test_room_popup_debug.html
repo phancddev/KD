@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Room Battle Popup Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .countdown-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(220, 53, 69, 0.9);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            animation: popupFadeIn 0.3s ease-out;
+        }
+        
+        .countdown-content {
+            text-align: center;
+        }
+        
+        .countdown-number {
+            font-size: 120px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            animation: countdownPulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes popupFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes countdownPulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+        
+        .debug-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-warning { background: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔍 Test Room Battle Popup Debug</h1>
+        
+        <div class="test-section">
+            <h3>🎯 Test Popup Countdown</h3>
+            <button id="test-popup-btn" class="btn">Test Popup 5 Giây</button>
+            <button id="test-sound-btn" class="btn">Test Âm Thanh Pre</button>
+            <button id="test-battle-btn" class="btn">Test Âm Thanh Battle</button>
+            <button id="reset-btn" class="btn btn-danger">Reset</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Trạng thái hiện tại</h3>
+            <div class="debug-info">
+                <div><span class="status-indicator" id="popup-status"></span>Popup Element: <span id="popup-status-text">Chưa kiểm tra</span></div>
+                <div><span class="status-indicator" id="sound-status"></span>Âm Thanh Element: <span id="sound-status-text">Chưa kiểm tra</span></div>
+                <div><span class="status-indicator" id="countdown-status"></span>Countdown Status: <span id="countdown-status-text">Chưa kiểm tra</span></div>
+                <div>Sound Enabled: <span id="sound-enabled-text">true</span></div>
+                <div>Is Countdown Active: <span id="countdown-active-text">false</span></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 Console Log</h3>
+            <div id="console-log" class="debug-info" style="max-height: 200px; overflow-y: auto;">
+                <div>Console log sẽ hiện ở đây...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Countdown popup -->
+    <div id="countdown-popup" class="countdown-popup">
+        <div class="countdown-content">
+            <div class="countdown-number" id="countdown-number">5</div>
+        </div>
+    </div>
+    
+    <!-- Audio elements -->
+    <audio id="battle-sound" preload="auto">
+        <source src="/sounds/soudKD.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="pre-battle-sound" preload="auto">
+        <source src="/sounds/pre_KD.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script>
+        // Console log override để hiển thị trong UI
+        const originalLog = console.log;
+        const consoleLogDiv = document.getElementById('console-log');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const logEntry = document.createElement('div');
+            logEntry.textContent = new Date().toLocaleTimeString() + ': ' + args.join(' ');
+            consoleLogDiv.appendChild(logEntry);
+            consoleLogDiv.scrollTop = consoleLogDiv.scrollHeight;
+        };
+        
+        // Get elements
+        const countdownPopup = document.getElementById('countdown-popup');
+        const countdownNumber = document.getElementById('countdown-number');
+        const battleSound = document.getElementById('battle-sound');
+        const preBattleSound = document.getElementById('pre-battle-sound');
+        
+        // State variables
+        let soundEnabled = true;
+        let isCountdownActive = false;
+        
+        // Update status display
+        function updateStatus() {
+            // Popup status
+            const popupStatus = document.getElementById('popup-status');
+            const popupStatusText = document.getElementById('popup-status-text');
+            if (countdownPopup) {
+                popupStatus.className = 'status-indicator status-success';
+                popupStatusText.textContent = '✅ Tìm thấy';
+            } else {
+                popupStatus.className = 'status-indicator status-error';
+                popupStatusText.textContent = '❌ Không tìm thấy';
+            }
+            
+            // Sound status
+            const soundStatus = document.getElementById('sound-status');
+            const soundStatusText = document.getElementById('sound-status-text');
+            if (preBattleSound && battleSound) {
+                soundStatus.className = 'status-indicator status-success';
+                soundStatusText.textContent = '✅ Tìm thấy cả hai';
+            } else {
+                soundStatus.className = 'status-indicator status-error';
+                soundStatusText.textContent = '❌ Thiếu element';
+            }
+            
+            // Countdown status
+            const countdownStatus = document.getElementById('countdown-status');
+            const countdownStatusText = document.getElementById('countdown-status-text');
+            if (isCountdownActive) {
+                countdownStatus.className = 'status-indicator status-warning';
+                countdownStatusText.textContent = '⏰ Đang đếm ngược';
+            } else {
+                countdownStatus.className = 'status-indicator status-success';
+                countdownStatusText.textContent = '✅ Sẵn sàng';
+            }
+            
+            // Other status
+            document.getElementById('sound-enabled-text').textContent = soundEnabled;
+            document.getElementById('countdown-active-text').textContent = isCountdownActive;
+        }
+        
+        // Show countdown popup function (copy from room-battle.js)
+        function showCountdownPopup() {
+            console.log('🎯 showCountdownPopup được gọi!');
+            console.log('🔊 soundEnabled:', soundEnabled);
+            console.log('⏰ isCountdownActive:', isCountdownActive);
+            
+            if (!soundEnabled || isCountdownActive) {
+                console.log('❌ Không thể hiện popup - soundEnabled:', soundEnabled, 'isCountdownActive:', isCountdownActive);
+                return;
+            }
+            
+            isCountdownActive = true;
+            console.log('✅ Bắt đầu hiển thị popup đếm ngược!');
+            
+            // Hiển thị popup
+            countdownPopup.style.display = 'flex';
+            countdownNumber.textContent = '5';
+            console.log('📱 Popup đã hiện, số đếm: 5');
+            
+            // Phát âm thanh pre-battle
+            if (preBattleSound) {
+                preBattleSound.currentTime = 0;
+                preBattleSound.volume = 0.7;
+                preBattleSound.play().catch(error => {
+                    console.log('❌ Không thể phát âm thanh pre-battle:', error);
+                });
+                console.log('🔊 Đang phát âm thanh pre-battle...');
+            } else {
+                console.log('❌ preBattleSound không tồn tại!');
+            }
+            
+            // Đếm ngược từ 5 giây
+            let count = 5;
+            const countdownInterval = setInterval(() => {
+                count--;
+                countdownNumber.textContent = count;
+                console.log('⏰ Đếm ngược:', count);
+                
+                if (count <= 0) {
+                    clearInterval(countdownInterval);
+                    isCountdownActive = false;
+                    console.log('✅ Đếm ngược hoàn thành, ẩn popup sau 1 giây...');
+                    // Ẩn popup sau 1 giây
+                    setTimeout(() => {
+                        countdownPopup.style.display = 'none';
+                        console.log('📱 Popup đã ẩn');
+                        updateStatus();
+                    }, 1000);
+                }
+            }, 1000);
+            
+            updateStatus();
+        }
+        
+        // Event listeners
+        document.getElementById('test-popup-btn').addEventListener('click', function() {
+            console.log('🧪 Test popup được click');
+            showCountdownPopup();
+        });
+        
+        document.getElementById('test-sound-btn').addEventListener('click', function() {
+            console.log('🧪 Test âm thanh pre được click');
+            if (preBattleSound) {
+                preBattleSound.currentTime = 0;
+                preBattleSound.volume = 0.7;
+                preBattleSound.play().catch(error => {
+                    console.log('❌ Không thể phát âm thanh pre:', error);
+                });
+                console.log('🔊 Đang phát âm thanh pre...');
+            }
+        });
+        
+        document.getElementById('test-battle-btn').addEventListener('click', function() {
+            console.log('🧪 Test âm thanh battle được click');
+            if (battleSound) {
+                battleSound.currentTime = 0;
+                battleSound.volume = 0.7;
+                battleSound.play().catch(error => {
+                    console.log('❌ Không thể phát âm thanh battle:', error);
+                });
+                console.log('🔊 Đang phát âm thanh battle...');
+            }
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            console.log('🔄 Reset được click');
+            isCountdownActive = false;
+            countdownPopup.style.display = 'none';
+            if (preBattleSound) preBattleSound.pause();
+            if (battleSound) battleSound.pause();
+            updateStatus();
+        });
+        
+        // Initialize
+        console.log('🚀 Test page đã load');
+        console.log('🔍 countdownPopup:', countdownPopup);
+        console.log('🔍 countdownNumber:', countdownNumber);
+        console.log('🔍 battleSound:', battleSound);
+        console.log('🔍 preBattleSound:', preBattleSound);
+        
+        updateStatus();
+    </script>
+</body>
+</html> 
