@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const soundToggleBtn = document.getElementById('sound-toggle');
     const soundIcon = document.getElementById('sound-icon');
     
+    // Âm thanh cho câu trả lời đúng/sai - lấy từ HTML
+    const correctSound = document.getElementById('correct-sound');
+    const wrongSound = document.getElementById('wrong-sound');
+    
     // Countdown popup elements
     const countdownPopup = document.getElementById('countdown-popup');
     const countdownNumber = document.getElementById('countdown-number');
@@ -44,6 +48,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Preload âm thanh
             preBattleSound.load();
         }
+        
+        // Chuẩn bị âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.volume = 0.8;
+            correctSound.load();
+        }
+        if (wrongSound) {
+            wrongSound.volume = 0.8;
+            wrongSound.load();
+        }
     }
     
     // Hàm để bật/tắt âm thanh
@@ -54,10 +68,49 @@ document.addEventListener('DOMContentLoaded', function() {
             if (battleSound) {
                 battleSound.volume = 0.7;
             }
+            if (preBattleSound) {
+                preBattleSound.volume = 0.7;
+            }
+            if (correctSound) {
+                correctSound.volume = 0.8;
+            }
+            if (wrongSound) {
+                wrongSound.volume = 0.8;
+            }
         } else {
             soundIcon.textContent = '🔇';
             if (battleSound) {
                 battleSound.volume = 0;
+            }
+            if (preBattleSound) {
+                preBattleSound.volume = 0;
+            }
+            if (correctSound) {
+                correctSound.volume = 0;
+            }
+            if (wrongSound) {
+                wrongSound.volume = 0;
+            }
+        }
+    }
+    
+    // Hàm phát âm thanh đúng/sai
+    function playAnswerSound(isCorrect) {
+        if (!soundEnabled) return;
+        
+        if (isCorrect) {
+            if (correctSound) {
+                correctSound.currentTime = 0;
+                correctSound.play().catch(error => {
+                    console.log('Không thể phát âm thanh đúng:', error);
+                });
+            }
+        } else {
+            if (wrongSound) {
+                wrongSound.currentTime = 0;
+                wrongSound.play().catch(error => {
+                    console.log('Không thể phát âm thanh sai:', error);
+                });
             }
         }
     }
@@ -199,6 +252,16 @@ document.addEventListener('DOMContentLoaded', function() {
             preBattleSound.currentTime = 0;
         }
         
+        // Dừng âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
+        }
+        
         // Reset trạng thái trò chơi
         currentQuestionIndex = 0;
         playerScore = 0;
@@ -295,9 +358,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             answerResult.textContent = 'Đúng! +10 điểm';
             answerResult.className = 'answer-result correct';
+            playAnswerSound(true); // Phát âm thanh đúng
         } else {
             answerResult.textContent = `Sai! Đáp án đúng: ${question.answer}`;
             answerResult.className = 'answer-result incorrect';
+            playAnswerSound(false); // Phát âm thanh sai
         }
         
         // Lưu câu trả lời
@@ -350,6 +415,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (preBattleSound) {
             preBattleSound.pause();
             preBattleSound.currentTime = 0;
+        }
+        
+        // Dừng âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
         }
         
         // Lưu tất cả câu hỏi còn lại như không trả lời
@@ -419,6 +494,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (preBattleSound) {
             preBattleSound.pause();
             preBattleSound.currentTime = 0;
+        }
+        
+        // Dừng âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
         }
         
         // Cập nhật điểm số

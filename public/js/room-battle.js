@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const soundToggleBtn = document.getElementById('sound-toggle');
     const soundIcon = document.getElementById('sound-icon');
     
+    // Âm thanh cho câu trả lời đúng/sai - lấy từ HTML
+    const correctSound = document.getElementById('correct-sound');
+    const wrongSound = document.getElementById('wrong-sound');
+    
     // Battle countdown elements
     const battleCountdown = document.getElementById('battle-countdown');
     const battleCountdownNumber = document.getElementById('battle-countdown-number');
@@ -71,6 +75,17 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             console.log('❌ preBattleSound không tồn tại');
         }
+        
+        // Chuẩn bị âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.volume = 0.8;
+            correctSound.load();
+        }
+        if (wrongSound) {
+            wrongSound.volume = 0.8;
+            wrongSound.load();
+        }
+        console.log('✅ Âm thanh đúng/sai đã được chuẩn bị');
     }
     
     // Hàm để bật/tắt âm thanh
@@ -81,10 +96,49 @@ document.addEventListener('DOMContentLoaded', function() {
             if (battleSound) {
                 battleSound.volume = 0.7;
             }
+            if (preBattleSound) {
+                preBattleSound.volume = 0.7;
+            }
+            if (correctSound) {
+                correctSound.volume = 0.8;
+            }
+            if (wrongSound) {
+                wrongSound.volume = 0.8;
+            }
         } else {
             soundIcon.textContent = '🔇';
             if (battleSound) {
                 battleSound.volume = 0;
+            }
+            if (preBattleSound) {
+                preBattleSound.volume = 0;
+            }
+            if (correctSound) {
+                correctSound.volume = 0;
+            }
+            if (wrongSound) {
+                wrongSound.volume = 0;
+            }
+        }
+    }
+    
+    // Hàm phát âm thanh đúng/sai
+    function playAnswerSound(isCorrect) {
+        if (!soundEnabled) return;
+        
+        if (isCorrect) {
+            if (correctSound) {
+                correctSound.currentTime = 0;
+                correctSound.play().catch(error => {
+                    console.log('Không thể phát âm thanh đúng:', error);
+                });
+            }
+        } else {
+            if (wrongSound) {
+                wrongSound.currentTime = 0;
+                wrongSound.play().catch(error => {
+                    console.log('Không thể phát âm thanh sai:', error);
+                });
             }
         }
     }
@@ -347,11 +401,47 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Xử lý sự kiện khi trò chơi kết thúc
         socket.on('game_over', function(data) {
+            // Dừng tất cả âm thanh trước khi hiển thị kết quả
+            if (battleSound) {
+                battleSound.pause();
+                battleSound.currentTime = 0;
+            }
+            if (preBattleSound) {
+                preBattleSound.pause();
+                preBattleSound.currentTime = 0;
+            }
+            if (correctSound) {
+                correctSound.pause();
+                correctSound.currentTime = 0;
+            }
+            if (wrongSound) {
+                wrongSound.pause();
+                wrongSound.currentTime = 0;
+            }
+            
             showResults(data.results);
         });
         
         // Xử lý sự kiện khi phòng bị kết thúc
         socket.on('room_ended', function(data) {
+            // Dừng tất cả âm thanh trước khi kết thúc phòng
+            if (battleSound) {
+                battleSound.pause();
+                battleSound.currentTime = 0;
+            }
+            if (preBattleSound) {
+                preBattleSound.pause();
+                preBattleSound.currentTime = 0;
+            }
+            if (correctSound) {
+                correctSound.pause();
+                correctSound.currentTime = 0;
+            }
+            if (wrongSound) {
+                wrongSound.pause();
+                wrongSound.currentTime = 0;
+            }
+            
             alert(data.message);
             window.location.href = '/';
         });
@@ -504,6 +594,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (preBattleSound) {
             preBattleSound.pause();
             preBattleSound.currentTime = 0;
+        }
+        
+        // Dừng âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
         }
         
         // Reset trạng thái đếm ngược
@@ -663,11 +763,17 @@ document.addEventListener('DOMContentLoaded', function() {
             answerResult.className = 'answer-result correct';
             showNotification('Đúng! +10 điểm', 'success');
             console.log('✅ Score updated! Current playerScore:', playerScore);
+            
+            // Phát âm thanh đúng
+            playAnswerSound(true);
         } else {
             answerResult.textContent = `Sai! Đáp án đúng: ${currentQuestion.answer}`;
             answerResult.className = 'answer-result incorrect';
             showNotification('Sai rồi!', 'error');
             console.log('❌ Wrong answer. Current playerScore:', playerScore);
+            
+            // Phát âm thanh sai
+            playAnswerSound(false);
         }
         
         // Lưu câu trả lời local
@@ -818,8 +924,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (preBattleSound) {
             preBattleSound.pause();
             preBattleSound.currentTime = 0;
-            console.log('🔇 Đã dừng nhạc pre-battle');
+            console.log('🔇 Đã dừng nhạm thanh pre-battle');
         }
+        
+        // Dừng âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
+        }
+        console.log('🔇 Đã dừng âm thanh đúng/sai');
         
         // Vô hiệu hóa input và nút trả lời
         const answerInput = document.getElementById('answer-input');
@@ -863,6 +980,17 @@ document.addEventListener('DOMContentLoaded', function() {
             preBattleSound.currentTime = 0;
             console.log('🔇 Đã dừng nhạc pre-battle trong finishMyGame');
         }
+        
+        // Dừng âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
+        }
+        console.log('🔇 Đã dừng âm thanh đúng/sai trong finishMyGame');
         
         const completionTime = Math.floor((Date.now() - gameStartTime) / 1000);
         
@@ -1034,6 +1162,17 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('🔇 Đã dừng nhạc pre-battle trong showResults');
         }
         
+        // Dừng âm thanh đúng/sai
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
+        }
+        console.log('🔇 Đã dừng âm thanh đúng/sai trong showResults');
+        
         // Hiển thị bảng kết quả với thời gian hoàn thành
         resultTableBodyEl.innerHTML = '';
         results.forEach(result => {
@@ -1102,6 +1241,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function endRoom() {
         if (!socket || !roomInfo.code) return;
         
+        // Dừng tất cả âm thanh trước khi kết thúc phòng
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
+        }
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
+        }
+        
         socket.emit('end_room', {
             roomCode: roomInfo.code,
             userId: userId
@@ -1118,6 +1275,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Kết thúc game (chủ phòng)
     function endGame() {
         if (!socket || !roomInfo.code) return;
+        
+        // Dừng tất cả âm thanh trước khi kết thúc game
+        if (battleSound) {
+            battleSound.pause();
+            battleSound.currentTime = 0;
+        }
+        if (preBattleSound) {
+            preBattleSound.pause();
+            preBattleSound.currentTime = 0;
+        }
+        if (correctSound) {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }
+        if (wrongSound) {
+            wrongSound.pause();
+            wrongSound.currentTime = 0;
+        }
         
         socket.emit('end_game', {
             roomCode: roomInfo.code,
