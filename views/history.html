@@ -91,6 +91,49 @@
                             <!-- History items will be dynamically generated -->
                         </tbody>
                     </table>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination-container">
+                        <div class="pagination-info">
+                            <span>Hiển thị <span id="current-range">0-0</span> của <span id="total-items">0</span> trận đấu</span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="first-page" class="pagination-btn" disabled>
+                                <span class="pagination-icon">«</span>
+                                <span class="pagination-text">Đầu</span>
+                            </button>
+                            <button id="prev-page" class="pagination-btn" disabled>
+                                <span class="pagination-icon">‹</span>
+                                <span class="pagination-text">Trước</span>
+                            </button>
+                            
+                            <div class="page-input-container">
+                                <span>Trang</span>
+                                <input type="number" id="page-input" min="1" value="1" class="page-input">
+                                <span>của <span id="total-pages">1</span></span>
+                            </div>
+                            
+                            <button id="next-page" class="pagination-btn">
+                                <span class="pagination-text">Sau</span>
+                                <span class="pagination-icon">›</span>
+                            </button>
+                            <button id="last-page" class="pagination-btn">
+                                <span class="pagination-text">Cuối</span>
+                                <span class="pagination-icon">»</span>
+                            </button>
+                        </div>
+                        <div class="pagination-size">
+                            <label for="page-size">Hiển thị:</label>
+                            <select id="page-size" class="page-size-select">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span>trận đấu/trang</span>
+                        </div>
+                    </div>
+                    
                     <div id="no-history" class="no-data" style="display: none;">
                         <p>Bạn chưa có trận đấu nào trong tháng này.</p>
                     </div>

@@ -57,14 +57,78 @@
 
             <!-- Actions -->
             <div class="admin-actions">
-                <button id="add-user-btn" class="btn btn-primary">
-                    <i class="fas fa-user-plus"></i> Thêm người dùng
-                </button>
+                <div class="action-group">
+                    <button id="add-user-btn" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Thêm người dùng
+                    </button>
+                    <button id="bulk-delete-btn" class="btn btn-danger" disabled>
+                        <i class="fas fa-trash"></i> Xóa đã chọn (<span id="selected-count">0</span>)
+                    </button>
+                </div>
+                
                 <div class="search-box">
                     <input type="text" id="user-search" placeholder="Tìm kiếm người dùng..." class="form-control">
                     <button id="search-btn" class="btn btn-primary">
                         <i class="fas fa-search"></i>
                     </button>
+                </div>
+            </div>
+
+            <!-- Advanced Delete Options -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-cog"></i> Tùy chọn xóa nâng cao</h2>
+                </div>
+                <div class="card-body">
+                    <div class="advanced-delete-options">
+                        <div class="option-group">
+                            <label>Xóa người dùng tạo tài khoản từ:</label>
+                            <div class="date-range">
+                                <input type="date" id="delete-from-date" class="form-control">
+                                <span>đến</span>
+                                <input type="date" id="delete-to-date" class="form-control">
+                            </div>
+                        </div>
+                        
+                        <div class="option-group">
+                            <label>Xóa người dùng không hoạt động:</label>
+                            <div class="inactive-options">
+                                <select id="inactive-days" class="form-control">
+                                    <option value="30">30 ngày</option>
+                                    <option value="60">60 ngày</option>
+                                    <option value="90">90 ngày</option>
+                                    <option value="180">180 ngày</option>
+                                    <option value="365">1 năm</option>
+                                </select>
+                                <button id="delete-inactive-btn" class="btn btn-warning">
+                                    <i class="fas fa-clock"></i> Xóa người dùng không hoạt động
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="option-group">
+                            <label>Xóa theo trạng thái:</label>
+                            <div class="status-options">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="delete-locked-users">
+                                    <span class="checkbox-text">Chỉ người dùng bị khóa</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="delete-non-admin-users">
+                                    <span class="checkbox-text">Chỉ người dùng không phải admin</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="option-group">
+                            <button id="delete-by-date-btn" class="btn btn-danger">
+                                <i class="fas fa-calendar-times"></i> Xóa theo thời gian
+                            </button>
+                            <button id="preview-delete-btn" class="btn btn-info">
+                                <i class="fas fa-eye"></i> Xem trước danh sách sẽ xóa
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -86,6 +150,12 @@
                         <table class="admin-table">
                             <thead>
                                 <tr>
+                                    <th>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="select-all-users">
+                                            <span class="checkbox-text"></span>
+                                        </label>
+                                    </th>
                                     <th>ID</th>
                                     <th>Họ tên</th>
                                     <th>Username</th>
@@ -103,6 +173,11 @@
                     </div>
                     <div id="no-users" class="no-data" style="display: none;">
                         <p>Không có người dùng nào.</p>
+                    </div>
+                    
+                    <!-- Pagination Info -->
+                    <div class="pagination-info" id="pagination-info">
+                        <!-- Pagination info will be dynamically inserted here -->
                     </div>
                     
                     <!-- Pagination -->
@@ -223,15 +298,20 @@
                 </div>
             </div>
             
-            <h3>Lịch sử đăng nhập</h3>
+            <h3>Lịch sử đăng nhập chi tiết</h3>
             <div class="table-responsive">
                 <table class="admin-table">
                     <thead>
                         <tr>
                             <th>Thời gian</th>
                             <th>Địa chỉ IP</th>
+                            <th>Vị trí</th>
                             <th>Thiết bị</th>
+                            <th>Trình duyệt</th>
+                            <th>Hệ điều hành</th>
                             <th>Trạng thái</th>
+                            <th>Thời gian session</th>
+                            <th>Đáng ngờ</th>
                         </tr>
                     </thead>
                     <tbody id="login-history-table">

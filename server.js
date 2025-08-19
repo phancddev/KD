@@ -8,6 +8,8 @@ import config from './config.js';
 import { testConnection, initDatabase } from './db/index.js';
 import { createUser, findUserByUsername, authenticateUser, isUserAdmin } from './db/users.js';
 import { initSocketIO, getIO, addOnlineUser, removeOnlineUser } from './socket/index.js';
+import { collectDeviceInfo, generateDeviceFingerprint, detectSuspiciousActivity, getIpInfo } from './utils/user-agent-parser.js';
+import { saveLoginLog, updateLogoutLog, saveIpGeolocation } from './db/login-logs.js';
 import adminRoutes from './routes/admin.js';
 import adminApiRoutes from './routes/admin-api.js';
 import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails, createGameSession, finishGameSession } from './db/game-sessions.js';
@@ -92,6 +94,47 @@ app.post('/login', async (req, res) => {
     const user = await authenticateUser(username, password, req.ip);
     
     if (user) {
+      // Thu thập thông tin thiết bị chi tiết
+      const deviceInfo = collectDeviceInfo(req);
+      const deviceFingerprint = generateDeviceFingerprint(deviceInfo);
+      
+      // Lấy thông tin IP geolocation
+      let ipInfo = null;
+      try {
+        ipInfo = await getIpInfo(req.ip);
+        await saveIpGeolocation(ipInfo);
+      } catch (geoError) {
+        console.error('Lỗi khi lấy thông tin IP:', geoError);
+      }
+      
+      // Kiểm tra hoạt động đáng ngờ
+      const suspicious = detectSuspiciousActivity(deviceInfo, []);
+      
+      // Lưu login log chi tiết
+      const logId = await saveLoginLog({
+        userId: user.id,
+        username: user.username,
+        ipAddress: req.ip,
+        userAgent: deviceInfo.userAgent,
+        deviceType: deviceInfo.device.type,
+        browserName: deviceInfo.browser.name,
+        browserVersion: deviceInfo.browser.version,
+        osName: deviceInfo.os.name,
+        osVersion: deviceInfo.os.version,
+        deviceModel: deviceInfo.device.model,
+        country: ipInfo?.country || 'Unknown',
+        city: ipInfo?.city || 'Unknown',
+        timezone: ipInfo?.timezone || 'Unknown',
+        loginStatus: 'success',
+        loginMethod: 'password',
+        sessionId: req.sessionID,
+        isSuspicious: suspicious.isSuspicious,
+        suspiciousReason: suspicious.reasons.join(', ') || null
+      });
+      
+      // Lưu log ID vào session để cập nhật khi logout
+      req.session.loginLogId = logId;
+      
       req.session.user = {
         id: user.id,
         username: user.username,
@@ -104,6 +147,31 @@ app.post('/login', async (req, res) => {
       
       return res.redirect('/');
     } else {
+      // Log đăng nhập thất bại
+      const deviceInfo = collectDeviceInfo(req);
+      const suspicious = detectSuspiciousActivity(deviceInfo, []);
+      
+      await saveLoginLog({
+        userId: null,
+        username: username,
+        ipAddress: req.ip,
+        userAgent: deviceInfo.userAgent,
+        deviceType: deviceInfo.device.type,
+        browserName: deviceInfo.browser.name,
+        browserVersion: deviceInfo.browser.version,
+        osName: deviceInfo.os.name,
+        osVersion: deviceInfo.os.version,
+        deviceModel: deviceInfo.device.model,
+        country: 'Unknown',
+        city: 'Unknown',
+        timezone: 'Unknown',
+        loginStatus: 'failed',
+        loginMethod: 'password',
+        sessionId: null,
+        isSuspicious: suspicious.isSuspicious,
+        suspiciousReason: suspicious.reasons.join(', ') || null
+      });
+      
       return res.redirect('/login?error=2');
     }
   } catch (error) {
@@ -157,9 +225,23 @@ app.post('/register', async (req, res) => {
   }
 });
 
-app.get('/logout', (req, res) => {
+app.get('/logout', async (req, res) => {
   // Lấy thông tin người dùng trước khi xóa session
   const userId = req.session.user?.id;
+  const loginLogId = req.session.loginLogId;
+  
+  // Cập nhật login log nếu có
+  if (loginLogId) {
+    try {
+      const logoutTime = new Date();
+      const loginTime = req.session.user?.loginTime || new Date();
+      const sessionDuration = Math.floor((logoutTime - loginTime) / 1000); // Tính bằng giây
+      
+      await updateLogoutLog(loginLogId, logoutTime, sessionDuration);
+    } catch (error) {
+      console.error('Lỗi khi cập nhật logout log:', error);
+    }
+  }
   
   // Xóa session
   req.session.destroy();

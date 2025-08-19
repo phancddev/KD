@@ -312,8 +312,9 @@ router.get('/users/:userId', checkAdmin, async (req, res) => {
     // Lấy thống kê trận đấu của người dùng
     const stats = await getUserGameStats(userId);
     
-    // Lấy lịch sử đăng nhập của người dùng (giả lập)
-    const loginHistory = global.loginHistory ? global.loginHistory.filter(log => log.userId === userId) : [];
+    // Lấy lịch sử đăng nhập chi tiết từ database
+    const { getUserLoginHistory } = require('../db/login-logs.js');
+    const loginHistory = await getUserLoginHistory(userId, 100, 0);
     
     // Kiểm tra người dùng có đang online không
     const isOnline = global.onlineUsers ? global.onlineUsers.has(userId) : false;
@@ -340,6 +341,199 @@ router.get('/users/:userId', checkAdmin, async (req, res) => {
     res.json(userDetails);
   } catch (error) {
     console.error('Lỗi khi lấy thông tin chi tiết người dùng:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Lấy tất cả login logs
+router.get('/login-logs', checkAdmin, async (req, res) => {
+  try {
+    const { getAllLoginLogs, countLoginLogs } = require('../db/login-logs.js');
+    
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    
+    // Lấy filters từ query params
+    const filters = {
+      userId: req.query.userId ? parseInt(req.query.userId) : null,
+      username: req.query.username || null,
+      ipAddress: req.query.ipAddress || null,
+      deviceType: req.query.deviceType || null,
+      loginStatus: req.query.loginStatus || null,
+      fromDate: req.query.fromDate || null,
+      toDate: req.query.toDate || null,
+      isSuspicious: req.query.isSuspicious !== undefined ? req.query.isSuspicious === 'true' : null
+    };
+    
+    const [logs, total] = await Promise.all([
+      getAllLoginLogs(filters, limit, offset),
+      countLoginLogs(filters)
+    ]);
+    
+    res.json({
+      logs,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy login logs:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Lấy thống kê đăng nhập
+router.get('/login-stats', checkAdmin, async (req, res) => {
+  try {
+    const { getLoginStats } = require('../db/login-logs.js');
+    
+    const filters = {
+      fromDate: req.query.fromDate || null,
+      toDate: req.query.toDate || null
+    };
+    
+    const stats = await getLoginStats(filters);
+    res.json(stats);
+  } catch (error) {
+    console.error('Lỗi khi lấy thống kê đăng nhập:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Xóa người dùng
+router.delete('/users/:userId', checkAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    
+    // Kiểm tra không xóa chính mình
+    if (userId === req.session.user.id) {
+      return res.status(400).json({ error: 'Không thể xóa chính mình' });
+    }
+    
+    const { deleteUser } = require('../db/users.js');
+    const success = await deleteUser(userId);
+    
+    if (success) {
+      res.json({ success: true, message: 'Đã xóa người dùng thành công' });
+    } else {
+      res.status(404).json({ error: 'Không tìm thấy người dùng' });
+    }
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Xóa hàng loạt người dùng
+router.post('/users/bulk-delete', checkAdmin, async (req, res) => {
+  try {
+    const { userIds } = req.body;
+    
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: 'Danh sách người dùng không hợp lệ' });
+    }
+    
+    // Kiểm tra không xóa chính mình
+    if (userIds.includes(req.session.user.id)) {
+      return res.status(400).json({ error: 'Không thể xóa chính mình' });
+    }
+    
+    const { deleteUsers } = require('../db/users.js');
+    const result = await deleteUsers(userIds);
+    
+    res.json({ 
+      success: true, 
+      deletedCount: result.deletedCount,
+      message: `Đã xóa ${result.deletedCount} người dùng thành công`
+    });
+  } catch (error) {
+    console.error('Lỗi khi xóa hàng loạt người dùng:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Xóa người dùng theo thời gian
+router.post('/users/delete-by-date', checkAdmin, async (req, res) => {
+  try {
+    const { fromDate, toDate, onlyLocked, onlyNonAdmin } = req.body;
+    
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ error: 'Thiếu thông tin thời gian' });
+    }
+    
+    const { deleteUsersByDate } = require('../db/users.js');
+    const result = await deleteUsersByDate({
+      fromDate,
+      toDate,
+      onlyLocked: onlyLocked || false,
+      onlyNonAdmin: onlyNonAdmin || false,
+      excludeUserId: req.session.user.id // Không xóa chính mình
+    });
+    
+    res.json({ 
+      success: true, 
+      deletedCount: result.deletedCount,
+      message: `Đã xóa ${result.deletedCount} người dùng thành công`
+    });
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng theo thời gian:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Xóa người dùng không hoạt động
+router.post('/users/delete-inactive', checkAdmin, async (req, res) => {
+  try {
+    const { inactiveDays, onlyLocked, onlyNonAdmin } = req.body;
+    
+    if (!inactiveDays || inactiveDays < 1) {
+      return res.status(400).json({ error: 'Số ngày không hợp lệ' });
+    }
+    
+    const { deleteInactiveUsers } = require('../db/users.js');
+    const result = await deleteInactiveUsers({
+      inactiveDays: parseInt(inactiveDays),
+      onlyLocked: onlyLocked || false,
+      onlyNonAdmin: onlyNonAdmin || false,
+      excludeUserId: req.session.user.id // Không xóa chính mình
+    });
+    
+    res.json({ 
+      success: true, 
+      deletedCount: result.deletedCount,
+      message: `Đã xóa ${result.deletedCount} người dùng không hoạt động thành công`
+    });
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng không hoạt động:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Xem trước danh sách sẽ xóa
+router.get('/users/preview-delete', checkAdmin, async (req, res) => {
+  try {
+    const { fromDate, toDate, inactiveDays, onlyLocked, onlyNonAdmin } = req.query;
+    
+    const { getUsersForDeletion } = require('../db/users.js');
+    const users = await getUsersForDeletion({
+      fromDate: fromDate || null,
+      toDate: toDate || null,
+      inactiveDays: inactiveDays ? parseInt(inactiveDays) : null,
+      onlyLocked: onlyLocked === 'true',
+      onlyNonAdmin: onlyNonAdmin === 'true',
+      excludeUserId: req.session.user.id
+    });
+    
+    res.json({ 
+      users,
+      totalCount: users.length
+    });
+  } catch (error) {
+    console.error('Lỗi khi xem trước danh sách xóa:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });

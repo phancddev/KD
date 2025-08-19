@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Login Logs - Admin - Hệ thống Thi đấu Kiến thức</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/modern-styles.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <div class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    <span>Admin Panel</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    </li>
+                    <li>
+                        <a href="/admin/questions"><i class="fas fa-question-circle"></i> Quản lý câu hỏi</a>
+                    </li>
+                    <li>
+                        <a href="/admin/users"><i class="fas fa-users"></i> Quản lý người dùng</a>
+                    </li>
+                    <li class="active">
+                        <a href="/admin/login-logs"><i class="fas fa-sign-in-alt"></i> Login Logs</a>
+                    </li>
+                    <li>
+                        <a href="/admin/game-history"><i class="fas fa-history"></i> Lịch sử trận đấu</a>
+                    </li>
+                    <li>
+                        <a href="/"><i class="fas fa-home"></i> Trang chủ</a>
+                    </li>
+                    <li>
+                        <a href="/logout"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="admin-content">
+            <div class="admin-header">
+                <h1><i class="fas fa-sign-in-alt"></i> Quản lý Login Logs</h1>
+                <div class="admin-user">
+                    <span id="admin-name">Admin</span>
+                    <div class="avatar">
+                        <span id="avatar-text">A</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-filter"></i> Bộ lọc</h2>
+                </div>
+                <div class="card-body">
+                    <div class="filters-grid">
+                        <div class="form-group">
+                            <label for="username-filter">Username:</label>
+                            <input type="text" id="username-filter" class="form-control" placeholder="Tìm theo username...">
+                        </div>
+                        <div class="form-group">
+                            <label for="ip-filter">IP Address:</label>
+                            <input type="text" id="ip-filter" class="form-control" placeholder="Tìm theo IP...">
+                        </div>
+                        <div class="form-group">
+                            <label for="device-filter">Thiết bị:</label>
+                            <select id="device-filter" class="form-control">
+                                <option value="">Tất cả</option>
+                                <option value="desktop">Desktop</option>
+                                <option value="mobile">Mobile</option>
+                                <option value="tablet">Tablet</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="status-filter">Trạng thái:</label>
+                            <select id="status-filter" class="form-control">
+                                <option value="">Tất cả</option>
+                                <option value="success">Thành công</option>
+                                <option value="failed">Thất bại</option>
+                                <option value="logout">Đăng xuất</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="from-date">Từ ngày:</label>
+                            <input type="date" id="from-date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="to-date">Đến ngày:</label>
+                            <input type="date" id="to-date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="suspicious-filter">Đáng ngờ:</label>
+                            <select id="suspicious-filter" class="form-control">
+                                <option value="">Tất cả</option>
+                                <option value="true">Có</option>
+                                <option value="false">Không</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button id="apply-filters" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Áp dụng bộ lọc
+                        </button>
+                        <button id="clear-filters" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Xóa bộ lọc
+                        </button>
+                        <button id="export-logs" class="btn btn-outline">
+                            <i class="fas fa-file-csv"></i> Xuất CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-chart-bar"></i> Thống kê tổng quan</h2>
+                </div>
+                <div class="card-body">
+                    <div class="stats-overview" id="stats-overview">
+                        <!-- Stats will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login Logs Table -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-list"></i> Danh sách Login Logs</h2>
+                    <div class="card-actions">
+                        <div class="refresh-btn" id="refresh-logs">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Thời gian</th>
+                                    <th>Username</th>
+                                    <th>IP Address</th>
+                                    <th>Vị trí</th>
+                                    <th>Thiết bị</th>
+                                    <th>Trình duyệt</th>
+                                    <th>Hệ điều hành</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thời gian session</th>
+                                    <th>Đáng ngờ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-table">
+                                <!-- Logs will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination Info -->
+                    <div class="pagination-info" id="pagination-info">
+                        <!-- Pagination info will be dynamically inserted here -->
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="logs-pagination">
+                        <!-- Pagination will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin/login-logs.js"></script>
+</body>
+</html> 

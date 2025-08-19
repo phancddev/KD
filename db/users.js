@@ -170,6 +170,147 @@ async function updateUser(userId, userData) {
   }
 }
 
+// Xóa nhiều người dùng
+async function deleteUsers(userIds) {
+  try {
+    const placeholders = userIds.map(() => '?').join(',');
+    const [result] = await pool.query(
+      `DELETE FROM users WHERE id IN (${placeholders})`,
+      userIds
+    );
+    return { deletedCount: result.affectedRows };
+  } catch (error) {
+    console.error('Lỗi khi xóa nhiều người dùng:', error);
+    throw error;
+  }
+}
+
+// Xóa người dùng theo thời gian
+async function deleteUsersByDate(options) {
+  try {
+    const { fromDate, toDate, onlyLocked, onlyNonAdmin, excludeUserId } = options;
+    
+    let conditions = ['created_at BETWEEN ? AND ?'];
+    let params = [fromDate, toDate];
+    
+    if (onlyLocked) {
+      conditions.push('is_active = 0');
+    }
+    
+    if (onlyNonAdmin) {
+      conditions.push('is_admin = 0');
+    }
+    
+    if (excludeUserId) {
+      conditions.push('id != ?');
+      params.push(excludeUserId);
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    const [result] = await pool.query(
+      `DELETE FROM users WHERE ${whereClause}`,
+      params
+    );
+    
+    return { deletedCount: result.affectedRows };
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng theo thời gian:', error);
+    throw error;
+  }
+}
+
+// Xóa người dùng không hoạt động
+async function deleteInactiveUsers(options) {
+  try {
+    const { inactiveDays, onlyLocked, onlyNonAdmin, excludeUserId } = options;
+    
+    let conditions = ['last_login < DATE_SUB(NOW(), INTERVAL ? DAY) OR last_login IS NULL'];
+    let params = [inactiveDays];
+    
+    if (onlyLocked) {
+      conditions.push('is_active = 0');
+    }
+    
+    if (onlyNonAdmin) {
+      conditions.push('is_admin = 0');
+    }
+    
+    if (excludeUserId) {
+      conditions.push('id != ?');
+      params.push(excludeUserId);
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    const [result] = await pool.query(
+      `DELETE FROM users WHERE ${whereClause}`,
+      params
+    );
+    
+    return { deletedCount: result.affectedRows };
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng không hoạt động:', error);
+    throw error;
+  }
+}
+
+// Lấy danh sách người dùng để xem trước khi xóa
+async function getUsersForDeletion(options) {
+  try {
+    const { fromDate, toDate, inactiveDays, onlyLocked, onlyNonAdmin, excludeUserId } = options;
+    
+    let conditions = [];
+    let params = [];
+    
+    if (fromDate && toDate) {
+      conditions.push('created_at BETWEEN ? AND ?');
+      params.push(fromDate, toDate);
+    }
+    
+    if (inactiveDays) {
+      conditions.push('(last_login < DATE_SUB(NOW(), INTERVAL ? DAY) OR last_login IS NULL)');
+      params.push(inactiveDays);
+    }
+    
+    if (onlyLocked) {
+      conditions.push('is_active = 0');
+    }
+    
+    if (onlyNonAdmin) {
+      conditions.push('is_admin = 0');
+    }
+    
+    if (excludeUserId) {
+      conditions.push('id != ?');
+      params.push(excludeUserId);
+    }
+    
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    const [rows] = await pool.query(
+      `SELECT id, username, full_name, email, is_active, is_admin, created_at, last_login 
+       FROM users ${whereClause} 
+       ORDER BY created_at DESC`,
+      params
+    );
+    
+    return rows.map(row => ({
+      id: row.id,
+      username: row.username,
+      fullName: row.full_name,
+      email: row.email,
+      isActive: row.is_active === 1,
+      isAdmin: row.is_admin === 1,
+      createdAt: row.created_at,
+      lastLogin: row.last_login
+    }));
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách người dùng để xóa:', error);
+    throw error;
+  }
+}
+
 export { 
   createUser, 
   findUserByUsername,
@@ -181,5 +322,9 @@ export {
   resetUserPassword,
   deleteUser,
   updateLastLogin,
-  updateUser
+  updateUser,
+  deleteUsers,
+  deleteUsersByDate,
+  deleteInactiveUsers,
+  getUsersForDeletion
 };

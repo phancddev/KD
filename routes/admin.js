@@ -316,6 +316,20 @@ router.get('/test', (req, res) => {
     res.json({ message: 'Admin router is working!' });
 });
 
+// Route cho login logs
+router.get('/login-logs', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    
+    const isAdmin = await isUserAdmin(req.session.user.id);
+    if (!isAdmin) {
+        return res.redirect('/');
+    }
+    
+    res.sendFile(path.join(__dirname, '../views/admin/login-logs.html'));
+});
+
 // Route test tạm thời để test file import (không cần admin)
 router.post('/test/import', upload.single('csvFile'), async (req, res) => {
     try {

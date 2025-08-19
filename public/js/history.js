@@ -5,12 +5,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Khởi tạo bộ chọn năm
     initYearSelector();
     
+    // Khởi tạo phân trang
+    initPagination();
+    
     // Lấy dữ liệu lịch sử trận đấu
     fetchHistory();
     
     // Xử lý sự kiện khi thay đổi tháng hoặc năm
-    document.getElementById('month-select').addEventListener('change', fetchHistory);
-    document.getElementById('year-select').addEventListener('change', fetchHistory);
+    document.getElementById('month-select').addEventListener('change', function() {
+        resetPagination();
+        fetchHistory();
+    });
+    document.getElementById('year-select').addEventListener('change', function() {
+        resetPagination();
+        fetchHistory();
+    });
     
     // Xử lý đóng modal
     document.querySelector('.close').addEventListener('click', function() {
@@ -25,6 +34,78 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Biến phân trang
+let currentPage = 1;
+let pageSize = 20;
+let totalPages = 1;
+let totalItems = 0;
+let allHistoryData = [];
+
+// Khởi tạo phân trang
+function initPagination() {
+    // Xử lý sự kiện các nút phân trang
+    document.getElementById('first-page').addEventListener('click', () => goToPage(1));
+    document.getElementById('prev-page').addEventListener('click', () => goToPage(currentPage - 1));
+    document.getElementById('next-page').addEventListener('click', () => goToPage(currentPage + 1));
+    document.getElementById('last-page').addEventListener('click', () => goToPage(totalPages));
+    
+    // Xử lý sự kiện ô nhập số trang
+    document.getElementById('page-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const page = parseInt(this.value);
+            if (page >= 1 && page <= totalPages) {
+                goToPage(page);
+            } else {
+                this.value = currentPage;
+            }
+        }
+    });
+    
+    // Xử lý sự kiện thay đổi kích thước trang
+    document.getElementById('page-size').addEventListener('change', function() {
+        pageSize = parseInt(this.value);
+        resetPagination();
+        fetchHistory();
+    });
+}
+
+// Đặt lại phân trang
+function resetPagination() {
+    currentPage = 1;
+    document.getElementById('page-input').value = '1';
+}
+
+// Chuyển đến trang cụ thể
+function goToPage(page) {
+    if (page < 1 || page > totalPages) return;
+    
+    currentPage = page;
+    document.getElementById('page-input').value = page;
+    displayHistory(allHistoryData);
+    updatePaginationControls();
+}
+
+// Cập nhật điều khiển phân trang
+function updatePaginationControls() {
+    const firstBtn = document.getElementById('first-page');
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    const lastBtn = document.getElementById('last-page');
+    
+    // Cập nhật trạng thái nút
+    firstBtn.disabled = currentPage === 1;
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+    lastBtn.disabled = currentPage === totalPages;
+    
+    // Cập nhật thông tin hiển thị
+    const startItem = (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalItems);
+    document.getElementById('current-range').textContent = `${startItem}-${endItem}`;
+    document.getElementById('total-items').textContent = totalItems;
+    document.getElementById('total-pages').textContent = totalPages;
+}
 
 // Lấy thông tin người dùng
 async function fetchUserInfo() {
@@ -71,11 +152,20 @@ async function fetchHistory() {
         
         const data = await response.json();
         
+        // Lưu toàn bộ dữ liệu để phân trang
+        allHistoryData = data.history || [];
+        totalItems = allHistoryData.length;
+        totalPages = Math.ceil(totalItems / pageSize);
+        
         // Hiển thị thống kê người dùng
         displayUserStats(data.stats);
         
-        // Hiển thị lịch sử trận đấu
-        displayHistory(data.history);
+        // Hiển thị lịch sử trận đấu với phân trang
+        displayHistory(allHistoryData);
+        
+        // Cập nhật điều khiển phân trang
+        updatePaginationControls();
+        
     } catch (error) {
         console.error('Lỗi khi lấy lịch sử trận đấu:', error);
     }
@@ -89,7 +179,7 @@ function displayUserStats(stats) {
     document.getElementById('highest-score').textContent = stats.highestScore;
 }
 
-// Hiển thị lịch sử trận đấu
+// Hiển thị lịch sử trận đấu với phân trang
 function displayHistory(history) {
     const tableBody = document.getElementById('history-table-body');
     const noHistoryDiv = document.getElementById('no-history');
@@ -106,8 +196,13 @@ function displayHistory(history) {
     // Ẩn thông báo không có dữ liệu
     noHistoryDiv.style.display = 'none';
     
+    // Tính toán dữ liệu cho trang hiện tại
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, history.length);
+    const currentPageData = history.slice(startIndex, endIndex);
+    
     // Thêm dữ liệu mới
-    history.forEach(game => {
+    currentPageData.forEach(game => {
         const row = document.createElement('tr');
         
         // Thời gian
@@ -145,6 +240,9 @@ function displayHistory(history) {
         
         tableBody.appendChild(row);
     });
+    
+    // Cập nhật điều khiển phân trang
+    updatePaginationControls();
 }
 
 // Hiển thị chi tiết trận đấu

@@ -467,35 +467,176 @@
     color: var(--admin-primary);
 }
 
-/* Pagination */
-.pagination {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
+/* Pagination Info */
+.pagination-info {
+    margin: 1rem 0;
+    text-align: center;
 }
 
-.pagination-item {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: var(--admin-light);
-    color: var(--admin-dark);
+.pagination-info-content {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.pagination-text {
+    font-size: 0.9rem;
+    color: var(--admin-gray-dark);
+    font-weight: 500;
+}
+
+.filtered-info {
+    font-size: 0.8rem;
+    color: var(--admin-primary);
+    background-color: rgba(67, 97, 238, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.no-data-text {
+    color: var(--admin-gray-dark);
+    font-style: italic;
+    margin: 0;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex-wrap: wrap;
+}
+
+.pagination-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--admin-gray);
+    background-color: white;
+    color: var(--admin-dark);
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
-.pagination-item:hover {
-    background-color: rgba(67, 97, 238, 0.1);
-    color: var(--admin-primary);
-}
-
-.pagination-item.active {
+.pagination-btn:hover:not(.disabled) {
     background-color: var(--admin-primary);
     color: white;
+    border-color: var(--admin-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.2);
+}
+
+.pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--admin-gray);
+    color: var(--admin-gray-dark);
+}
+
+.pagination-btn.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.page-input-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--admin-light);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--admin-gray);
+}
+
+.page-label {
+    font-size: 0.9rem;
+    color: var(--admin-gray-dark);
+    font-weight: 500;
+}
+
+.page-input {
+    width: 60px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--admin-gray);
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.page-input:focus {
+    outline: none;
+    border-color: var(--admin-primary);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
+}
+
+.page-total {
+    font-size: 0.9rem;
+    color: var(--admin-gray-dark);
+    font-weight: 500;
+}
+
+.page-size-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--admin-light);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--admin-gray);
+}
+
+.page-size-label {
+    font-size: 0.9rem;
+    color: var(--admin-gray-dark);
+    font-weight: 500;
+}
+
+.page-size-select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--admin-gray);
+    border-radius: 4px;
+    background-color: white;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.page-size-select:focus {
+    outline: none;
+    border-color: var(--admin-primary);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
+}
+
+/* Responsive pagination */
+@media (max-width: 768px) {
+    .pagination {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .page-input-container,
+    .page-size-container {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .pagination-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 /* No Data */
@@ -559,6 +700,202 @@
 
 .info-value {
     font-weight: 500;
+}
+
+/* IP và Device Info */
+.ip-info, .device-info, .browser-info, .os-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.ip-address, .device-type, .browser-name, .os-name {
+    font-weight: 500;
+    color: var(--admin-dark);
+}
+
+.ip-location, .device-model {
+    font-size: 0.8rem;
+    color: var(--admin-gray-dark);
+    font-style: italic;
+}
+
+/* Badge styles */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.badge-success {
+    background-color: var(--admin-success);
+    color: white;
+}
+
+.badge-danger {
+    background-color: var(--admin-danger);
+    color: white;
+}
+
+.badge-warning {
+    background-color: var(--admin-warning);
+    color: white;
+}
+
+.badge-secondary {
+    background-color: var(--admin-gray);
+    color: var(--admin-dark);
+}
+
+/* User Info in Table */
+.user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.username {
+    font-weight: 500;
+    color: var(--admin-dark);
+}
+
+.full-name {
+    font-size: 0.8rem;
+    color: var(--admin-gray-dark);
+    font-style: italic;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.action-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Advanced Delete Options */
+.advanced-delete-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.option-group label {
+    font-weight: 500;
+    color: var(--admin-dark);
+    margin-bottom: 0.5rem;
+}
+
+.date-range {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.date-range span {
+    color: var(--admin-gray-dark);
+    font-weight: 500;
+}
+
+.inactive-options {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.status-options {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Warning Text */
+.warning-text {
+    color: var(--admin-danger);
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-align: center;
+    padding: 1rem;
+    background-color: rgba(249, 65, 68, 0.1);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+/* Table Enhancements */
+.admin-table .no-data {
+    text-align: center;
+    padding: 2rem;
+    color: var(--admin-gray-dark);
+    font-style: italic;
+}
+
+.admin-table .error {
+    text-align: center;
+    padding: 2rem;
+    color: var(--admin-danger);
+    font-weight: 500;
+}
+
+/* Filters Grid */
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Stats Overview */
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-secondary));
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+}
+
+.stat-card .stat-title {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-change {
+    font-size: 0.8rem;
+    opacity: 0.8;
 }
 
 /* User Stats Grid */

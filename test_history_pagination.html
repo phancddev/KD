@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Lịch sử với Phân trang</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/history.css">
+    <style>
+        /* Demo data styles */
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .demo-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+        }
+        
+        .demo-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        
+        .demo-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .demo-controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .demo-btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>Demo Trang Lịch sử với Phân trang</h1>
+            <p>Kiểm tra giao diện phân trang và responsive design</p>
+        </div>
+        
+        <div class="demo-controls">
+            <button class="demo-btn" onclick="generateDemoData(50)">Tạo 50 trận đấu</button>
+            <button class="demo-btn" onclick="generateDemoData(100)">Tạo 100 trận đấu</button>
+            <button class="demo-btn" onclick="generateDemoData(200)">Tạo 200 trận đấu</button>
+            <button class="demo-btn" onclick="clearDemoData()">Xóa dữ liệu</button>
+        </div>
+        
+        <div class="history-container">
+            <div class="history-header">
+                <div class="history-filters">
+                    <div class="month-selector">
+                        <label for="month-select">Tháng:</label>
+                        <select id="month-select">
+                            <option value="1">Tháng 1</option>
+                            <option value="2">Tháng 2</option>
+                            <option value="3">Tháng 3</option>
+                            <option value="4">Tháng 4</option>
+                            <option value="5">Tháng 5</option>
+                            <option value="6">Tháng 6</option>
+                            <option value="7">Tháng 7</option>
+                            <option value="8">Tháng 8</option>
+                            <option value="9">Tháng 9</option>
+                            <option value="10">Tháng 10</option>
+                            <option value="11">Tháng 11</option>
+                            <option value="12">Tháng 12</option>
+                        </select>
+                    </div>
+                    <div class="year-selector">
+                        <label for="year-select">Năm:</label>
+                        <select id="year-select">
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="user-stats">
+                <div class="stat-card">
+                    <div class="stat-title">Tổng số trận</div>
+                    <div class="stat-value" id="total-games">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Tổng điểm</div>
+                    <div class="stat-value" id="total-score">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Câu đúng</div>
+                    <div class="stat-value" id="correct-answers">0/0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Điểm cao nhất</div>
+                    <div class="stat-value" id="highest-score">0</div>
+                </div>
+            </div>
+            
+            <div class="history-list">
+                <h2>Danh sách trận đấu</h2>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Chế độ</th>
+                            <th>Điểm số</th>
+                            <th>Câu đúng</th>
+                            <th>Chi tiết</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body">
+                        <!-- History items will be dynamically generated -->
+                    </tbody>
+                </table>
+                
+                <!-- Pagination -->
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        <span>Hiển thị <span id="current-range">0-0</span> của <span id="total-items">0</span> trận đấu</span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button id="first-page" class="pagination-btn" disabled>
+                            <span class="pagination-icon">«</span>
+                            <span class="pagination-text">Đầu</span>
+                        </button>
+                        <button id="prev-page" class="pagination-btn" disabled>
+                            <span class="pagination-icon">‹</span>
+                            <span class="pagination-text">Trước</span>
+                        </button>
+                        
+                        <div class="page-input-container">
+                            <span>Trang</span>
+                            <input type="number" id="page-input" min="1" value="1" class="page-input">
+                            <span>của <span id="total-pages">1</span></span>
+                        </div>
+                        
+                        <button id="next-page" class="pagination-btn">
+                            <span class="pagination-text">Sau</span>
+                            <span class="pagination-icon">›</span>
+                        </button>
+                        <button id="last-page" class="pagination-btn">
+                            <span class="pagination-text">Cuối</span>
+                            <span class="pagination-icon">»</span>
+                        </button>
+                    </div>
+                    <div class="pagination-size">
+                        <label for="page-size">Hiển thị:</label>
+                        <select id="page-size" class="page-size-select">
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span>trận đấu/trang</span>
+                    </div>
+                </div>
+                
+                <div id="no-history" class="no-data" style="display: none;">
+                    <p>Bạn chưa có trận đấu nào trong tháng này.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Demo data và logic phân trang
+        let demoData = [];
+        let currentPage = 1;
+        let pageSize = 20;
+        let totalPages = 1;
+        let totalItems = 0;
+        
+        // Khởi tạo phân trang
+        function initPagination() {
+            document.getElementById('first-page').addEventListener('click', () => goToPage(1));
+            document.getElementById('prev-page').addEventListener('click', () => goToPage(currentPage - 1));
+            document.getElementById('next-page').addEventListener('click', () => goToPage(currentPage + 1));
+            document.getElementById('last-page').addEventListener('click', () => goToPage(totalPages));
+            
+            document.getElementById('page-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const page = parseInt(this.value);
+                    if (page >= 1 && page <= totalPages) {
+                        goToPage(page);
+                    } else {
+                        this.value = currentPage;
+                    }
+                }
+            });
+            
+            document.getElementById('page-size').addEventListener('change', function() {
+                pageSize = parseInt(this.value);
+                resetPagination();
+                displayHistory();
+            });
+        }
+        
+        // Tạo dữ liệu demo
+        function generateDemoData(count) {
+            demoData = [];
+            const modes = ['Tự đấu', 'Đấu phòng A', 'Đấu phòng B', 'Đấu phòng C'];
+            
+            for (let i = 1; i <= count; i++) {
+                const score = Math.floor(Math.random() * 100) + 10;
+                const correctAnswers = Math.floor(Math.random() * 10) + 1;
+                const totalQuestions = 10;
+                
+                demoData.push({
+                    id: i,
+                    startedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+                    isSolo: Math.random() > 0.5,
+                    roomName: modes[Math.floor(Math.random() * modes.length)],
+                    score: score,
+                    correctAnswers: correctAnswers,
+                    totalQuestions: totalQuestions
+                });
+            }
+            
+            // Sắp xếp theo thời gian mới nhất
+            demoData.sort((a, b) => b.startedAt - a.startedAt);
+            
+            totalItems = demoData.length;
+            totalPages = Math.ceil(totalItems / pageSize);
+            currentPage = 1;
+            
+            updateStats();
+            displayHistory();
+            updatePaginationControls();
+        }
+        
+        // Xóa dữ liệu demo
+        function clearDemoData() {
+            demoData = [];
+            totalItems = 0;
+            totalPages = 1;
+            currentPage = 1;
+            
+            updateStats();
+            displayHistory();
+            updatePaginationControls();
+        }
+        
+        // Cập nhật thống kê
+        function updateStats() {
+            if (demoData.length === 0) {
+                document.getElementById('total-games').textContent = '0';
+                document.getElementById('total-score').textContent = '0';
+                document.getElementById('correct-answers').textContent = '0/0';
+                document.getElementById('highest-score').textContent = '0';
+                return;
+            }
+            
+            const totalScore = demoData.reduce((sum, game) => sum + game.score, 0);
+            const totalCorrect = demoData.reduce((sum, game) => sum + game.correctAnswers, 0);
+            const totalQuestions = demoData.reduce((sum, game) => sum + game.totalQuestions, 0);
+            const highestScore = Math.max(...demoData.map(game => game.score));
+            
+            document.getElementById('total-games').textContent = demoData.length;
+            document.getElementById('total-score').textContent = totalScore;
+            document.getElementById('correct-answers').textContent = `${totalCorrect}/${totalQuestions}`;
+            document.getElementById('highest-score').textContent = highestScore;
+        }
+        
+        // Hiển thị lịch sử
+        function displayHistory() {
+            const tableBody = document.getElementById('history-table-body');
+            const noHistoryDiv = document.getElementById('no-history');
+            
+            tableBody.innerHTML = '';
+            
+            if (demoData.length === 0) {
+                noHistoryDiv.style.display = 'block';
+                return;
+            }
+            
+            noHistoryDiv.style.display = 'none';
+            
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, demoData.length);
+            const currentPageData = demoData.slice(startIndex, endIndex);
+            
+            currentPageData.forEach(game => {
+                const row = document.createElement('tr');
+                
+                const timeCell = document.createElement('td');
+                timeCell.textContent = formatDate(game.startedAt);
+                row.appendChild(timeCell);
+                
+                const modeCell = document.createElement('td');
+                modeCell.textContent = game.isSolo ? 'Tự đấu' : `Đấu phòng (${game.roomName})`;
+                row.appendChild(modeCell);
+                
+                const scoreCell = document.createElement('td');
+                scoreCell.textContent = game.score;
+                row.appendChild(scoreCell);
+                
+                const correctCell = document.createElement('td');
+                correctCell.textContent = `${game.correctAnswers}/${game.totalQuestions}`;
+                row.appendChild(correctCell);
+                
+                const detailsCell = document.createElement('td');
+                const detailsButton = document.createElement('button');
+                detailsButton.textContent = 'Chi tiết';
+                detailsButton.className = 'btn-details';
+                detailsButton.addEventListener('click', () => alert(`Chi tiết trận đấu ${game.id}`));
+                detailsCell.appendChild(detailsButton);
+                row.appendChild(detailsCell);
+                
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Chuyển trang
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            document.getElementById('page-input').value = page;
+            displayHistory();
+            updatePaginationControls();
+        }
+        
+        // Đặt lại phân trang
+        function resetPagination() {
+            currentPage = 1;
+            document.getElementById('page-input').value = '1';
+        }
+        
+        // Cập nhật điều khiển phân trang
+        function updatePaginationControls() {
+            const firstBtn = document.getElementById('first-page');
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            const lastBtn = document.getElementById('last-page');
+            
+            firstBtn.disabled = currentPage === 1;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+            lastBtn.disabled = currentPage === totalPages;
+            
+            const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+            const endItem = Math.min(currentPage * pageSize, totalItems);
+            document.getElementById('current-range').textContent = `${startItem}-${endItem}`;
+            document.getElementById('total-items').textContent = totalItems;
+            document.getElementById('total-pages').textContent = totalPages;
+        }
+        
+        // Định dạng ngày
+        function formatDate(date) {
+            return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+        
+        // Khởi tạo khi trang load
+        document.addEventListener('DOMContentLoaded', function() {
+            initPagination();
+            updatePaginationControls();
+        });
+    </script>
+</body>
+</html> 
