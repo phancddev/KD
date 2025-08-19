@@ -1,11 +1,11 @@
 /* Admin Dashboard Styles */
 :root {
-    --admin-primary: #4361ee;
-    --admin-secondary: #3f37c9;
-    --admin-success: #4cc9f0;
-    --admin-warning: #f8961e;
-    --admin-danger: #f94144;
-    --admin-info: #4895ef;
+    --admin-primary: #ef4444;
+    --admin-secondary: #dc2626;
+    --admin-success: #22c55e;
+    --admin-warning: #f59e0b;
+    --admin-danger: #dc2626;
+    --admin-info: #ef4444;
     --admin-dark: #212529;
     --admin-light: #f8f9fa;
     --admin-gray: #e9ecef;
@@ -88,7 +88,7 @@
 }
 
 .sidebar-nav li.active a {
-    background-color: rgba(67, 97, 238, 0.1);
+    background-color: rgba(239, 68, 68, 0.1);
     color: var(--admin-primary);
     border-left-color: var(--admin-primary);
 }
@@ -212,19 +212,23 @@
 
 /* Admin Card */
 .admin-card {
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(239, 68, 68, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.08);
     margin-bottom: 2rem;
     overflow: hidden;
 }
 
 .card-header {
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--admin-gray);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.15);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: rgba(239, 68, 68, 0.06);
 }
 
 .card-header h2 {
@@ -284,17 +288,17 @@
 .admin-table td {
     padding: 1rem;
     text-align: left;
-    border-bottom: 1px solid var(--admin-gray);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.12);
 }
 
 .admin-table th {
-    background-color: var(--admin-light);
+    background: rgba(239, 68, 68, 0.06);
     font-weight: 600;
-    color: var(--admin-dark);
+    color: var(--admin-primary);
 }
 
 .admin-table tr:hover {
-    background-color: rgba(67, 97, 238, 0.02);
+    background-color: rgba(239, 68, 68, 0.04);
 }
 
 .admin-table .status {
@@ -490,7 +494,7 @@
 .filtered-info {
     font-size: 0.8rem;
     color: var(--admin-primary);
-    background-color: rgba(67, 97, 238, 0.1);
+    background-color: rgba(239, 68, 68, 0.12);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-weight: 500;
@@ -510,9 +514,12 @@
     gap: 1rem;
     margin-top: 2rem;
     padding: 1rem;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(239, 68, 68, 0.12);
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.08);
     flex-wrap: wrap;
 }
 
@@ -536,7 +543,7 @@
     color: white;
     border-color: var(--admin-primary);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.2);
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
 }
 
 .pagination-btn.disabled {
@@ -580,7 +587,7 @@
 .page-input:focus {
     outline: none;
     border-color: var(--admin-primary);
-    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
 }
 
 .page-total {
@@ -617,7 +624,7 @@
 .page-size-select:focus {
     outline: none;
     border-color: var(--admin-primary);
-    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
 }
 
 /* Responsive pagination */
