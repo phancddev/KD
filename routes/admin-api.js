@@ -485,6 +485,75 @@ router.post('/users/delete-by-date', checkAdmin, async (req, res) => {
   }
 });
 
+// Xóa người dùng theo giờ (múi giờ Việt Nam)
+router.post('/users/delete-by-hour', checkAdmin, async (req, res) => {
+  try {
+    const { fromHour, toHour, fromDate, toDate, onlyLocked, onlyNonAdmin } = req.body;
+    
+    if (fromHour === undefined || toHour === undefined) {
+      return res.status(400).json({ error: 'Phải cung cấp fromHour và toHour' });
+    }
+    
+    if (fromHour < 0 || fromHour > 23 || toHour < 0 || toHour > 23) {
+      return res.status(400).json({ error: 'Giờ phải từ 0-23' });
+    }
+    
+    const { deleteUsersByHour } = await import('../db/users.js');
+    const result = await deleteUsersByHour({
+      fromHour: parseInt(fromHour),
+      toHour: parseInt(toHour),
+      fromDate: fromDate || null,
+      toDate: toDate || null,
+      onlyLocked: onlyLocked || false,
+      onlyNonAdmin: onlyNonAdmin || false,
+      excludeUserId: req.session.user.id // Không xóa chính mình
+    });
+    
+    res.json({ 
+      success: true, 
+      deletedCount: result.deletedCount,
+      message: `Đã xóa ${result.deletedCount} người dùng trong khoảng giờ ${fromHour}:00-${toHour}:59 thành công`
+    });
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng theo giờ:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Xóa người dùng theo giờ trong ngày cụ thể
+router.post('/users/delete-by-hour-in-day', checkAdmin, async (req, res) => {
+  try {
+    const { date, fromHour, toHour, onlyLocked, onlyNonAdmin } = req.body;
+    
+    if (!date || fromHour === undefined || toHour === undefined) {
+      return res.status(400).json({ error: 'Phải cung cấp date, fromHour và toHour' });
+    }
+    
+    if (fromHour < 0 || fromHour > 23 || toHour < 0 || toHour > 23) {
+      return res.status(400).json({ error: 'Giờ phải từ 0-23' });
+    }
+    
+    const { deleteUsersByHourInDay } = await import('../db/users.js');
+    const result = await deleteUsersByHourInDay({
+      date,
+      fromHour: parseInt(fromHour),
+      toHour: parseInt(toHour),
+      onlyLocked: onlyLocked || false,
+      onlyNonAdmin: onlyNonAdmin || false,
+      excludeUserId: req.session.user.id // Không xóa chính mình
+    });
+    
+    res.json({ 
+      success: true, 
+      deletedCount: result.deletedCount,
+      message: `Đã xóa ${result.deletedCount} người dùng trong ngày ${date} từ ${fromHour}:00-${toHour}:59 thành công`
+    });
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng theo giờ trong ngày:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // Xóa người dùng không hoạt động
 router.post('/users/delete-inactive', checkAdmin, async (req, res) => {
   try {
@@ -516,12 +585,14 @@ router.post('/users/delete-inactive', checkAdmin, async (req, res) => {
 // Xem trước danh sách sẽ xóa
 router.get('/users/preview-delete', checkAdmin, async (req, res) => {
   try {
-    const { fromDate, toDate, inactiveDays, onlyLocked, onlyNonAdmin } = req.query;
+    const { fromDate, toDate, fromHour, toHour, inactiveDays, onlyLocked, onlyNonAdmin } = req.query;
     
     const { getUsersForDeletion } = await import('../db/users.js');
     const users = await getUsersForDeletion({
       fromDate: fromDate || null,
       toDate: toDate || null,
+      fromHour: fromHour ? parseInt(fromHour) : undefined,
+      toHour: toHour ? parseInt(toHour) : undefined,
       inactiveDays: inactiveDays ? parseInt(inactiveDays) : null,
       onlyLocked: onlyLocked === 'true',
       onlyNonAdmin: onlyNonAdmin === 'true',

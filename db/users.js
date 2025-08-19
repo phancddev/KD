@@ -220,6 +220,128 @@ async function deleteUsersByDate(options) {
   }
 }
 
+// Xóa người dùng theo giờ cụ thể (múi giờ Việt Nam)
+async function deleteUsersByHour(options) {
+  try {
+    const { 
+      fromHour, 
+      toHour, 
+      fromDate, 
+      toDate, 
+      onlyLocked, 
+      onlyNonAdmin, 
+      excludeUserId,
+      timezone = 'Asia/Ho_Chi_Minh'
+    } = options;
+    
+    let conditions = [];
+    let params = [];
+    
+    // Xử lý ngày và giờ với múi giờ Việt Nam
+    if (fromDate && toDate) {
+      if (fromHour !== undefined && toHour !== undefined) {
+        // Xóa theo ngày và giờ cụ thể
+        conditions.push(`
+          CONVERT_TZ(created_at, 'UTC', ?) BETWEEN 
+          CONCAT(?, ' ', LPAD(?, 2, '0'), ':00:00') AND 
+          CONCAT(?, ' ', LPAD(?, 2, '0'), ':59:59')
+        `);
+        params.push(timezone, fromDate, fromHour, toDate, toHour);
+      } else {
+        // Xóa theo ngày (giữ nguyên logic cũ)
+        conditions.push('created_at BETWEEN ? AND ?');
+        params.push(fromDate, toDate);
+      }
+    } else if (fromHour !== undefined && toHour !== undefined) {
+      // Xóa theo giờ trong ngày hôm nay (múi giờ Việt Nam)
+      conditions.push(`
+        CONVERT_TZ(created_at, 'UTC', ?) BETWEEN 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':00:00') AND 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':59:59')
+      `);
+      params.push(timezone, fromHour, toHour);
+    } else {
+      throw new Error('Phải cung cấp ít nhất fromDate/toDate hoặc fromHour/toHour');
+    }
+    
+    if (onlyLocked) {
+      conditions.push('is_active = 0');
+    }
+    
+    if (onlyNonAdmin) {
+      conditions.push('is_admin = 0');
+    }
+    
+    if (excludeUserId) {
+      conditions.push('id != ?');
+      params.push(excludeUserId);
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    const [result] = await pool.query(
+      `DELETE FROM users WHERE ${whereClause}`,
+      params
+    );
+    
+    return { deletedCount: result.affectedRows };
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng theo giờ:', error);
+    throw error;
+  }
+}
+
+// Xóa người dùng theo giờ trong ngày cụ thể
+async function deleteUsersByHourInDay(options) {
+  try {
+    const { 
+      date, 
+      fromHour, 
+      toHour, 
+      onlyLocked, 
+      onlyNonAdmin, 
+      excludeUserId,
+      timezone = 'Asia/Ho_Chi_Minh'
+    } = options;
+    
+    if (!date || fromHour === undefined || toHour === undefined) {
+      throw new Error('Phải cung cấp date, fromHour và toHour');
+    }
+    
+    let conditions = [`
+      CONVERT_TZ(created_at, 'UTC', ?) BETWEEN 
+      CONCAT(?, ' ', LPAD(?, 2, '0'), ':00:00') AND 
+      CONCAT(?, ' ', LPAD(?, 2, '0'), ':59:59')
+    `];
+    let params = [timezone, date, fromHour, date, toHour];
+    
+    if (onlyLocked) {
+      conditions.push('is_active = 0');
+    }
+    
+    if (onlyNonAdmin) {
+      conditions.push('is_admin = 0');
+    }
+    
+    if (excludeUserId) {
+      conditions.push('id != ?');
+      params.push(excludeUserId);
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    const [result] = await pool.query(
+      `DELETE FROM users WHERE ${whereClause}`,
+      params
+    );
+    
+    return { deletedCount: result.affectedRows };
+  } catch (error) {
+    console.error('Lỗi khi xóa người dùng theo giờ trong ngày:', error);
+    throw error;
+  }
+}
+
 // Xóa người dùng không hoạt động
 async function deleteInactiveUsers(options) {
   try {
@@ -258,14 +380,44 @@ async function deleteInactiveUsers(options) {
 // Lấy danh sách người dùng để xem trước khi xóa
 async function getUsersForDeletion(options) {
   try {
-    const { fromDate, toDate, inactiveDays, onlyLocked, onlyNonAdmin, excludeUserId } = options;
+    const { 
+      fromDate, 
+      toDate, 
+      fromHour, 
+      toHour, 
+      inactiveDays, 
+      onlyLocked, 
+      onlyNonAdmin, 
+      excludeUserId,
+      timezone = 'Asia/Ho_Chi_Minh'
+    } = options;
     
     let conditions = [];
     let params = [];
     
+    // Xử lý ngày và giờ với múi giờ Việt Nam
     if (fromDate && toDate) {
-      conditions.push('created_at BETWEEN ? AND ?');
-      params.push(fromDate, toDate);
+      if (fromHour !== undefined && toHour !== undefined) {
+        // Xem trước theo ngày và giờ cụ thể
+        conditions.push(`
+          CONVERT_TZ(created_at, 'UTC', ?) BETWEEN 
+          CONCAT(?, ' ', LPAD(?, 2, '0'), ':00:00') AND 
+          CONCAT(?, ' ', LPAD(?, 2, '0'), ':59:59')
+        `);
+        params.push(timezone, fromDate, fromHour, toDate, toHour);
+      } else {
+        // Xem trước theo ngày (giữ nguyên logic cũ)
+        conditions.push('created_at BETWEEN ? AND ?');
+        params.push(fromDate, toDate);
+      }
+    } else if (fromHour !== undefined && toHour !== undefined) {
+      // Xem trước theo giờ trong ngày hôm nay (múi giờ Việt Nam)
+      conditions.push(`
+        CONVERT_TZ(created_at, 'UTC', ?) BETWEEN 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':00:00') AND 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':59:59')
+      `);
+      params.push(timezone, fromHour, toHour);
     }
     
     if (inactiveDays) {
@@ -286,13 +438,37 @@ async function getUsersForDeletion(options) {
       params.push(excludeUserId);
     }
     
-    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    // Nếu không có điều kiện nào, trả về tất cả người dùng
+    if (conditions.length === 0) {
+      const [rows] = await pool.query(
+        `SELECT id, username, full_name, email, is_active, is_admin, created_at, last_login,
+                CONVERT_TZ(created_at, 'UTC', ?) as local_created_at
+         FROM users 
+         ORDER BY created_at DESC`,
+        [timezone]
+      );
+      
+      return rows.map(row => ({
+        id: row.id,
+        username: row.username,
+        fullName: row.full_name,
+        email: row.email,
+        isActive: row.is_active === 1,
+        isAdmin: row.is_admin === 1,
+        createdAt: row.created_at,
+        localCreatedAt: row.local_created_at,
+        lastLogin: row.last_login
+      }));
+    }
+    
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
     
     const [rows] = await pool.query(
-      `SELECT id, username, full_name, email, is_active, is_admin, created_at, last_login 
+      `SELECT id, username, full_name, email, is_active, is_admin, created_at, last_login,
+              CONVERT_TZ(created_at, 'UTC', ?) as local_created_at
        FROM users ${whereClause} 
        ORDER BY created_at DESC`,
-      params
+      [timezone, ...params]
     );
     
     return rows.map(row => ({
@@ -303,6 +479,7 @@ async function getUsersForDeletion(options) {
       isActive: row.is_active === 1,
       isAdmin: row.is_admin === 1,
       createdAt: row.created_at,
+      localCreatedAt: row.local_created_at,
       lastLogin: row.last_login
     }));
   } catch (error) {
@@ -325,6 +502,8 @@ export {
   updateUser,
   deleteUsers,
   deleteUsersByDate,
+  deleteUsersByHour,
+  deleteUsersByHourInDay,
   deleteInactiveUsers,
   getUsersForDeletion
 };
