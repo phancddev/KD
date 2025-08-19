@@ -327,6 +327,28 @@ router.get('/users', checkAdmin, async (req, res) => {
   }
 });
 
+// Xem trước danh sách sẽ xóa (đặt trước route động /users/:userId để tránh nuốt đường dẫn)
+router.get('/users/preview-delete', checkAdmin, async (req, res) => {
+  try {
+    const { fromDate, toDate, fromHour, toHour, inactiveDays, onlyLocked, onlyNonAdmin } = req.query;
+    const { getUsersForDeletion } = await import('../db/users.js');
+    const users = await getUsersForDeletion({
+      fromDate: fromDate || null,
+      toDate: toDate || null,
+      fromHour: fromHour && fromHour !== '' ? parseInt(fromHour) : undefined,
+      toHour: toHour && toHour !== '' ? parseInt(toHour) : undefined,
+      inactiveDays: inactiveDays && inactiveDays !== '' ? parseInt(inactiveDays) : null,
+      onlyLocked: onlyLocked === 'true',
+      onlyNonAdmin: onlyNonAdmin === 'true',
+      excludeUserId: req.session.user.id
+    });
+    res.json({ users, totalCount: users.length });
+  } catch (error) {
+    console.error('Lỗi khi xem trước danh sách xóa:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // Lấy thông tin chi tiết người dùng
 router.get('/users/:userId', checkAdmin, async (req, res) => {
   try {
@@ -395,13 +417,15 @@ router.get('/login-logs', checkAdmin, async (req, res) => {
     
     // Lấy filters từ query params
     const filters = {
-      userId: req.query.userId ? parseInt(req.query.userId) : null,
+      userId: req.query.userId && !isNaN(parseInt(req.query.userId)) ? parseInt(req.query.userId) : null,
       username: req.query.username || null,
       ipAddress: req.query.ipAddress || null,
       deviceType: req.query.deviceType || null,
       loginStatus: req.query.loginStatus || null,
       fromDate: req.query.fromDate || null,
       toDate: req.query.toDate || null,
+      fromHour: req.query.fromHour && !isNaN(parseInt(req.query.fromHour)) ? parseInt(req.query.fromHour) : null,
+      toHour: req.query.toHour && !isNaN(parseInt(req.query.toHour)) ? parseInt(req.query.toHour) : null,
       isSuspicious: req.query.isSuspicious !== undefined ? req.query.isSuspicious === 'true' : null
     };
     

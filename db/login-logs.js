@@ -234,14 +234,28 @@ async function countLoginLogs(filters = {}) {
       params.push(filters.loginStatus);
     }
 
-    if (filters.fromDate) {
+    if (filters.fromDate && filters.toDate && filters.fromHour !== null && filters.toHour !== null) {
+      // Filter theo ngày và giờ cụ thể với múi giờ Việt Nam
+      conditions.push(`
+        CONVERT_TZ(login_at, 'UTC', 'Asia/Ho_Chi_Minh') BETWEEN 
+        CONCAT(?, ' ', LPAD(?, 2, '0'), ':00:00') AND 
+        CONCAT(?, ' ', LPAD(?, 2, '0'), ':59:59')
+      `);
+      params.push(filters.fromDate, filters.fromHour, filters.toDate, filters.toHour);
+    } else if (filters.fromDate && filters.toDate) {
+      // Filter theo ngày (giữ nguyên logic cũ)
       conditions.push('login_at >= ?');
       params.push(filters.fromDate);
-    }
-
-    if (filters.toDate) {
       conditions.push('login_at <= ?');
       params.push(filters.toDate);
+    } else if (filters.fromHour !== null && filters.toHour !== null) {
+      // Filter theo giờ trong ngày hôm nay (múi giờ Việt Nam)
+      conditions.push(`
+        CONVERT_TZ(login_at, 'UTC', 'Asia/Ho_Chi_Minh') BETWEEN 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':00:00') AND 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':59:59')
+      `);
+      params.push(filters.fromHour, filters.toHour);
     }
 
     if (filters.isSuspicious !== undefined) {
@@ -269,14 +283,28 @@ async function getLoginStats(filters = {}) {
     const conditions = [];
     const params = [];
 
-    if (filters.fromDate) {
+    if (filters.fromDate && filters.toDate && filters.fromHour !== null && filters.toHour !== null) {
+      // Filter theo ngày và giờ cụ thể với múi giờ Việt Nam
+      conditions.push(`
+        CONVERT_TZ(login_at, 'UTC', 'Asia/Ho_Chi_Minh') BETWEEN 
+        CONCAT(?, ' ', LPAD(?, 2, '0'), ':00:00') AND 
+        CONCAT(?, ' ', LPAD(?, 2, '0'), ':59:59')
+      `);
+      params.push(filters.fromDate, filters.fromHour, filters.toDate, filters.toHour);
+    } else if (filters.fromDate && filters.toDate) {
+      // Filter theo ngày (giữ nguyên logic cũ)
       conditions.push('login_at >= ?');
       params.push(filters.fromDate);
-    }
-
-    if (filters.toDate) {
       conditions.push('login_at <= ?');
       params.push(filters.toDate);
+    } else if (filters.fromHour !== null && filters.toHour !== null) {
+      // Filter theo giờ trong ngày hôm nay (múi giờ Việt Nam)
+      conditions.push(`
+        CONVERT_TZ(login_at, 'UTC', 'Asia/Ho_Chi_Minh') BETWEEN 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':00:00') AND 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':59:59')
+      `);
+      params.push(filters.fromHour, filters.toHour);
     }
 
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

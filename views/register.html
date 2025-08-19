@@ -255,6 +255,32 @@
             animation: slideIn 0.3s ease;
         }
 
+        .field-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #dc2626;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .field-error.show {
+            display: block;
+        }
+
+        .form-group input.error {
+            border-color: #dc2626;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .form-group input.valid {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -358,9 +384,10 @@
                     <div class="form-group">
                         <label for="email">
                             <i class="fas fa-envelope"></i>
-                            Email (tùy chọn)
+                            Email
                         </label>
-                        <input type="email" id="email" name="email">
+                        <input type="email" id="email" name="email" required placeholder="example@domain.com">
+                        <div id="email-error" class="field-error" style="display: none; color: #dc2626; font-size: 12px; margin-top: 4px;"></div>
                     </div>
                     
                     <div class="form-group">
@@ -400,36 +427,6 @@
         </div>
     </div>
     
-    <script>
-        // Form validation
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const errorMessage = document.getElementById('error-message');
-            
-            if (password !== confirmPassword) {
-                e.preventDefault();
-                errorMessage.textContent = 'Mật khẩu xác nhận không khớp!';
-                errorMessage.classList.add('show');
-                return;
-            }
-            
-            if (password.length < 6) {
-                e.preventDefault();
-                errorMessage.textContent = 'Mật khẩu phải có ít nhất 6 ký tự!';
-                errorMessage.classList.add('show');
-                return;
-            }
-            
-            errorMessage.classList.remove('show');
-        });
-        
-        // Clear error message when user starts typing
-        document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('input', function() {
-                document.getElementById('error-message').classList.remove('show');
-            });
-        });
-    </script>
+    <script src="/js/register.js"></script>
 </body>
 </html>

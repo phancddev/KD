@@ -52,9 +52,36 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
+    // Tạo filter summary
+    let filterSummary = '';
+    if (Object.keys(currentFilters).length > 0) {
+      const activeFilters = [];
+      if (currentFilters.username) activeFilters.push(`Username: ${currentFilters.username}`);
+      if (currentFilters.ipAddress) activeFilters.push(`IP: ${currentFilters.ipAddress}`);
+      if (currentFilters.deviceType) activeFilters.push(`Thiết bị: ${currentFilters.deviceType}`);
+      if (currentFilters.loginStatus) activeFilters.push(`Trạng thái: ${currentFilters.loginStatus}`);
+      if (currentFilters.fromDate) {
+        let dateRange = `Từ: ${currentFilters.fromDate}`;
+        if (currentFilters.toDate) dateRange += ` đến ${currentFilters.toDate}`;
+        if (currentFilters.fromHour !== null) dateRange += ` ${currentFilters.fromHour}:00`;
+        if (currentFilters.toHour !== null) dateRange += ` - ${currentFilters.toHour}:59`;
+        activeFilters.push(dateRange);
+      } else if (currentFilters.fromHour !== null) {
+        activeFilters.push(`Giờ: ${currentFilters.fromHour}:00 - ${currentFilters.toHour}:59`);
+      }
+      if (currentFilters.isSuspicious !== null) {
+        activeFilters.push(`Đáng ngờ: ${currentFilters.isSuspicious === 'true' ? 'Có' : 'Không'}`);
+      }
+      
+      if (activeFilters.length > 0) {
+        filterSummary = `<div class="filter-summary"><strong>Bộ lọc đang áp dụng:</strong> ${activeFilters.join(', ')}</div>`;
+      }
+    }
+    
     paginationInfoEl.innerHTML = `
       <div class="pagination-info-content">
         <span class="pagination-text">Hiển thị ${start}-${end} trong tổng số ${total} login logs</span>
+        ${filterSummary}
       </div>
     `;
   }
@@ -294,13 +321,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Get current filters
   function getCurrentFilters() {
+    const fromDate = document.getElementById('from-date')?.value;
+    const toDate = document.getElementById('to-date')?.value;
+    const fromHour = document.getElementById('from-hour')?.value;
+    const toHour = document.getElementById('to-hour')?.value;
+    
+    // Validate date range
+    if (fromDate && toDate && fromDate > toDate) {
+      alert('Ngày bắt đầu không thể lớn hơn ngày kết thúc!');
+      return null;
+    }
+    
+    // Validate hour range
+    if (fromHour !== '' && toHour !== '' && parseInt(fromHour) > parseInt(toHour)) {
+      alert('Giờ bắt đầu không thể lớn hơn giờ kết thúc!');
+      return null;
+    }
+    
     return {
       username: document.getElementById('username-filter')?.value || null,
       ipAddress: document.getElementById('ip-filter')?.value || null,
       deviceType: document.getElementById('device-filter')?.value || null,
       loginStatus: document.getElementById('status-filter')?.value || null,
-      fromDate: document.getElementById('from-date')?.value || null,
-      toDate: document.getElementById('to-date')?.value || null,
+      fromDate: fromDate || null,
+      toDate: toDate || null,
+      fromHour: fromHour !== '' ? parseInt(fromHour) : null,
+      toHour: toHour !== '' ? parseInt(toHour) : null,
       isSuspicious: document.getElementById('suspicious-filter')?.value || null
     };
   }
@@ -313,6 +359,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('status-filter').value = '';
     document.getElementById('from-date').value = '';
     document.getElementById('to-date').value = '';
+    document.getElementById('from-hour').value = '';
+    document.getElementById('to-hour').value = '';
     document.getElementById('suspicious-filter').value = '';
     
     currentFilters = {};
@@ -345,7 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Wire events
   if (applyFiltersBtn) {
     applyFiltersBtn.addEventListener('click', () => {
-      currentFilters = getCurrentFilters();
+      const filters = getCurrentFilters();
+      if (filters === null) return; // Filter không hợp lệ
+      
+      currentFilters = filters;
       currentPage = 1;
       loadLogs();
       loadStats();
