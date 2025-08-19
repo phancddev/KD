@@ -230,6 +230,7 @@ async function getIpInfo(ip) {
   }
   
   return {
+    ipAddress: ip || 'Unknown',
     country: 'Unknown',
     countryCode: 'Unknown',
     region: 'Unknown',

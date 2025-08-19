@@ -129,8 +129,9 @@ CREATE TABLE IF NOT EXISTS ip_geolocation (
 );
 
 -- Tạo index để tối ưu hiệu suất
-CREATE INDEX idx_login_logs_user_id ON login_logs(user_id);
-CREATE INDEX idx_login_logs_username ON login_logs(username);
-CREATE INDEX idx_login_logs_ip_address ON login_logs(ip_address);
-CREATE INDEX idx_login_logs_login_at ON login_logs(login_at);
-CREATE INDEX idx_ip_geolocation_ip ON ip_geolocation(ip_address);
+-- Comment các dòng này để tránh lỗi duplicate index
+-- CREATE INDEX idx_login_logs_user_id ON login_logs(user_id);
+-- CREATE INDEX idx_login_logs_username ON login_logs(username);
+-- CREATE INDEX idx_login_logs_ip_address ON login_logs(ip_address);
+-- CREATE INDEX idx_login_logs_login_at ON login_logs(login_at);
+-- CREATE INDEX idx_ip_geolocation_ip ON ip_geolocation(ip_address);

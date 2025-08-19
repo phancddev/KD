@@ -5,23 +5,51 @@ import { getUserGameStats, getUserGameHistory, getUserGameHistoryByMonth, getGam
 import multer from 'multer';
 import { isUserAdmin } from '../db/users.js';
 
+console.log('🚀 Loading admin-api.js routes...');
+
 const router = express.Router();
+
+console.log('🚀 Router được tạo trong admin-api.js');
+
+// Test route để kiểm tra routing
+router.get('/test', (req, res) => {
+  console.log('🚀 Test route được gọi');
+  res.json({ message: 'Admin API routing is working!' });
+});
 
 // Middleware kiểm tra quyền admin
 async function checkAdmin(req, res, next) {
+  console.log('🚀 checkAdmin middleware được gọi cho URL:', req.url);
+  console.log('🔍 checkAdmin middleware - Session ID:', req.sessionID);
+  console.log('🔍 checkAdmin middleware - Session:', JSON.stringify(req.session, null, 2));
+  console.log('🔍 checkAdmin middleware - User:', req.session.user);
+  console.log('🔍 checkAdmin middleware - User ID type:', typeof req.session.user?.id);
+  console.log('🔍 checkAdmin middleware - User ID value:', req.session.user?.id);
+  
   if (!req.session.user) {
+    console.log('❌ checkAdmin: Không có user trong session');
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
+  if (!req.session.user.id || isNaN(req.session.user.id)) {
+    console.log('❌ checkAdmin: User ID không hợp lệ:', req.session.user.id);
+    return res.status(401).json({ error: 'Invalid user ID in session' });
+  }
+  
   try {
+    console.log('🔍 checkAdmin: Kiểm tra quyền admin cho user ID:', req.session.user.id);
     const isAdmin = await isUserAdmin(req.session.user.id);
+    console.log('🔍 checkAdmin: Kết quả isAdmin:', isAdmin);
+    
     if (!isAdmin) {
+      console.log('❌ checkAdmin: User không có quyền admin');
       return res.status(403).json({ error: 'Forbidden' });
     }
     
+    console.log('✅ checkAdmin: User có quyền admin, cho phép tiếp tục');
     next();
   } catch (error) {
-    console.error('Lỗi khi kiểm tra quyền admin:', error);
+    console.error('❌ Lỗi khi kiểm tra quyền admin:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
@@ -302,7 +330,18 @@ router.get('/users', checkAdmin, async (req, res) => {
 // Lấy thông tin chi tiết người dùng
 router.get('/users/:userId', checkAdmin, async (req, res) => {
   try {
+    console.log('🔍 Route /users/:userId - req.params:', req.params);
+    console.log('🔍 Route /users/:userId - req.params.userId:', req.params.userId);
+    console.log('🔍 Route /users/:userId - typeof req.params.userId:', typeof req.params.userId);
+    
     const userId = parseInt(req.params.userId);
+    console.log('🔍 Route /users/:userId - parsed userId:', userId);
+    console.log('🔍 Route /users/:userId - isNaN(userId):', isNaN(userId));
+    
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
     const user = await findUserById(userId);
     
     if (!user) {
@@ -591,9 +630,9 @@ router.get('/users/preview-delete', checkAdmin, async (req, res) => {
     const users = await getUsersForDeletion({
       fromDate: fromDate || null,
       toDate: toDate || null,
-      fromHour: fromHour ? parseInt(fromHour) : undefined,
-      toHour: toHour ? parseInt(toHour) : undefined,
-      inactiveDays: inactiveDays ? parseInt(inactiveDays) : null,
+      fromHour: fromHour && fromHour !== '' ? parseInt(fromHour) : undefined,
+      toHour: toHour && toHour !== '' ? parseInt(toHour) : undefined,
+      inactiveDays: inactiveDays && inactiveDays !== '' ? parseInt(inactiveDays) : null,
       onlyLocked: onlyLocked === 'true',
       onlyNonAdmin: onlyNonAdmin === 'true',
       excludeUserId: req.session.user.id

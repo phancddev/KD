@@ -11,8 +11,13 @@ import { initSocketIO, getIO, addOnlineUser, removeOnlineUser } from './socket/i
 import { collectDeviceInfo, generateDeviceFingerprint, detectSuspiciousActivity, getIpInfo } from './utils/user-agent-parser.js';
 import { saveLoginLog, updateLogoutLog, saveIpGeolocation } from './db/login-logs.js';
 import adminRoutes from './routes/admin.js';
+console.log('🚀 Imported adminRoutes successfully');
+
 import adminApiRoutes from './routes/admin-api.js';
+console.log('🚀 Imported adminApiRoutes successfully');
 import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails, createGameSession, finishGameSession } from './db/game-sessions.js';
+
+console.log('🚀 Tất cả imports hoàn tất');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,6 +27,14 @@ const PORT = config.server.port;
 
 // Middleware
 app.use(cookieParser());
+
+// Middleware để set IP address
+app.use((req, res, next) => {
+  // Trong Express.js mới, req.ip là getter, không thể set trực tiếp
+  // Thay vào đó, tạo thuộc tính mới
+  req.clientIP = req.ip || req.connection?.remoteAddress || req.headers['x-forwarded-for'] || '127.0.0.1';
+  next();
+});
 
 // Parse JSON và form data (nhưng không xử lý multipart/form-data)
 app.use(express.json());
@@ -91,7 +104,7 @@ app.post('/login', async (req, res) => {
       return res.redirect('/login?error=1');
     }
     
-    const user = await authenticateUser(username, password, req.ip);
+    const user = await authenticateUser(username, password, req.clientIP);
     
     if (user) {
       // Thu thập thông tin thiết bị chi tiết
@@ -100,9 +113,19 @@ app.post('/login', async (req, res) => {
       
       // Lấy thông tin IP geolocation
       let ipInfo = null;
+      console.log('🔍 Login - req.clientIP:', req.clientIP);
+      console.log('🔍 Login - req.connection.remoteAddress:', req.connection?.remoteAddress);
+      console.log('🔍 Login - req.headers.x-forwarded-for:', req.headers['x-forwarded-for']);
+      
       try {
-        ipInfo = await getIpInfo(req.ip);
-        await saveIpGeolocation(ipInfo);
+        if (req.clientIP && req.clientIP !== '::1' && req.clientIP !== '127.0.0.1') {
+          console.log('🔍 Login - Gọi getIpInfo với IP:', req.clientIP);
+          ipInfo = await getIpInfo(req.clientIP);
+          console.log('🔍 Login - IP info:', ipInfo);
+          await saveIpGeolocation(ipInfo);
+        } else {
+          console.log('🔍 Login - Bỏ qua IP geolocation vì IP không hợp lệ:', req.clientIP);
+        }
       } catch (geoError) {
         console.error('Lỗi khi lấy thông tin IP:', geoError);
       }
@@ -114,7 +137,7 @@ app.post('/login', async (req, res) => {
       const logId = await saveLoginLog({
         userId: user.id,
         username: user.username,
-        ipAddress: req.ip,
+        ipAddress: req.clientIP,
         userAgent: deviceInfo.userAgent,
         deviceType: deviceInfo.device.type,
         browserName: deviceInfo.browser.name,
@@ -143,8 +166,12 @@ app.post('/login', async (req, res) => {
         loginTime: new Date()
       };
       
+      console.log('🔍 Login thành công - Session user:', req.session.user);
+      console.log('🔍 Login thành công - User ID type:', typeof req.session.user.id);
+      console.log('🔍 Login thành công - User ID value:', req.session.user.id);
+      
       // Thêm người dùng vào danh sách online
-      addOnlineUser(user.id, user.username, req.ip);
+      addOnlineUser(user.id, user.username, req.clientIP);
       
       return res.redirect('/');
     } else {
@@ -155,7 +182,7 @@ app.post('/login', async (req, res) => {
       await saveLoginLog({
         userId: null,
         username: username,
-        ipAddress: req.ip,
+        ipAddress: req.clientIP,
         userAgent: deviceInfo.userAgent,
         deviceType: deviceInfo.device.type,
         browserName: deviceInfo.browser.name,

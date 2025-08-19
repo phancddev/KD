@@ -397,7 +397,9 @@ async function getUsersForDeletion(options) {
     
     // Xử lý ngày và giờ với múi giờ Việt Nam
     if (fromDate && toDate) {
-      if (fromHour !== undefined && toHour !== undefined) {
+      if (fromHour !== undefined && toHour !== undefined && 
+          !isNaN(fromHour) && !isNaN(toHour) && 
+          fromHour >= 0 && fromHour <= 23 && toHour >= 0 && toHour <= 23) {
         // Xem trước theo ngày và giờ cụ thể
         conditions.push(`
           CONVERT_TZ(created_at, 'UTC', ?) BETWEEN 
@@ -410,7 +412,9 @@ async function getUsersForDeletion(options) {
         conditions.push('created_at BETWEEN ? AND ?');
         params.push(fromDate, toDate);
       }
-    } else if (fromHour !== undefined && toHour !== undefined) {
+    } else if (fromHour !== undefined && toHour !== undefined && 
+               !isNaN(fromHour) && !isNaN(toHour) && 
+               fromHour >= 0 && fromHour <= 23 && toHour >= 0 && toHour <= 23) {
       // Xem trước theo giờ trong ngày hôm nay (múi giờ Việt Nam)
       conditions.push(`
         CONVERT_TZ(created_at, 'UTC', ?) BETWEEN 
