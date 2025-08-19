@@ -197,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let questionStartTime;
     let questions = [];
     let totalTimeRemaining = 60; // Tổng thời gian (có thể điều chỉnh theo số câu hỏi nếu cần)
+    let soloSessionId = null; // ID phiên solo sau khi lưu
     
     // Hàm lấy câu hỏi từ server và bắt đầu trò chơi
     function fetchQuestionsAndStart() {
@@ -552,6 +553,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>Câu ${i + 1}: ${answer.questionText}</h4>
                     <p>Câu trả lời của bạn: <strong>${answerText}</strong></p>
                     <p>Câu trả lời đúng: <strong>${answer.correctAnswer}</strong></p>
+                    <div style="margin-top:8px">
+                      <button class="report-btn" data-mode="solo" data-qid="${answer.questionId || ''}" data-qtext="${encodeURIComponent(answer.questionText)}" data-correct="${encodeURIComponent(answer.correctAnswer)}" data-userans="${encodeURIComponent(answerText)}">🚩 Báo lỗi</button>
+                    </div>
                 `;
             } else {
                 // Không có câu trả lời (câu hỏi bị bỏ qua)
@@ -561,11 +565,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>Câu ${i + 1}: ${question.text}</h4>
                     <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
                     <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                    <div style="margin-top:8px">
+                      <button class="report-btn" data-mode="solo" data-qid="${question.id || ''}" data-qtext="${encodeURIComponent(question.text)}" data-correct="${encodeURIComponent(question.answer)}" data-userans="${encodeURIComponent('Không trả lời')}">🚩 Báo lỗi</button>
+                    </div>
                 `;
             }
             
             questionReviewListEl.appendChild(div);
         }
+
+        // Gắn handler cho các nút báo lỗi
+        questionReviewListEl.querySelectorAll('.report-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const payload = {
+                    mode: 'solo',
+                    sessionId: soloSessionId,
+                    questionId: btn.getAttribute('data-qid') ? parseInt(btn.getAttribute('data-qid')) : null,
+                    questionText: decodeURIComponent(btn.getAttribute('data-qtext') || ''),
+                    correctAnswer: decodeURIComponent(btn.getAttribute('data-correct') || ''),
+                    userAnswer: decodeURIComponent(btn.getAttribute('data-userans') || '')
+                };
+                if (window.__openReportModal) window.__openReportModal(payload);
+            });
+        });
     }
     
     // Lưu kết quả trận đấu solo vào server
@@ -588,6 +610,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Không thể lưu kết quả trận đấu');
             }
             
+            const data = await response.json();
+            if (data && data.sessionId) {
+                soloSessionId = data.sessionId;
+            }
             console.log('Đã lưu kết quả trận đấu thành công');
         } catch (error) {
             console.error('Lỗi khi lưu kết quả trận đấu:', error);

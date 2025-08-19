@@ -128,6 +128,27 @@ CREATE TABLE IF NOT EXISTS ip_geolocation (
   lookup_count INT DEFAULT 1
 );
 
+-- Báo lỗi câu hỏi/đáp án do người dùng gửi
+CREATE TABLE IF NOT EXISTS question_reports (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NULL,
+  session_id INT NULL,
+  room_id INT NULL,
+  mode ENUM('solo','room') NOT NULL,
+  question_id INT NULL,
+  question_text TEXT NOT NULL,
+  correct_answer TEXT NOT NULL,
+  user_answer TEXT NULL,
+  report_text TEXT NOT NULL,
+  status ENUM('open','resolved') DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMP NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (session_id) REFERENCES game_sessions(id) ON DELETE SET NULL,
+  FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL
+);
+
 -- Tạo index để tối ưu hiệu suất
 -- Comment các dòng này để tránh lỗi duplicate index
 -- CREATE INDEX idx_login_logs_user_id ON login_logs(user_id);

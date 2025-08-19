@@ -16,6 +16,7 @@ console.log('🚀 Imported adminRoutes successfully');
 import adminApiRoutes from './routes/admin-api.js';
 console.log('🚀 Imported adminApiRoutes successfully');
 import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails, createGameSession, finishGameSession } from './db/game-sessions.js';
+import { createQuestionReport } from './db/reports.js';
 
 console.log('🚀 Tất cả imports hoàn tất');
 
@@ -205,6 +206,37 @@ app.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Lỗi đăng nhập:', error);
     return res.redirect('/login?error=3');
+  }
+});
+
+// API: người dùng gửi báo lỗi câu hỏi/đáp án
+app.post('/api/report-question', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { mode, questionId, questionText, correctAnswer, userAnswer, reportText, sessionId, roomId } = req.body || {};
+    if (!['solo', 'room'].includes(mode)) {
+      return res.status(400).json({ error: 'Thiếu hoặc sai mode' });
+    }
+    if (!questionText || !correctAnswer || !reportText) {
+      return res.status(400).json({ error: 'Thiếu dữ liệu bắt buộc' });
+    }
+    const { id } = await createQuestionReport({
+      userId: req.session.user.id,
+      sessionId: sessionId || null,
+      roomId: roomId || null,
+      mode,
+      questionId: questionId || null,
+      questionText,
+      correctAnswer,
+      userAnswer: userAnswer || null,
+      reportText
+    });
+    return res.json({ success: true, id });
+  } catch (error) {
+    console.error('Lỗi khi tạo report:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -499,4 +531,8 @@ app.get('/admin/users', checkAdmin, (req, res) => {
 
 app.get('/admin/game-history', checkAdmin, (req, res) => {
   res.sendFile(join(__dirname, 'views', 'admin', 'game-history.html'));
+});
+
+app.get('/admin/reports', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'reports.html'));
 });

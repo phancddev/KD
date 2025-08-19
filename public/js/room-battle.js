@@ -1460,6 +1460,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>Câu ${i + 1}: ${question.text || question.question}</h4>
                     <p>Câu trả lời của bạn: <strong>${answer.userAnswer || 'Không trả lời'}</strong></p>
                     <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                    <div style="margin-top:8px">
+                      <button class="report-btn" data-mode="room" data-qid="${question.id || ''}" data-qtext="${encodeURIComponent(question.text || question.question || '')}" data-correct="${encodeURIComponent(question.answer || '')}" data-userans="${encodeURIComponent(answer.userAnswer || 'Không trả lời')}">🚩 Báo lỗi</button>
+                    </div>
                 `;
             } else {
                 // Không có câu trả lời (câu hỏi bị bỏ qua)
@@ -1469,12 +1472,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>Câu ${i + 1}: ${question.text || question.question}</h4>
                     <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
                     <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
+                    <div style="margin-top:8px">
+                      <button class="report-btn" data-mode="room" data-qid="${question.id || ''}" data-qtext="${encodeURIComponent(question.text || question.question || '')}" data-correct="${encodeURIComponent(question.answer || '')}" data-userans="${encodeURIComponent('Không trả lời')}">🚩 Báo lỗi</button>
+                    </div>
                 `;
             }
             
             questionReviewListEl.appendChild(div);
         }
         
+        // Gắn handler cho nút báo lỗi
+        const roomData = JSON.parse(localStorage.getItem('currentRoom') || '{}');
+        const roomId = roomData && roomData.id ? roomData.id : null;
+        questionReviewListEl.querySelectorAll('.report-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const payload = {
+                    mode: 'room',
+                    roomId: roomId || null,
+                    questionId: btn.getAttribute('data-qid') ? parseInt(btn.getAttribute('data-qid')) : null,
+                    questionText: decodeURIComponent(btn.getAttribute('data-qtext') || ''),
+                    correctAnswer: decodeURIComponent(btn.getAttribute('data-correct') || ''),
+                    userAnswer: decodeURIComponent(btn.getAttribute('data-userans') || '')
+                };
+                if (window.__openReportModal) window.__openReportModal(payload);
+            });
+        });
         console.log('✅ Đã hiển thị đáp án cho tất cả', allQuestions.length, 'câu hỏi');
     }
     

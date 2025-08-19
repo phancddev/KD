@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo lỗi câu hỏi - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; color: #1f2937; line-height: 1.6; min-height: 100vh; position: relative; overflow-x: hidden; }
+        body::before { content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 20% 20%, rgba(239,68,68,.1) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(220,38,38,.08) 0%, transparent 50%), radial-gradient(circle at 40% 60%, rgba(248,113,113,.06) 0%, transparent 50%); filter: blur(40px); animation: float 20s ease-in-out infinite; z-index: -1; }
+        @keyframes float { 0%,100%{transform:translate(0,0) rotate(0)} 33%{transform:translate(30px,-30px) rotate(120deg)} 66%{transform:translate(-20px,20px) rotate(240deg)} }
+        .admin-layout{display:flex;min-height:100vh;position:relative;z-index:1}
+        .admin-sidebar{width:280px;background:rgba(255,255,255,.7);backdrop-filter:blur(20px);border-right:1px solid rgba(239,68,68,.1);box-shadow:4px 0 20px rgba(0,0,0,.05);position:fixed;height:100vh;overflow-y:auto}
+        .sidebar-header{padding:2rem 1.5rem;border-bottom:1px solid rgba(239,68,68,.1)}
+        .logo{display:flex;align-items:center;gap:.75rem;font-size:1.25rem;font-weight:700;color:#ef4444}
+        .sidebar-nav ul{list-style:none;padding:1rem 0}
+        .sidebar-nav a{display:flex;align-items:center;gap:.75rem;padding:.875rem 1.5rem;text-decoration:none;color:#64748b;transition:all .3s ease;border-radius:0;position:relative}
+        .sidebar-nav li.active a,.sidebar-nav a:hover{background:rgba(239,68,68,.1);color:#ef4444}
+        .sidebar-nav li.active a::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:#ef4444}
+        .admin-content{flex:1;margin-left:280px;padding:2rem;max-width:calc(100vw - 280px)}
+        .admin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;padding:1.5rem 2rem;background:rgba(255,255,255,.7);backdrop-filter:blur(20px);border:1px solid rgba(239,68,68,.1);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.1)}
+        .admin-header h1{color:#ef4444;font-size:1.75rem;font-weight:600;display:flex;align-items:center;gap:.75rem}
+        .admin-card{background:rgba(255,255,255,.7);backdrop-filter:blur(20px);border:1px solid rgba(239,68,68,.1);border-radius:16px;margin-bottom:2rem;box-shadow:0 8px 32px rgba(0,0,0,.1);overflow:hidden}
+        .card-header{padding:1.25rem 1.75rem;border-bottom:1px solid rgba(239,68,68,.1);background:rgba(239,68,68,.05);display:flex;justify-content:space-between;align-items:center}
+        .card-header h2{color:#ef4444;font-size:1.1rem;font-weight:600;display:flex;align-items:center;gap:.5rem}
+        .card-body{padding:1.75rem}
+        .table-responsive{overflow-x:auto;border-radius:12px;border:1px solid rgba(239,68,68,.1);background:rgba(255,255,255,.5);backdrop-filter:blur(10px)}
+        table{width:100%;border-collapse:collapse}
+        thead{background:rgba(239,68,68,.1)}
+        th,td{padding:1rem;text-align:left;border-bottom:1px solid rgba(239,68,68,.1);font-size:.9rem}
+        th{font-weight:600;color:#ef4444}
+        .badge{display:inline-block;padding:.25rem .5rem;border-radius:.5rem;font-size:.75rem}
+        .badge-open{background:rgba(239,68,68,.15);color:#dc2626;border:1px solid rgba(239,68,68,.3)}
+        .badge-resolved{background:rgba(16,185,129,.15);color:#059669;border:1px solid rgba(16,185,129,.3)}
+        .btn{padding:.5rem .9rem;border:none;border-radius:8px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
+        .btn-outline{background:transparent;border:1px solid #ef4444;color:#ef4444}
+        .btn-outline:hover{background:#ef4444;color:white}
+        .filter-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem}
+        .filter-row select,.filter-row input{padding:.5rem;border:1px solid #d1d5db;border-radius:8px;background:white}
+        .pagination{display:flex;justify-content:center;gap:.5rem;margin-top:1rem}
+        .pagination button{padding:.4rem .7rem;border:1px solid #d1d5db;background:white;border-radius:8px}
+        .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5);backdrop-filter:blur(8px)}
+        .modal-content{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);margin:5% auto;padding:1.5rem;border-radius:16px;width:92%;max-width:800px;position:relative}
+        .close{position:absolute;right:1rem;top:1rem;font-size:1.25rem;color:#6b7280;cursor:pointer}
+        pre{white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem}
+    </style>
+</head>
+<body>
+    <div class="admin-layout">
+        <div class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo"><i class="fas fa-brain"></i><span>Admin Panel</span></div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+                    </li>
+                    <li>
+                        <a href="/admin/questions"><i class="fas fa-question-circle"></i><span>Quản lý câu hỏi</span></a>
+                    </li>
+                    <li>
+                        <a href="/admin/users"><i class="fas fa-users"></i><span>Quản lý người dùng</span></a>
+                    </li>
+                    <li>
+                        <a href="/admin/login-logs"><i class="fas fa-sign-in-alt"></i><span>Login Logs</span></a>
+                    </li>
+                    <li>
+                        <a href="/admin/game-history"><i class="fas fa-history"></i><span>Lịch sử trận đấu</span></a>
+                    </li>
+                    <li class="active">
+                        <a href="/admin/reports"><i class="fas fa-flag"></i><span>Báo lỗi câu hỏi</span></a>
+                    </li>
+                    <li>
+                        <a href="/"><i class="fas fa-home"></i><span>Trang chủ</span></a>
+                    </li>
+                    <li>
+                        <a href="/logout"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <div class="admin-content">
+            <div class="admin-header">
+                <h1><i class="fas fa-flag"></i> Báo lỗi câu hỏi</h1>
+                <div class="admin-user">
+                    <span id="admin-name">Admin</span>
+                    <div class="avatar"><span id="avatar-text">A</span></div>
+                </div>
+            </div>
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-list"></i> Danh sách báo lỗi</h2>
+                    <div class="filter-row">
+                        <select id="filter-status">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="open">Chưa xử lý</option>
+                            <option value="resolved">Đã xử lý</option>
+                        </select>
+                        <input id="filter-q" placeholder="Tìm theo nội dung/câu hỏi..." />
+                        <button id="refresh-btn" class="btn btn-outline"><i class="fas fa-sync"></i> Tải lại</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Thời gian</th>
+                                    <th>Người dùng</th>
+                                    <th>Chế độ</th>
+                                    <th>Câu hỏi</th>
+                                    <th>Trạng thái</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-table"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="reports-pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="report-detail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-detail">&times;</span>
+            <h2>Chi tiết báo lỗi</h2>
+            <div id="report-detail"></div>
+            <div style="margin-top:1rem;display:flex;gap:.5rem">
+                <button id="mark-resolved" class="btn btn-outline"><i class="fas fa-check"></i> Đánh dấu đã xử lý</button>
+                <button id="mark-open" class="btn btn-outline"><i class="fas fa-undo"></i> Chuyển lại mở</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin/reports.js"></script>
+</body>
+</html>
+

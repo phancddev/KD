@@ -3,6 +3,7 @@ import { getAllUsers, findUserById, createUser, updateUser, deleteUser, setAdmin
 import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, importQuestionsFromCSV } from '../db/questions.js';
 import { getUserGameStats, getUserGameHistory, getUserGameHistoryByMonth, getGameSessionDetails, getGameHistory, countGameHistory } from '../db/game-sessions.js';
 import multer from 'multer';
+import { listQuestionReports, getQuestionReport, updateReportStatus } from '../db/reports.js';
 import { isUserAdmin } from '../db/users.js';
 
 console.log('🚀 Loading admin-api.js routes...');
@@ -92,6 +93,47 @@ router.get('/stats', checkAdmin, async (req, res) => {
   } catch (error) {
     console.error('Lỗi khi lấy thống kê tổng quan:', error);
     res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Reports - list
+router.get('/reports', checkAdmin, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const status = req.query.status || null;
+    const { rows, total } = await listQuestionReports({ page, limit, status });
+    return res.json({ reports: rows, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách reports:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Reports - detail
+router.get('/reports/:id', checkAdmin, async (req, res) => {
+  try {
+    const report = await getQuestionReport(parseInt(req.params.id));
+    if (!report) return res.status(404).json({ error: 'Report not found' });
+    return res.json(report);
+  } catch (error) {
+    console.error('Lỗi khi lấy report:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Reports - update status
+router.post('/reports/:id/status', checkAdmin, async (req, res) => {
+  try {
+    const { status } = req.body || {};
+    if (!['open', 'resolved'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    await updateReportStatus(parseInt(req.params.id), status);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật trạng thái report:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
