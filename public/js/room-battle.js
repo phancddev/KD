@@ -184,7 +184,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('🔢 myQuestionOrder:', myQuestionOrder);
         console.log('📍 currentQuestionIndex:', currentQuestionIndex);
         
-        // Luôn hiển thị countdown kể cả khi tắt tiếng; chỉ không phát âm thanh nếu mute
         if (isCountdownActive) {
             console.log('❌ Không thể hiện countdown - isCountdownActive:', isCountdownActive);
             return;
@@ -214,14 +213,14 @@ document.addEventListener('DOMContentLoaded', function() {
         battleCountdownNumber.textContent = '5';
         console.log('📱 Countdown đã hiện, số đếm: 5');
         
-        // Phát âm thanh pre-battle ngay lập tức nếu đang bật tiếng
-        if (preBattleSound && soundEnabled) {
+        // Phát âm thanh pre-battle ngay lập tức (tôn trọng trạng thái mute)
+        if (preBattleSound) {
             preBattleSound.currentTime = 0;
-            preBattleSound.volume = 0.7;
+            preBattleSound.volume = soundEnabled ? 0.7 : 0;
             preBattleSound.play().catch(error => {
                 console.log('❌ Không thể phát âm thanh pre-battle:', error);
             });
-            console.log('🔊 Đang phát âm thanh pre-battle...');
+            console.log('🔊 Đang phát âm thanh pre-battle... (volume:', preBattleSound.volume, ')');
         } else {
             console.log('❌ preBattleSound không tồn tại!');
             console.error('❌ preBattleSound element không tìm thấy!');
@@ -230,23 +229,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Tranh thủ gọi câu hỏi về trong lúc đếm ngược
         console.log('🔄 Đang chuẩn bị câu hỏi trong lúc đếm ngược...');
         
-        // Chuẩn bị câu hỏi đầu tiên ngay lập tức
+        // Chuẩn bị dữ liệu câu hỏi đầu tiên (sẽ hiển thị sau khi countdown xong)
         const questionIndex = myQuestionOrder[currentQuestionIndex];
         const question = allQuestions[questionIndex];
-        console.log('✅ Chuẩn bị câu hỏi đầu tiên:', question);
+        console.log('✅ Đã sẵn sàng dữ liệu câu hỏi đầu tiên:', question);
         console.log('🔢 questionIndex:', questionIndex);
         console.log('📚 question object:', question);
-        
-        if (question) {
-            showQuestion({
-                questionNumber: currentQuestionIndex + 1,
-                totalQuestions: allQuestions.length,
-                question: question,
-                totalTimeLeft: totalTimeRemaining
-            });
-        } else {
-            console.error('❌ Không thể lấy câu hỏi từ allQuestions!');
-        }
         
         // Đếm ngược từ 5 giây
         let count = 5;
@@ -258,18 +246,33 @@ document.addEventListener('DOMContentLoaded', function() {
             if (count <= 0) {
                 clearInterval(countdownInterval);
                 isCountdownActive = false;
-                console.log('✅ Đếm ngược hoàn thành, ẩn countdown sau 1 giây...');
-                // Ẩn countdown sau 1 giây
-                setTimeout(() => {
-                    if (battleCountdown) {
-                        battleCountdown.style.display = 'none';
-                        console.log('📱 Countdown đã ẩn, bắt đầu trận đấu...');
-                        // Bắt đầu trận đấu ngay lập tức với câu hỏi đã sẵn sàng
-                        startTotalTimer();
-                    } else {
-                        console.error('❌ battleCountdown không tồn tại khi ẩn!');
+                console.log('✅ Đếm ngược hoàn thành, ẩn countdown và bắt đầu trận đấu ngay');
+                if (battleCountdown) {
+                    battleCountdown.style.display = 'none';
+                }
+                // Hiển thị câu hỏi đầu tiên ngay khi hết countdown
+                if (question) {
+                    showQuestion({
+                        questionNumber: currentQuestionIndex + 1,
+                        totalQuestions: allQuestions.length,
+                        question: question,
+                        totalTimeLeft: totalTimeRemaining
+                    });
+                } else {
+                    console.error('❌ Không thể lấy câu hỏi từ allQuestions khi kết thúc countdown!');
+                }
+                // Phát nhạc battle sau khi kết thúc countdown (không tự đếm local 60s, đồng bộ theo server)
+                if (battleSound) {
+                    try {
+                        battleSound.pause();
+                        battleSound.currentTime = 0;
+                        battleSound.volume = soundEnabled ? 0.7 : 0;
+                        battleSound.loop = true;
+                        battleSound.play().catch(err => console.log('Không thể phát battleSound:', err));
+                    } catch (e) {
+                        console.log('Lỗi phát battleSound:', e);
                     }
-                }, 1000);
+                }
             }
         }, 1000);
     }
@@ -350,30 +353,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     endGameBtn.style.display = 'block';
                 }
                 
-                // Reset hoàn toàn UI/timer về trạng thái mới
+                // Reset điểm số
                 playerScore = 0;
-                const userScoreNode = document.getElementById('user-score');
-                if (userScoreNode) userScoreNode.textContent = '0';
-                const totalTimerNode = document.getElementById('total-timer');
-                if (totalTimerNode) {
-                    totalTimerNode.textContent = '60';
-                    totalTimerNode.style.color = '';
-                }
-                const answerResultNode = document.getElementById('answer-result');
-                if (answerResultNode) {
-                    answerResultNode.textContent = '';
-                    answerResultNode.className = 'answer-result';
-                }
-                const answerInputNode = document.getElementById('answer-input');
-                if (answerInputNode) {
-                    answerInputNode.value = '';
-                    answerInputNode.disabled = false;
-                }
-                const submitBtnNode = document.getElementById('submit-answer');
-                if (submitBtnNode) submitBtnNode.disabled = false;
-                if (battleCountdown) battleCountdown.style.display = 'none';
-                isCountdownActive = false;
-
+                document.getElementById('user-score').textContent = '0';
+                
                 console.log('✅ Đã chuyển sang phòng thi đấu, chờ event new_question_start...');
             }, 3000);
         });
@@ -830,19 +813,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Reset trạng thái đếm ngược
         isCountdownActive = false;
-        // Ẩn countdown nếu còn hiển thị
-        if (battleCountdown) {
-            battleCountdown.style.display = 'none';
-        }
-        // Tự động bật lại âm thanh cho trận mới
-        soundEnabled = true;
-        if (soundIcon) {
-            soundIcon.textContent = '🔊';
-        }
-        if (battleSound) battleSound.volume = 0.7;
-        if (preBattleSound) preBattleSound.volume = 0.7;
-        if (correctSound) correctSound.volume = 0.8;
-        if (wrongSound) wrongSound.volume = 0.8;
         
         // Nếu là chủ phòng, bắt đầu trận mới ngay
         if (roomInfo && roomInfo.creator) {

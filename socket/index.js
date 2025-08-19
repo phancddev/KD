@@ -280,11 +280,16 @@ export function initSocketIO(server) {
           countDown: 3
         });
         
-        // Đếm ngược 3 giây trước khi bắt đầu
+        // Đếm ngược 3 giây trước khi gửi câu hỏi đầu tiên, sau đó chờ thêm 5 giây intro mới bắt đầu đếm 60s
         setTimeout(() => {
-          console.log('🎮 Bắt đầu game timer và câu hỏi đầu tiên cho phòng:', roomCode);
-          startGameTimer(room);
+          console.log('🎮 Gửi câu hỏi đầu tiên, đợi 5s intro rồi mới bắt đầu game timer cho phòng:', roomCode);
+          // Đặt trước giá trị thời gian tổng để client hiển thị 60s trong lúc intro
+          room.totalTimeRemaining = 60;
           nextQuestion(room);
+          setTimeout(() => {
+            console.log('⏰ Bắt đầu game timer sau intro 5s cho phòng:', roomCode);
+            startGameTimer(room);
+          }, 5000);
         }, 3000);
         
         callback({ success: true });
