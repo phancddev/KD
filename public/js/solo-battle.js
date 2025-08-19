@@ -125,7 +125,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Hàm hiển thị popup đếm ngược 5 giây
     function showCountdownPopup() {
-        if (!soundEnabled || isCountdownActive) return;
+        // Vẫn cho phép đếm ngược ngay cả khi đang tắt tiếng; chỉ không phát âm thanh
+        if (isCountdownActive) return;
         
         isCountdownActive = true;
         
@@ -133,8 +134,8 @@ document.addEventListener('DOMContentLoaded', function() {
         countdownPopup.style.display = 'flex';
         countdownNumber.textContent = '5';
         
-        // Phát âm thanh pre-battle
-        if (preBattleSound) {
+        // Phát âm thanh pre-battle nếu đang bật tiếng
+        if (preBattleSound && soundEnabled) {
             preBattleSound.currentTime = 0;
             preBattleSound.volume = 0.7;
             preBattleSound.play().catch(error => {
@@ -268,17 +269,36 @@ document.addEventListener('DOMContentLoaded', function() {
             wrongSound.currentTime = 0;
         }
         
+        // Bật lại âm thanh để đảm bảo trải nghiệm mới hoàn toàn
+        soundEnabled = true;
+        if (soundIcon) {
+            soundIcon.textContent = '🔊';
+        }
+        if (battleSound) battleSound.volume = 0.7;
+        if (preBattleSound) preBattleSound.volume = 0.7;
+        if (correctSound) correctSound.volume = 0.8;
+        if (wrongSound) wrongSound.volume = 0.8;
+
         // Reset trạng thái trò chơi
         currentQuestionIndex = 0;
         playerScore = 0;
         userAnswers = [];
         totalTimeRemaining = 60; // Khôi phục thời gian tổng
         isCountdownActive = false; // Reset trạng thái đếm ngược
+        clearInterval(timerInterval);
         
         // Reset giao diện
         soloBattleRoom.style.display = 'block';
         resultRoom.style.display = 'none';
         userScoreEl.textContent = '0';
+        totalTimerEl.textContent = totalTimeRemaining;
+        totalTimerEl.style.color = '';
+        if (progressBarEl) {
+            progressBarEl.style.width = '0%';
+        }
+        if (countdownPopup) {
+            countdownPopup.style.display = 'none';
+        }
         
         // Lấy bộ câu hỏi mới và bắt đầu
         questions = [];
