@@ -184,8 +184,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('🔢 myQuestionOrder:', myQuestionOrder);
         console.log('📍 currentQuestionIndex:', currentQuestionIndex);
         
-        if (!soundEnabled || isCountdownActive) {
-            console.log('❌ Không thể hiện countdown - soundEnabled:', soundEnabled, 'isCountdownActive:', isCountdownActive);
+        // Luôn hiển thị countdown kể cả khi tắt tiếng; chỉ không phát âm thanh nếu mute
+        if (isCountdownActive) {
+            console.log('❌ Không thể hiện countdown - isCountdownActive:', isCountdownActive);
             return;
         }
         
@@ -213,8 +214,8 @@ document.addEventListener('DOMContentLoaded', function() {
         battleCountdownNumber.textContent = '5';
         console.log('📱 Countdown đã hiện, số đếm: 5');
         
-        // Phát âm thanh pre-battle ngay lập tức
-        if (preBattleSound) {
+        // Phát âm thanh pre-battle ngay lập tức nếu đang bật tiếng
+        if (preBattleSound && soundEnabled) {
             preBattleSound.currentTime = 0;
             preBattleSound.volume = 0.7;
             preBattleSound.play().catch(error => {
@@ -349,10 +350,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     endGameBtn.style.display = 'block';
                 }
                 
-                // Reset điểm số
+                // Reset hoàn toàn UI/timer về trạng thái mới
                 playerScore = 0;
-                document.getElementById('user-score').textContent = '0';
-                
+                const userScoreNode = document.getElementById('user-score');
+                if (userScoreNode) userScoreNode.textContent = '0';
+                const totalTimerNode = document.getElementById('total-timer');
+                if (totalTimerNode) {
+                    totalTimerNode.textContent = '60';
+                    totalTimerNode.style.color = '';
+                }
+                const answerResultNode = document.getElementById('answer-result');
+                if (answerResultNode) {
+                    answerResultNode.textContent = '';
+                    answerResultNode.className = 'answer-result';
+                }
+                const answerInputNode = document.getElementById('answer-input');
+                if (answerInputNode) {
+                    answerInputNode.value = '';
+                    answerInputNode.disabled = false;
+                }
+                const submitBtnNode = document.getElementById('submit-answer');
+                if (submitBtnNode) submitBtnNode.disabled = false;
+                if (battleCountdown) battleCountdown.style.display = 'none';
+                isCountdownActive = false;
+
                 console.log('✅ Đã chuyển sang phòng thi đấu, chờ event new_question_start...');
             }, 3000);
         });
@@ -809,6 +830,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Reset trạng thái đếm ngược
         isCountdownActive = false;
+        // Ẩn countdown nếu còn hiển thị
+        if (battleCountdown) {
+            battleCountdown.style.display = 'none';
+        }
+        // Tự động bật lại âm thanh cho trận mới
+        soundEnabled = true;
+        if (soundIcon) {
+            soundIcon.textContent = '🔊';
+        }
+        if (battleSound) battleSound.volume = 0.7;
+        if (preBattleSound) preBattleSound.volume = 0.7;
+        if (correctSound) correctSound.volume = 0.8;
+        if (wrongSound) wrongSound.volume = 0.8;
         
         // Nếu là chủ phòng, bắt đầu trận mới ngay
         if (roomInfo && roomInfo.creator) {
