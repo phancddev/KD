@@ -313,7 +313,7 @@ router.get('/users/:userId', checkAdmin, async (req, res) => {
     const stats = await getUserGameStats(userId);
     
     // Lấy lịch sử đăng nhập chi tiết từ database
-    const { getUserLoginHistory } = require('../db/login-logs.js');
+    const { getUserLoginHistory } = await import('../db/login-logs.js');
     const loginHistory = await getUserLoginHistory(userId, 100, 0);
     
     // Kiểm tra người dùng có đang online không
@@ -348,7 +348,7 @@ router.get('/users/:userId', checkAdmin, async (req, res) => {
 // Lấy tất cả login logs
 router.get('/login-logs', checkAdmin, async (req, res) => {
   try {
-    const { getAllLoginLogs, countLoginLogs } = require('../db/login-logs.js');
+    const { getAllLoginLogs, countLoginLogs } = await import('../db/login-logs.js');
     
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
@@ -389,7 +389,7 @@ router.get('/login-logs', checkAdmin, async (req, res) => {
 // Lấy thống kê đăng nhập
 router.get('/login-stats', checkAdmin, async (req, res) => {
   try {
-    const { getLoginStats } = require('../db/login-logs.js');
+    const { getLoginStats } = await import('../db/login-logs.js');
     
     const filters = {
       fromDate: req.query.fromDate || null,
@@ -414,7 +414,7 @@ router.delete('/users/:userId', checkAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Không thể xóa chính mình' });
     }
     
-    const { deleteUser } = require('../db/users.js');
+    const { deleteUser } = await import('../db/users.js');
     const success = await deleteUser(userId);
     
     if (success) {
@@ -442,7 +442,7 @@ router.post('/users/bulk-delete', checkAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Không thể xóa chính mình' });
     }
     
-    const { deleteUsers } = require('../db/users.js');
+    const { deleteUsers } = await import('../db/users.js');
     const result = await deleteUsers(userIds);
     
     res.json({ 
@@ -465,7 +465,7 @@ router.post('/users/delete-by-date', checkAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Thiếu thông tin thời gian' });
     }
     
-    const { deleteUsersByDate } = require('../db/users.js');
+    const { deleteUsersByDate } = await import('../db/users.js');
     const result = await deleteUsersByDate({
       fromDate,
       toDate,
@@ -494,7 +494,7 @@ router.post('/users/delete-inactive', checkAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Số ngày không hợp lệ' });
     }
     
-    const { deleteInactiveUsers } = require('../db/users.js');
+    const { deleteInactiveUsers } = await import('../db/users.js');
     const result = await deleteInactiveUsers({
       inactiveDays: parseInt(inactiveDays),
       onlyLocked: onlyLocked || false,
@@ -518,7 +518,7 @@ router.get('/users/preview-delete', checkAdmin, async (req, res) => {
   try {
     const { fromDate, toDate, inactiveDays, onlyLocked, onlyNonAdmin } = req.query;
     
-    const { getUsersForDeletion } = require('../db/users.js');
+    const { getUsersForDeletion } = await import('../db/users.js');
     const users = await getUsersForDeletion({
       fromDate: fromDate || null,
       toDate: toDate || null,

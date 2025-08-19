@@ -242,7 +242,7 @@ async function getIpInfo(ip) {
   };
 }
 
-module.exports = {
+export {
   parseUserAgent,
   collectDeviceInfo,
   generateDeviceFingerprint,

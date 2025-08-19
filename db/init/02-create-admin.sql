@@ -1,8 +1,8 @@
 -- Tạo người dùng admin mặc định
--- Mật khẩu: admin123 (đã được hash)
+-- Mật khẩu: admin123 (plain text vì password-utils.js đang so sánh trực tiếp)
 INSERT INTO users (username, password, email, full_name, is_admin, is_active)
 VALUES 
-  ('admin', '3d7c377ea32d8df59f572c2f1a8acc35e8cb7313:f2c6c1a8c6937a5435538a42fe1d4aac8c5c0f31cb0e10a83e135a91a8d99c5a3c2b2d5e0dfad81da9a3481a7639b8a4a65e42f64a0a01b5ffd71f48d6c3814e', 'admin@example.com', 'Quản trị viên', TRUE, TRUE)
+  ('admin', 'admin123', 'admin@example.com', 'Quản trị viên', TRUE, TRUE)
 ON DUPLICATE KEY UPDATE id = id;
 
 -- Thêm một số câu hỏi mẫu

@@ -3,7 +3,7 @@
  * Quản lý việc lưu trữ và truy xuất thông tin đăng nhập chi tiết
  */
 
-const { pool } = require('./index');
+import { pool } from './index.js';
 
 // Lưu login log mới
 async function saveLoginLog(logData) {
@@ -398,7 +398,7 @@ async function getIpGeolocation(ipAddress) {
   }
 }
 
-module.exports = {
+export {
   saveLoginLog,
   updateLogoutLog,
   getUserLoginHistory,
