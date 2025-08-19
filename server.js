@@ -139,7 +139,8 @@ app.post('/login', async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        fullName: user.full_name
+        fullName: user.full_name,
+        loginTime: new Date()
       };
       
       // Thêm người dùng vào danh sách online
