@@ -188,10 +188,23 @@ async function deleteUsers(userIds) {
 // Xóa người dùng theo thời gian
 async function deleteUsersByDate(options) {
   try {
-    const { fromDate, toDate, onlyLocked, onlyNonAdmin, excludeUserId } = options;
+    const { fromDate, toDate, fromTime, toTime, onlyLocked, onlyNonAdmin, excludeUserId } = options;
     
-    let conditions = ['created_at BETWEEN ? AND ?'];
-    let params = [fromDate, toDate];
+    let conditions = [];
+    let params = [];
+
+    // Nếu có thời gian cụ thể, dùng theo phút (múi giờ VN)
+    if (fromTime || toTime) {
+      const tz = 'Asia/Ho_Chi_Minh';
+      const startTime = fromTime && fromTime !== '' ? fromTime : '00:00:00';
+      const endTime = toTime && toTime !== '' ? toTime : '23:59:59';
+      conditions.push(`CONVERT_TZ(created_at, 'UTC', ?) BETWEEN CONCAT(?, ' ', ?) AND CONCAT(?, ' ', ?)`);
+      params.push(tz, fromDate, startTime, toDate, endTime);
+    } else {
+      // Bao trùm cả ngày: 00:00:00 đến 23:59:59 theo ngày VN (so sánh UTC trực tiếp theo stored timezone)
+      conditions.push('created_at BETWEEN ? AND ?');
+      params.push(`${fromDate} 00:00:00`, `${toDate} 23:59:59`);
+    }
     
     if (onlyLocked) {
       conditions.push('is_active = 0');
@@ -385,6 +398,8 @@ async function getUsersForDeletion(options) {
       toDate, 
       fromHour, 
       toHour, 
+      fromTime,
+      toTime,
       inactiveDays, 
       onlyLocked, 
       onlyNonAdmin, 
@@ -397,6 +412,17 @@ async function getUsersForDeletion(options) {
     
     // Xử lý ngày và giờ với múi giờ Việt Nam
     if (fromDate && toDate) {
+      if (fromTime || toTime) {
+        // Ưu tiên thời gian theo phút
+        const startTime = fromTime && fromTime !== '' ? fromTime : '00:00:00';
+        const endTime = toTime && toTime !== '' ? toTime : '23:59:59';
+        conditions.push(`
+          CONVERT_TZ(created_at, 'UTC', ?) BETWEEN 
+          CONCAT(?, ' ', ?) AND 
+          CONCAT(?, ' ', ?)
+        `);
+        params.push(timezone, fromDate, startTime, toDate, endTime);
+      } else
       if (fromHour !== undefined && toHour !== undefined && 
           !isNaN(fromHour) && !isNaN(toHour) && 
           fromHour >= 0 && fromHour <= 23 && toHour >= 0 && toHour <= 23) {

@@ -330,13 +330,15 @@ router.get('/users', checkAdmin, async (req, res) => {
 // Xem trước danh sách sẽ xóa (đặt trước route động /users/:userId để tránh nuốt đường dẫn)
 router.get('/users/preview-delete', checkAdmin, async (req, res) => {
   try {
-    const { fromDate, toDate, fromHour, toHour, inactiveDays, onlyLocked, onlyNonAdmin } = req.query;
+    const { fromDate, toDate, fromHour, toHour, fromTime, toTime, inactiveDays, onlyLocked, onlyNonAdmin } = req.query;
     const { getUsersForDeletion } = await import('../db/users.js');
     const users = await getUsersForDeletion({
       fromDate: fromDate || null,
       toDate: toDate || null,
       fromHour: fromHour && fromHour !== '' ? parseInt(fromHour) : undefined,
       toHour: toHour && toHour !== '' ? parseInt(toHour) : undefined,
+      fromTime: fromTime || null,
+      toTime: toTime || null,
       inactiveDays: inactiveDays && inactiveDays !== '' ? parseInt(inactiveDays) : null,
       onlyLocked: onlyLocked === 'true',
       onlyNonAdmin: onlyNonAdmin === 'true',
@@ -522,7 +524,7 @@ router.post('/users/bulk-delete', checkAdmin, async (req, res) => {
 // Xóa người dùng theo thời gian
 router.post('/users/delete-by-date', checkAdmin, async (req, res) => {
   try {
-    const { fromDate, toDate, onlyLocked, onlyNonAdmin } = req.body;
+    const { fromDate, toDate, fromTime, toTime, onlyLocked, onlyNonAdmin } = req.body;
     
     if (!fromDate || !toDate) {
       return res.status(400).json({ error: 'Thiếu thông tin thời gian' });
@@ -532,6 +534,8 @@ router.post('/users/delete-by-date', checkAdmin, async (req, res) => {
     const result = await deleteUsersByDate({
       fromDate,
       toDate,
+      fromTime: fromTime || null,
+      toTime: toTime || null,
       onlyLocked: onlyLocked || false,
       onlyNonAdmin: onlyNonAdmin || false,
       excludeUserId: req.session.user.id // Không xóa chính mình

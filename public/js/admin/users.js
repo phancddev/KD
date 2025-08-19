@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Advanced delete options
   const deleteFromDate = document.getElementById('delete-from-date');
   const deleteToDate = document.getElementById('delete-to-date');
+  const deleteFromTime = document.getElementById('delete-from-time');
+  const deleteToTime = document.getElementById('delete-to-time');
   const inactiveDays = document.getElementById('inactive-days');
   const deleteLockedUsers = document.getElementById('delete-locked-users');
   const deleteNonAdminUsers = document.getElementById('delete-non-admin-users');
@@ -440,6 +442,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function deleteUsersByDate() {
     const fromDate = deleteFromDate.value;
     const toDate = deleteToDate.value;
+    const fromTime = deleteFromTime?.value || '';
+    const toTime = deleteToTime?.value || '';
     
     if (!fromDate || !toDate) {
       alert('Vui lòng chọn khoảng thời gian!');
@@ -456,6 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             fromDate,
             toDate,
+            fromTime: fromTime || null,
+            toTime: toTime || null,
             onlyLocked: deleteLockedUsers.checked,
             onlyNonAdmin: deleteNonAdminUsers.checked
           }),
@@ -515,6 +521,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function previewDeleteUsers() {
     const fromDate = deleteFromDate.value;
     const toDate = deleteToDate.value;
+    const fromTime = deleteFromTime?.value || '';
+    const toTime = deleteToTime?.value || '';
     const days = parseInt(inactiveDays.value);
     
     if (!fromDate && !toDate && !days) {
@@ -526,6 +534,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams({
         fromDate: fromDate || '',
         toDate: toDate || '',
+        fromTime: fromTime || '',
+        toTime: toTime || '',
         inactiveDays: days || '',
         onlyLocked: deleteLockedUsers.checked,
         onlyNonAdmin: deleteNonAdminUsers.checked
@@ -550,14 +560,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Show preview modal
   function showPreviewModal(users, totalCount) {
+    let modalPage = 1;
+    const modalPageSize = 10;
+    const totalPages = Math.max(Math.ceil((users || []).length / modalPageSize), 1);
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.innerHTML = `
+
+    const renderRows = () => {
+      const start = (modalPage - 1) * modalPageSize;
+      const end = Math.min(start + modalPageSize, users.length);
+      return users.slice(start, end).map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td>${u.username}</td>
+          <td>${u.fullName || ''}</td>
+          <td>${u.email || ''}</td>
+          <td>${formatDate(u.createdAt)}</td>
+          <td>${u.lastLogin ? formatDate(u.lastLogin) : 'Chưa đăng nhập'}</td>
+          <td>${u.isActive ? 'Kích hoạt' : 'Khóa'}</td>
+        </tr>
+      `).join('');
+    };
+
+    const renderPager = () => `
+      <div class="pagination" style="margin-top: 0.75rem; display:flex; gap:0.5rem; align-items:center;">
+        <button class="btn btn-small" id="modal-prev" ${modalPage === 1 ? 'disabled' : ''}>Trước</button>
+        <span>Trang</span>
+        <input type="number" id="modal-page-input" min="1" max="${totalPages}" value="${modalPage}" style="width:80px"/>
+        <span>/ ${totalPages}</span>
+        <button class="btn btn-small" id="modal-next" ${modalPage === totalPages ? 'disabled' : ''}>Tiếp</button>
+      </div>`;
+
+    const buildContent = () => `
       <div class="modal-content large-modal">
         <span class="close">&times;</span>
         <h2>Xem trước danh sách sẽ xóa</h2>
-        <p class="warning-text">⚠️ Cảnh báo: ${totalCount} người dùng sẽ bị xóa!</p>
-        
+        <p class="warning-text">⚠️ Cảnh báo: Tổng cộng ${totalCount} người dùng sẽ bị xóa!</p>
         <div class="table-responsive">
           <table class="admin-table">
             <thead>
@@ -572,27 +610,18 @@ document.addEventListener('DOMContentLoaded', () => {
               </tr>
             </thead>
             <tbody>
-              ${users.map(u => `
-                <tr>
-                  <td>${u.id}</td>
-                  <td>${u.username}</td>
-                  <td>${u.fullName || ''}</td>
-                  <td>${u.email || ''}</td>
-                  <td>${formatDate(u.createdAt)}</td>
-                  <td>${u.lastLogin ? formatDate(u.lastLogin) : 'Chưa đăng nhập'}</td>
-                  <td>${u.isActive ? 'Kích hoạt' : 'Khóa'}</td>
-                </tr>
-              `).join('')}
+              ${renderRows()}
             </tbody>
           </table>
         </div>
-        
+        ${renderPager()}
         <div class="modal-actions">
           <button class="btn btn-danger" id="confirm-delete-preview">Xác nhận xóa</button>
           <button class="btn btn-secondary" id="cancel-preview">Hủy</button>
         </div>
-      </div>
-    `;
+      </div>`;
+
+    modal.innerHTML = buildContent();
 
     document.body.appendChild(modal);
     modal.style.display = 'block';
@@ -612,10 +641,32 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modal) closeModal();
     });
 
-    confirmBtn.addEventListener('click', () => {
-      closeModal();
-      deleteUsersByDate();
-    });
+    function wirePager() {
+      const prev = modal.querySelector('#modal-prev');
+      const next = modal.querySelector('#modal-next');
+      const pageInput = modal.querySelector('#modal-page-input');
+      if (prev) prev.onclick = () => { if (modalPage > 1) { modalPage--; modal.innerHTML = buildContent(); wirePager(); wireActions(); } };
+      if (next) next.onclick = () => { if (modalPage < totalPages) { modalPage++; modal.innerHTML = buildContent(); wirePager(); wireActions(); } };
+      if (pageInput) pageInput.onchange = () => {
+        const p = parseInt(pageInput.value);
+        if (!isNaN(p) && p >= 1 && p <= totalPages) { modalPage = p; modal.innerHTML = buildContent(); wirePager(); wireActions(); }
+        else { pageInput.value = modalPage; }
+      };
+    }
+
+    function wireActions() {
+      const confirmBtn2 = modal.querySelector('#confirm-delete-preview');
+      const closeBtn2 = modal.querySelector('.close');
+      const cancelBtn2 = modal.querySelector('#cancel-preview');
+      if (confirmBtn2) confirmBtn2.onclick = () => { closeModal(); deleteUsersByDate(); };
+      if (closeBtn2) closeBtn2.onclick = closeModal;
+      if (cancelBtn2) cancelBtn2.onclick = closeModal;
+    }
+
+    wirePager();
+    wireActions();
+
+    // original confirmBtn already replaced by wireActions
   }
 
   function exportCSV() {
