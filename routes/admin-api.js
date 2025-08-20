@@ -3,7 +3,7 @@ import { getAllUsers, findUserById, createUser, updateUser, deleteUser, setAdmin
 import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, importQuestionsFromCSV } from '../db/questions.js';
 import { getUserGameStats, getUserGameHistory, getUserGameHistoryByMonth, getGameSessionDetails, getGameHistory, countGameHistory } from '../db/game-sessions.js';
 import multer from 'multer';
-import { listQuestionReports, getQuestionReport, updateReportStatus, updateAnswerSuggestion, approveAnswerSuggestions, rejectAnswerSuggestion } from '../db/reports.js';
+import { listQuestionReports, getQuestionReport, updateReportStatus, updateAnswerSuggestion, approveAnswerSuggestions, rejectAnswerSuggestion, addAnswerSuggestion } from '../db/reports.js';
 import { isUserAdmin } from '../db/users.js';
 
 console.log('🚀 Loading admin-api.js routes...');
@@ -146,6 +146,23 @@ router.post('/reports/:reportId/suggestions/approve', checkAdmin, async (req, re
     return res.json({ success: true, inserted });
   } catch (error) {
     console.error('Lỗi khi duyệt đề xuất:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Reports - admin adds a new suggestion (pending) into a report
+router.post('/reports/:reportId/suggestions', checkAdmin, async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.reportId);
+    const { answer, suggestedAnswer } = req.body || {};
+    const val = (answer ?? suggestedAnswer ?? '').toString().trim();
+    if (!val) return res.status(400).json({ error: 'Thiếu nội dung đề xuất' });
+    const report = await getQuestionReport(reportId);
+    if (!report) return res.status(404).json({ error: 'Report not found' });
+    const created = await addAnswerSuggestion({ reportId, questionId: report.question_id || null, userId: req.session.user.id, suggestedAnswer: val });
+    return res.json({ success: true, suggestion: { id: created.id, suggested_answer: val, status: 'pending' } });
+  } catch (error) {
+    console.error('Lỗi khi thêm đề xuất bởi admin:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });

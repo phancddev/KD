@@ -148,6 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <button id="approve-selected" class="btn btn-outline">Duyệt vào database</button>
           <input id="approve-note" placeholder="Ghi chú (tuỳ chọn)" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;">
         </div>
+        <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+          <input id="new-suggestion" placeholder="Thêm đáp án đề xuất (admin)" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;">
+          <button id="add-suggestion" class="btn btn-outline">Thêm</button>
+        </div>
       </div>
     `;
     modal.style.display = 'block';
@@ -177,8 +181,56 @@ document.addEventListener('DOMContentLoaded', () => {
       const res3 = await fetch(`/api/admin/reports/${r.id}/suggestions/approve`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'include', body: JSON.stringify({ suggestionIds: sids, note }) });
       if (!res3.ok) { alert('Duyệt thất bại'); return; }
       alert('Đã duyệt và thêm vào database');
-      modal.style.display = 'none';
-      loadReports(currentPage);
+      // Refresh detail without closing
+      const resRef = await fetch(`/api/admin/reports/${r.id}`, { credentials: 'include' });
+      if (resRef.ok) {
+        const r2 = await resRef.json();
+        // Reopen renderer by simulating click handler again
+        currentSelectedId = r2.id;
+        // Trigger same block by calling click handler-like flow
+        // Easiest: re-run this function by setting innerHTML again via recursion
+        // Simulate by programmatically clicking the same row button is complex; instead, replace content:
+        // Reuse code by dispatching a custom event
+        // For simplicity, call the same rendering snippet again:
+        // Build suggestionsHtml and replace content
+        const suggestionsHtml2 = (r2.suggestions||[]).map(s => `
+          <div data-sid="${s.id}" style=\"display:flex; gap:.5rem; align-items:center; margin:.25rem 0;\">\
+            <input type=\"text\" value=\"${escapeHtml(s.suggested_answer||'')}\" style=\"flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;\" ${s.status==='approved'?'disabled':''}>\
+            <span class=\"badge ${s.status==='approved'?'badge-resolved':'badge-open'}\">${s.status}</span>\
+            ${s.status==='approved' ? '' : '<button class=\\"btn btn-outline btn-save\\" data-action=\\"save\\" title=\\"Lưu chỉnh sửa\\">💾</button>'}\
+            ${s.status==='approved' ? '' : '<input type=\\"checkbox\\" class=\\"approve-checkbox\\" title=\\"Chọn duyệt\\">'}\
+          </div>
+        `).join('');
+        const containerHtml = detailContainer.innerHTML.replace(/<div id=\"suggestions-list\">[\s\S]*?<\/div>/, `<div id=\"suggestions-list\">${suggestionsHtml2 || '<em>Không có đề xuất</em>'}<\/div>`);
+        detailContainer.innerHTML = containerHtml;
+      } else {
+        loadReports(currentPage);
+      }
+    });
+
+    // Add new suggestion by admin
+    const addBtn = detailContainer.querySelector('#add-suggestion');
+    addBtn?.addEventListener('click', async () => {
+      const input = detailContainer.querySelector('#new-suggestion');
+      const val = (input?.value || '').trim();
+      if (!val) { alert('Nhập nội dung'); return; }
+      const resAdd = await fetch(`/api/admin/reports/${r.id}/suggestions`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'include', body: JSON.stringify({ answer: val }) });
+      if (!resAdd.ok) { alert('Thêm đề xuất thất bại'); return; }
+      input.value = '';
+      // Refresh suggestions list only
+      const resRef = await fetch(`/api/admin/reports/${r.id}`, { credentials: 'include' });
+      if (resRef.ok) {
+        const r2 = await resRef.json();
+        const suggestionsList = detailContainer.querySelector('#suggestions-list');
+        suggestionsList.innerHTML = (r2.suggestions||[]).map(s => `
+          <div data-sid="${s.id}" style="display:flex; gap:.5rem; align-items:center; margin:.25rem 0;">
+            <input type="text" value="${escapeHtml(s.suggested_answer||'')}" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;" ${s.status==='approved'?'disabled':''}>
+            <span class="badge ${s.status==='approved'?'badge-resolved':'badge-open'}">${s.status}</span>
+            ${s.status==='approved' ? '' : '<button class="btn btn-outline btn-save" data-action="save" title="Lưu chỉnh sửa">💾</button>'}
+            ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt">'}
+          </div>
+        `).join('');
+      }
     });
   });
 
