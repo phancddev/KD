@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const editModal = document.getElementById('edit-modal');
     const closeModalBtn = document.querySelector('#edit-modal .close');
     const editQuestionForm = document.getElementById('edit-question-form');
+    const acceptedAnswersList = document.createElement('div');
+    acceptedAnswersList.id = 'accepted-answers-list';
     const selectAllCheckbox = document.getElementById('select-all');
     const deleteSelectedBtn = document.getElementById('delete-selected');
     const selectAllBtn = document.getElementById('select-all-questions');
@@ -96,6 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Giới hạn độ dài của text và answer để hiển thị trong bảng
             const truncatedText = question.text.length > 50 ? question.text.substring(0, 50) + '...' : question.text;
             const truncatedAnswer = question.answer.length > 30 ? question.answer.substring(0, 30) + '...' : question.answer;
+            const acceptedCount = Array.isArray(question.acceptedAnswers) ? question.acceptedAnswers.length : 0;
             
             // Format thời gian
             const createdAt = new Date(question.createdAt).toLocaleString('vi-VN', {
@@ -112,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </td>
                 <td>${sequenceNumber}</td>
                 <td title="${question.text}">${truncatedText}</td>
-                <td title="${question.answer}">${truncatedAnswer}</td>
+                <td title="${question.answer}">${truncatedAnswer}${acceptedCount ? ` <span style="color:#999">(+${acceptedCount} đáp án)</span>` : ''}</td>
                 <td>${createdAt}</td>
                 <td>
                     <div class="table-actions">
@@ -484,6 +487,55 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('edit-question-id').value = question.id;
         document.getElementById('edit-question-text').value = question.text;
         document.getElementById('edit-question-answer').value = question.answer;
+        // Render accepted answers list
+        const list = document.getElementById('accepted-answers-list');
+        if (list) {
+            list.innerHTML = '';
+            const items = Array.isArray(question.acceptedAnswers) ? question.acceptedAnswers : [];
+            items.forEach((ans, idx) => {
+                const item = document.createElement('div');
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.style.border = '1px solid #eee';
+                item.style.borderRadius = '6px';
+                item.style.padding = '6px 8px';
+                item.style.marginBottom = '6px';
+                const text = typeof ans === 'string' ? ans : (ans && ans.answer ? ans.answer : '');
+                const idAttr = typeof ans === 'object' && ans && ans.id ? `data-answer-id="${ans.id}"` : '';
+                item.innerHTML = `
+                    <span>${text}</span>
+                    <button type="button" class="btn btn-danger btn-sm btn-remove-accepted" ${idAttr} data-index="${idx}">Xóa</button>
+                `;
+                list.appendChild(item);
+            });
+            // Attach remove handlers (immediate delete via API if id exists)
+            list.querySelectorAll('button.btn-remove-accepted').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const answerId = this.getAttribute('data-answer-id');
+                    if (answerId) {
+                        try {
+                            const resp = await fetch(`/admin/api/answers/${answerId}`, { method: 'DELETE' });
+                            const data = await resp.json();
+                            if (!resp.ok || !data.success) throw new Error(data.error || 'Xóa thất bại');
+                            showNotification('Đã xóa đáp án bổ sung');
+                            // Refresh list
+                            await fetchQuestions();
+                            openEditModal(questionId);
+                        } catch (err) {
+                            console.error('Xóa đáp án lỗi:', err);
+                            showNotification('Không thể xóa đáp án', 'error');
+                        }
+                    } else {
+                        // Local-only fallback
+                        const index = parseInt(this.getAttribute('data-index'));
+                        items.splice(index, 1);
+                        question.acceptedAnswers = items;
+                        openEditModal(questionId);
+                    }
+                });
+            });
+        }
         
         editModal.style.display = 'block';
     }
@@ -507,7 +559,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const formData = {
             text: document.getElementById('edit-question-text').value.trim(),
-            answer: document.getElementById('edit-question-answer').value.trim()
+            answer: document.getElementById('edit-question-answer').value.trim(),
+            acceptedAnswers: (questions.find(q => q.id == questionId)?.acceptedAnswers) || []
         };
         
         if (!formData.text || !formData.answer) {
@@ -536,6 +589,33 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Lỗi khi cập nhật câu hỏi:', error);
             showNotification('Không thể cập nhật câu hỏi', 'error');
         });
+    });
+
+    // Add accepted answer button in modal
+    document.addEventListener('click', async function(e) {
+        const target = e.target;
+        if (target && target.id === 'add-accepted-answer') {
+            const input = document.getElementById('new-accepted-answer');
+            const val = (input.value || '').trim();
+            if (!val) return;
+            const qid = document.getElementById('edit-question-id').value;
+            try {
+                const resp = await fetch(`/admin/api/questions/${qid}/answers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answer: val })
+                });
+                const data = await resp.json();
+                if (!resp.ok || !data.success) throw new Error(data.error || 'Không thể thêm đáp án');
+                showNotification('Đã thêm đáp án bổ sung');
+                input.value = '';
+                await fetchQuestions();
+                openEditModal(qid);
+            } catch (err) {
+                console.error('Thêm đáp án lỗi:', err);
+                showNotification('Không thể thêm đáp án', 'error');
+            }
+        }
     });
     
     // Xóa câu hỏi

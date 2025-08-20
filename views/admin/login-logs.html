@@ -474,6 +474,18 @@
             }
         }
     </style>
+    <style>
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { width: min(900px, 95vw); background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); overflow: hidden; }
+        .modal-header { display:flex; align-items:center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid #eee; }
+        .modal-body { padding: 1rem 1.25rem; max-height: 70vh; overflow: auto; }
+        .modal-footer { padding: 0.75rem 1.25rem; border-top: 1px solid #eee; display:flex; justify-content: flex-end; }
+        .modal-close { background: transparent; border: none; font-size: 1.25rem; cursor: pointer; }
+        .modal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem 1rem; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+        .badge-success { background: rgba(16,185,129,.12); color: #065f46; border: 1px solid rgba(16,185,129,.2); }
+        .badge-danger { background: rgba(239,68,68,.12); color: #7f1d1d; border: 1px solid rgba(239,68,68,.2); }
+    </style>
 </head>
 <body>
     <div class="admin-layout">
@@ -687,6 +699,7 @@
                                     <th>Trạng thái</th>
                                     <th>Thời gian session</th>
                                     <th>Đáng ngờ</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody id="logs-table">

@@ -12,7 +12,9 @@ import {
     getQuestionById, 
     updateQuestion, 
     deleteQuestion, 
-    importQuestionsFromCSV 
+    importQuestionsFromCSV,
+    addAcceptedAnswer,
+    removeAcceptedAnswer
 } from '../db/questions.js';
 
 const execAsync = promisify(exec);
@@ -163,7 +165,7 @@ router.post('/api/questions', checkAdmin, async (req, res) => {
 router.put('/api/questions/:id', checkAdmin, async (req, res) => {
     try {
         const questionId = req.params.id;
-        const { text, answer } = req.body;
+        const { text, answer, acceptedAnswers } = req.body;
         
         if (!text || !answer) {
             return res.status(400).json({ success: false, error: 'Thiếu thông tin câu hỏi hoặc câu trả lời' });
@@ -171,7 +173,8 @@ router.put('/api/questions/:id', checkAdmin, async (req, res) => {
         
         const success = await updateQuestion(questionId, {
             text,
-            answer
+            answer,
+            acceptedAnswers: Array.isArray(acceptedAnswers) ? acceptedAnswers : undefined
         });
         
         if (success) {
@@ -183,6 +186,35 @@ router.put('/api/questions/:id', checkAdmin, async (req, res) => {
         console.error('Lỗi khi cập nhật câu hỏi:', error);
         res.status(500).json({ success: false, error: 'Không thể cập nhật câu hỏi' });
     }
+});
+
+// API: thêm một đáp án chấp nhận cho câu hỏi
+router.post('/api/questions/:id/answers', checkAdmin, async (req, res) => {
+  try {
+    const questionId = parseInt(req.params.id);
+    const { answer } = req.body || {};
+    if (!answer || !answer.toString().trim()) {
+      return res.status(400).json({ success: false, error: 'Thiếu nội dung đáp án' });
+    }
+    const created = await addAcceptedAnswer(questionId, answer);
+    res.json({ success: true, answer: created });
+  } catch (error) {
+    console.error('Lỗi khi thêm đáp án phụ:', error);
+    res.status(500).json({ success: false, error: 'Không thể thêm đáp án' });
+  }
+});
+
+// API: xóa một đáp án chấp nhận
+router.delete('/api/answers/:answerId', checkAdmin, async (req, res) => {
+  try {
+    const answerId = parseInt(req.params.answerId);
+    const ok = await removeAcceptedAnswer(answerId);
+    if (!ok) return res.status(404).json({ success: false, error: 'Không tìm thấy đáp án' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Lỗi khi xóa đáp án phụ:', error);
+    res.status(500).json({ success: false, error: 'Không thể xóa đáp án' });
+  }
 });
 
 // API xóa câu hỏi

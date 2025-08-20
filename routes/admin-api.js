@@ -3,7 +3,7 @@ import { getAllUsers, findUserById, createUser, updateUser, deleteUser, setAdmin
 import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, importQuestionsFromCSV } from '../db/questions.js';
 import { getUserGameStats, getUserGameHistory, getUserGameHistoryByMonth, getGameSessionDetails, getGameHistory, countGameHistory } from '../db/game-sessions.js';
 import multer from 'multer';
-import { listQuestionReports, getQuestionReport, updateReportStatus } from '../db/reports.js';
+import { listQuestionReports, getQuestionReport, updateReportStatus, updateAnswerSuggestion, approveAnswerSuggestions, rejectAnswerSuggestion } from '../db/reports.js';
 import { isUserAdmin } from '../db/users.js';
 
 console.log('🚀 Loading admin-api.js routes...');
@@ -133,6 +133,46 @@ router.post('/reports/:id/status', checkAdmin, async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     console.error('Lỗi khi cập nhật trạng thái report:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Reports - approve suggestions into DB answers
+router.post('/reports/:reportId/suggestions/approve', checkAdmin, async (req, res) => {
+  try {
+    const { suggestionIds, note } = req.body || {};
+    if (!Array.isArray(suggestionIds) || suggestionIds.length === 0) return res.status(400).json({ error: 'Danh sách đề xuất trống' });
+    const { inserted } = await approveAnswerSuggestions({ suggestionIds: suggestionIds.map(id => parseInt(id)), adminId: req.session.user.id, note: note || null });
+    return res.json({ success: true, inserted });
+  } catch (error) {
+    console.error('Lỗi khi duyệt đề xuất:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Reports - update a suggestion content (admin can edit before approve)
+router.post('/reports/:reportId/suggestions/:suggestionId', checkAdmin, async (req, res) => {
+  try {
+    const suggestionId = parseInt(req.params.suggestionId);
+    const { newAnswer, note } = req.body || {};
+    if (!newAnswer || !newAnswer.toString().trim()) return res.status(400).json({ error: 'Thiếu nội dung đề xuất' });
+    await updateAnswerSuggestion({ suggestionId, newAnswer: newAnswer.toString().trim(), adminId: req.session.user.id, note: note || null });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật đề xuất:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Reports - reject a suggestion
+router.post('/reports/:reportId/suggestions/:suggestionId/reject', checkAdmin, async (req, res) => {
+  try {
+    const suggestionId = parseInt(req.params.suggestionId);
+    const { note } = req.body || {};
+    await rejectAnswerSuggestion({ suggestionId, adminId: req.session.user.id, note: note || null });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Lỗi khi từ chối đề xuất:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });

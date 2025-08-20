@@ -118,6 +118,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!res.ok) { alert('Không thể tải chi tiết'); return; }
     const r = await res.json();
     currentSelectedId = r.id;
+    const suggestionsHtml = (r.suggestions||[]).map(s => `
+      <div data-sid="${s.id}" style="display:flex; gap:.5rem; align-items:center; margin:.25rem 0;">
+        <input type="text" value="${escapeHtml(s.suggested_answer||'')}" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;" ${s.status==='approved'?'disabled':''}>
+        <span class="badge ${s.status==='approved'?'badge-resolved':'badge-open'}">${s.status}</span>
+        ${s.status==='approved' ? '' : '<button class="btn btn-outline btn-save" data-action="save" title="Lưu chỉnh sửa">💾</button>'}
+        ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt">'}
+      </div>
+    `).join('');
     detailContainer.innerHTML = `
       <p><strong>ID:</strong> #${r.id}</p>
       <p><strong>Thời gian:</strong> ${formatDate(r.created_at)}</p>
@@ -133,8 +141,45 @@ document.addEventListener('DOMContentLoaded', () => {
       <p><strong>Nội dung báo lỗi:</strong></p>
       <pre>${escapeHtml(r.report_text || '')}</pre>
       <p><strong>Trạng thái:</strong> ${r.status}</p>
+      <div style="margin-top:.75rem;">
+        <p style="font-weight:600; color:#ef4444;">Đáp án đề xuất từ thí sinh:</p>
+        <div id="suggestions-list">${suggestionsHtml || '<em>Không có đề xuất</em>'}</div>
+        <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+          <button id="approve-selected" class="btn btn-outline">Duyệt vào database</button>
+          <input id="approve-note" placeholder="Ghi chú (tuỳ chọn)" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;">
+        </div>
+      </div>
     `;
     modal.style.display = 'block';
+
+    // Save edited suggestion
+    detailContainer.querySelectorAll('.btn-save').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const wrap = btn.closest('[data-sid]');
+        const sid = parseInt(wrap.getAttribute('data-sid'));
+        const input = wrap.querySelector('input[type="text"]');
+        const newAnswer = input.value.trim();
+        if (!newAnswer) { alert('Nội dung trống'); return; }
+        const res2 = await fetch(`/api/admin/reports/${r.id}/suggestions/${sid}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'include', body: JSON.stringify({ newAnswer }) });
+        if (!res2.ok) { alert('Lưu thất bại'); return; }
+        alert('Đã lưu');
+      });
+    });
+
+    // Approve selected suggestions
+    const approveBtn = detailContainer.querySelector('#approve-selected');
+    approveBtn?.addEventListener('click', async () => {
+      const sids = Array.from(detailContainer.querySelectorAll('.approve-checkbox'))
+        .filter(cb => cb.checked)
+        .map(cb => parseInt(cb.closest('[data-sid]').getAttribute('data-sid')));
+      if (sids.length === 0) { alert('Chọn ít nhất 1 đề xuất'); return; }
+      const note = detailContainer.querySelector('#approve-note')?.value || '';
+      const res3 = await fetch(`/api/admin/reports/${r.id}/suggestions/approve`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'include', body: JSON.stringify({ suggestionIds: sids, note }) });
+      if (!res3.ok) { alert('Duyệt thất bại'); return; }
+      alert('Đã duyệt và thêm vào database');
+      modal.style.display = 'none';
+      loadReports(currentPage);
+    });
   });
 
   closeDetail.addEventListener('click', () => modal.style.display = 'none');

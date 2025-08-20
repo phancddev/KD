@@ -375,7 +375,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const question = questions[currentQuestionIndex];
         
         // Kiểm tra đáp án
-        const isCorrect = checkAnswer(userAnswer, question.answer);
+        const accepted = Array.isArray(question.acceptedAnswers)
+            ? question.acceptedAnswers.map(a => (typeof a === 'string' ? a : (a && a.answer ? a.answer : '')))
+            : [];
+        const isCorrect = checkAnswer(userAnswer, question.answer, accepted);
         
         const answerResult = document.getElementById('answer-result');
         
@@ -410,10 +413,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Kiểm tra câu trả lời (chỉ khớp hoàn toàn sau khi chuẩn hóa)
-    function checkAnswer(userAnswer, correctAnswer) {
-        const normalizedUserAnswer = userAnswer.trim().toLowerCase();
-        const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
-        return normalizedUserAnswer === normalizedCorrectAnswer;
+    function normalize(text) {
+        return (text || '').toString().trim().toLowerCase();
+    }
+    function checkAnswer(userAnswer, correctAnswer, acceptedAnswers = []) {
+        const ua = normalize(userAnswer);
+        const ca = normalize(correctAnswer);
+        
+        // Kiểm tra với đáp án chính
+        if (ua === ca) return true;
+        
+        // Kiểm tra với các đáp án bổ sung
+        if (Array.isArray(acceptedAnswers)) {
+            for (const a of acceptedAnswers) {
+                // Xử lý cả trường hợp a là string và a là object {id, answer}
+                const answerText = typeof a === 'string' ? a : (a && a.answer ? a.answer : '');
+                if (normalize(answerText) === ua) return true;
+            }
+        }
+        
+        return false;
     }
     
     // Xử lý khi hết thời gian tổng (60 giây)

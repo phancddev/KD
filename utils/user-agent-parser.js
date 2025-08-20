@@ -214,6 +214,7 @@ async function getIpInfo(ip) {
     if (response.ok) {
       const data = await response.json();
       return {
+        ipAddress: ip,
         country: data.country_name,
         countryCode: data.country_code,
         region: data.region,

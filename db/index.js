@@ -105,6 +105,17 @@ async function createBasicTables() {
     )
   `);
 
+  // Tạo bảng answers (đáp án bổ sung)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS answers (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      question_id INT NOT NULL,
+      answer TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+    )
+  `);
+
   // Tạo bảng rooms
   await pool.query(`
     CREATE TABLE IF NOT EXISTS rooms (
@@ -236,6 +247,39 @@ async function createBasicTables() {
       FOREIGN KEY (session_id) REFERENCES game_sessions(id) ON DELETE SET NULL,
       FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL,
       FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Bảng đề xuất đáp án
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS answer_suggestions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      report_id INT NOT NULL,
+      question_id INT NULL,
+      user_id INT NULL,
+      suggested_answer TEXT NOT NULL,
+      status ENUM('pending','approved','rejected') DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (report_id) REFERENCES question_reports(id) ON DELETE CASCADE,
+      FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Log xử lý đề xuất đáp án
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS answer_suggestion_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      suggestion_id INT NOT NULL,
+      admin_id INT NULL,
+      action VARCHAR(20) NOT NULL,
+      old_value TEXT NULL,
+      new_value TEXT NULL,
+      note TEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (suggestion_id) REFERENCES answer_suggestions(id) ON DELETE CASCADE,
+      FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
     )
   `);
 

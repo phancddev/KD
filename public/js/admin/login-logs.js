@@ -211,7 +211,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>
             <div class="ip-info">
               <span class="ip-address">${log.ipAddress}</span>
-              <small class="ip-location">${log.location}</small>
+            </div>
+          </td>
+          <td>
+            <div class="location-info">
+              <span class="location">${log.location}</span>
             </div>
           </td>
           <td>
@@ -237,9 +241,60 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td>${sessionDuration}</td>
           <td>${suspiciousBadge}</td>
+          <td>
+            <button class="btn btn-outline btn-detail" data-log='${JSON.stringify(log).replace(/'/g, "&apos;")}'>Chi tiết</button>
+          </td>
         </tr>
       `;
     }).join('');
+
+    // Wire up detail buttons
+    logsTable.querySelectorAll('.btn-detail').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const log = JSON.parse(btn.getAttribute('data-log').replace(/&apos;/g, "'"));
+        showDetailModal(log);
+      });
+    });
+  }
+
+  // Modal for log detail
+  function showDetailModal(log) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Chi tiết đăng nhập</h3>
+          <button class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-grid">
+            <div><strong>Thời gian:</strong> ${formatDate(log.loginAt)}</div>
+            <div><strong>Username:</strong> ${log.username}</div>
+            <div><strong>Họ tên:</strong> ${log.fullName || 'N/A'}</div>
+            <div><strong>IP:</strong> ${log.ipAddress}</div>
+            <div><strong>Vị trí:</strong> ${log.location || 'Unknown'}</div>
+            <div><strong>Timezone:</strong> ${log.timezone || 'Unknown'}</div>
+            <div><strong>Thiết bị:</strong> ${log.deviceType} - ${log.deviceModel}</div>
+            <div><strong>Trình duyệt:</strong> ${log.browser}</div>
+            <div><strong>Hệ điều hành:</strong> ${log.os}</div>
+            <div><strong>Phương thức:</strong> ${log.loginMethod}</div>
+            <div><strong>Trạng thái:</strong> ${log.loginStatus}</div>
+            <div><strong>Session ID:</strong> ${log.sessionId || 'N/A'}</div>
+            <div><strong>Thời gian session:</strong> ${formatSessionDuration(log.sessionDuration)}</div>
+            <div><strong>Đáng ngờ:</strong> ${log.isSuspicious ? 'Có' : 'Không'}</div>
+            <div><strong>Lý do:</strong> ${log.suspiciousReason || 'N/A'}</div>
+            <div><strong>User Agent:</strong> ${log.userAgent || 'N/A'}</div>
+            <div><strong>Email:</strong> ${log.email || 'N/A'}</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary modal-close">Đóng</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelectorAll('.modal-close').forEach(el => el.addEventListener('click', () => modal.remove()));
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
   }
 
   // Render stats overview

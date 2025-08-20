@@ -29,6 +29,15 @@ CREATE TABLE IF NOT EXISTS questions (
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Bảng lưu các đáp án chấp nhận thêm cho mỗi câu hỏi (ngoài đáp án hiển thị)
+CREATE TABLE IF NOT EXISTS answers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question_id INT NOT NULL,
+  answer TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+
 -- Tạo bảng rooms
 CREATE TABLE IF NOT EXISTS rooms (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -147,6 +156,35 @@ CREATE TABLE IF NOT EXISTS question_reports (
   FOREIGN KEY (session_id) REFERENCES game_sessions(id) ON DELETE SET NULL,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL,
   FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL
+);
+
+-- Bảng lưu đề xuất đáp án từ người dùng cho mỗi report
+CREATE TABLE IF NOT EXISTS answer_suggestions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  report_id INT NOT NULL,
+  question_id INT NULL,
+  user_id INT NULL,
+  suggested_answer TEXT NOT NULL,
+  status ENUM('pending','approved','rejected') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (report_id) REFERENCES question_reports(id) ON DELETE CASCADE,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Bảng log lịch sử xử lý đề xuất đáp án
+CREATE TABLE IF NOT EXISTS answer_suggestion_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  suggestion_id INT NOT NULL,
+  admin_id INT NULL,
+  action VARCHAR(20) NOT NULL, -- update, approve, reject
+  old_value TEXT NULL,
+  new_value TEXT NULL,
+  note TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (suggestion_id) REFERENCES answer_suggestions(id) ON DELETE CASCADE,
+  FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Tạo index để tối ưu hiệu suất

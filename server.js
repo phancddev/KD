@@ -16,7 +16,7 @@ console.log('🚀 Imported adminRoutes successfully');
 import adminApiRoutes from './routes/admin-api.js';
 console.log('🚀 Imported adminApiRoutes successfully');
 import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails, createGameSession, finishGameSession } from './db/game-sessions.js';
-import { createQuestionReport } from './db/reports.js';
+import { createQuestionReport, addAnswerSuggestion } from './db/reports.js';
 
 console.log('🚀 Tất cả imports hoàn tất');
 
@@ -28,12 +28,26 @@ const PORT = config.server.port;
 
 // Middleware
 app.use(cookieParser());
+// Tin cậy proxy để req.ip đọc từ X-Forwarded-For khi đứng sau Nginx/Proxy
+app.set('trust proxy', true);
 
-// Middleware để set IP address
+// Middleware để xác định IP address của client (chuẩn hóa IPv6-mapped IPv4)
 app.use((req, res, next) => {
-  // Trong Express.js mới, req.ip là getter, không thể set trực tiếp
-  // Thay vào đó, tạo thuộc tính mới
-  req.clientIP = req.ip || req.connection?.remoteAddress || req.headers['x-forwarded-for'] || '127.0.0.1';
+  function normalizeIp(ip) {
+    if (!ip) return '127.0.0.1';
+    if (Array.isArray(ip)) ip = ip[0];
+    if (typeof ip === 'string') {
+      // Lấy IP đầu tiên nếu có danh sách qua proxy
+      ip = ip.split(',')[0].trim();
+      if (ip.startsWith('::ffff:')) ip = ip.substring(7);
+      if (ip === '::1') ip = '127.0.0.1';
+    }
+    return ip;
+  }
+
+  const forwarded = req.headers['x-forwarded-for'];
+  const sourceIp = forwarded || req.ip || req.connection?.remoteAddress;
+  req.clientIP = normalizeIp(sourceIp);
   next();
 });
 
@@ -215,12 +229,21 @@ app.post('/api/report-question', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
-    const { mode, questionId, questionText, correctAnswer, userAnswer, reportText, sessionId, roomId } = req.body || {};
+    const { mode, questionId, questionText, correctAnswer, userAnswer, reportText, sessionId, roomId, suggestions } = req.body || {};
     if (!['solo', 'room'].includes(mode)) {
       return res.status(400).json({ error: 'Thiếu hoặc sai mode' });
     }
-    if (!questionText || !correctAnswer || !reportText) {
+    if (!questionText || !correctAnswer) {
       return res.status(400).json({ error: 'Thiếu dữ liệu bắt buộc' });
+    }
+    const suggestionList = Array.isArray(suggestions)
+      ? suggestions.map(s => (typeof s === 'string' ? s : (s && s.value ? s.value : ''))).map(v => (v || '').toString().trim()).filter(Boolean)
+      : [];
+    const reportTextToSave = (reportText && reportText.toString().trim())
+      ? reportText.toString().trim()
+      : (suggestionList.length > 0 ? `Đề xuất đáp án: ${suggestionList.join(' | ')}` : '');
+    if (!reportTextToSave) {
+      return res.status(400).json({ error: 'Cần nhập mô tả hoặc ít nhất 1 đáp án đề xuất' });
     }
     const { id } = await createQuestionReport({
       userId: req.session.user.id,
@@ -231,8 +254,12 @@ app.post('/api/report-question', async (req, res) => {
       questionText,
       correctAnswer,
       userAnswer: userAnswer || null,
-      reportText
+      reportText: reportTextToSave
     });
+    // Lưu các đề xuất đáp án nếu có
+    for (const trimmed of suggestionList) {
+      await addAnswerSuggestion({ reportId: id, questionId: questionId || null, userId: req.session.user.id, suggestedAnswer: trimmed });
+    }
     return res.json({ success: true, id });
   } catch (error) {
     console.error('Lỗi khi tạo report:', error);

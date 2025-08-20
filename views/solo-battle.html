@@ -670,12 +670,17 @@
         </main>
     </div>
 
-    <!-- Report modal -->
+    <!-- Report modal with answer suggestions -->
     <div id="report-modal" class="report-modal">
         <div class="content">
             <h3>Báo lỗi câu hỏi/đáp án</h3>
             <p id="report-question-text" style="margin: 8px 0; color:#374151"></p>
-            <textarea id="report-text" placeholder="Mô tả lỗi (ví dụ: sai chính tả, đáp án không đúng, câu hỏi không rõ ràng...)"></textarea>
+            <div style="margin:8px 0;">
+              <label style="font-weight:600; color:#374151; display:block; margin-bottom:6px;">Đáp án đề xuất:</label>
+              <div id="suggestions-wrap"></div>
+              <button id="add-suggestion" class="btn btn-outline" style="margin-top:6px;">+ Thêm đáp án đề xuất</button>
+            </div>
+            <textarea id="report-text" placeholder="Mô tả thêm (ví dụ: vì sao đáp án này đúng...)"></textarea>
             <div class="actions">
                 <button id="report-cancel" class="btn btn-secondary">Hủy</button>
                 <button id="report-submit" class="btn btn-primary">Gửi báo lỗi</button>
@@ -713,24 +718,51 @@
         const modal = document.getElementById('report-modal');
         const questionEl = document.getElementById('report-question-text');
         const textEl = document.getElementById('report-text');
+        const suggestionsWrap = document.getElementById('suggestions-wrap');
+        const btnAdd = document.getElementById('add-suggestion');
         const btnCancel = document.getElementById('report-cancel');
         const btnSubmit = document.getElementById('report-submit');
         let currentReportPayload = null;
+        function addSuggestionRow(value = ''){
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.gap = '6px';
+          row.style.marginBottom = '6px';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = 'Nhập đáp án đề xuất';
+          input.value = value;
+          input.style.flex = '1';
+          input.style.padding = '8px';
+          input.style.border = '1px solid #d1d5db';
+          input.style.borderRadius = '8px';
+          const del = document.createElement('button');
+          del.textContent = 'Xóa';
+          del.className = 'btn btn-outline';
+          del.addEventListener('click', () => { suggestionsWrap.removeChild(row); });
+          row.appendChild(input);
+          row.appendChild(del);
+          suggestionsWrap.appendChild(row);
+        }
         window.__openReportModal = function(payload){
           currentReportPayload = payload;
           questionEl.textContent = `Câu hỏi: ${payload.questionText}`;
           textEl.value = '';
+          suggestionsWrap.innerHTML = '';
+          addSuggestionRow('');
           modal.style.display = 'flex';
         };
+        btnAdd.addEventListener('click', () => addSuggestionRow(''));
         btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
         btnSubmit.addEventListener('click', async () => {
           const reportText = textEl.value.trim();
-          if (!reportText) { alert('Vui lòng nhập nội dung báo lỗi'); return; }
+          const suggestions = Array.from(suggestionsWrap.querySelectorAll('input')).map(i => i.value.trim()).filter(Boolean);
+          if (!reportText && suggestions.length === 0) { alert('Vui lòng nhập mô tả hoặc thêm ít nhất 1 đáp án đề xuất'); return; }
           try {
             const res = await fetch('/api/report-question', {
               method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-              body: JSON.stringify({ ...currentReportPayload, reportText })
+              body: JSON.stringify({ ...currentReportPayload, reportText, suggestions })
             });
             if (!res.ok) throw new Error('Submit failed');
             alert('Đã gửi báo lỗi. Cảm ơn bạn!');

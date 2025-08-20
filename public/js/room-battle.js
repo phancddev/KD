@@ -962,7 +962,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const answerTime = Math.floor((Date.now() - questionStartTime) / 1000);
         
         // ✅ CHECK ANSWER LOCAL - NO SERVER CALL (Maximum Speed!)
-        const isCorrect = checkAnswer(userAnswer, currentQuestion.answer);
+        const accepted = Array.isArray(currentQuestion.acceptedAnswers)
+            ? currentQuestion.acceptedAnswers.map(a => (typeof a === 'string' ? a : (a && a.answer ? a.answer : '')))
+            : [];
+        const isCorrect = checkAnswer(userAnswer, currentQuestion.answer, accepted);
         const answerResult = document.getElementById('answer-result');
         
         console.log('🎯 Answer check:', {
@@ -1256,10 +1259,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Kiểm tra câu trả lời local (chỉ khớp hoàn toàn sau khi chuẩn hóa)
-    function checkAnswer(userAnswer, correctAnswer) {
-        const normalizedUserAnswer = userAnswer.trim().toLowerCase();
-        const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
-        return normalizedUserAnswer === normalizedCorrectAnswer;
+    function normalize(text) {
+        return (text || '').toString().trim().toLowerCase();
+    }
+    function checkAnswer(userAnswer, correctAnswer, acceptedAnswers = []) {
+        const ua = normalize(userAnswer);
+        const ca = normalize(correctAnswer);
+        
+        // Kiểm tra với đáp án chính
+        if (ua === ca) return true;
+        
+        // Kiểm tra với các đáp án bổ sung
+        if (Array.isArray(acceptedAnswers)) {
+            for (const a of acceptedAnswers) {
+                // Xử lý cả trường hợp a là string và a là object {id, answer}
+                const answerText = typeof a === 'string' ? a : (a && a.answer ? a.answer : '');
+                if (normalize(answerText) === ua) return true;
+            }
+        }
+        
+        return false;
     }
     
     // Helper function: Shuffle array (giống bên server)

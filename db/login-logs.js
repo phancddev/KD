@@ -195,7 +195,7 @@ async function getAllLoginLogs(filters = {}, limit = 50, offset = 0) {
       browser: `${row.browser_name} ${row.browser_version}`,
       os: `${row.os_name} ${row.os_version}`,
       deviceModel: row.device_model,
-      location: `${row.city}, ${row.country}`,
+      location: `${row.city || 'Unknown'}, ${row.country || 'Unknown'}`,
       timezone: row.timezone,
       loginStatus: row.login_status,
       loginMethod: row.login_method,

@@ -42,10 +42,15 @@ async function getQuestionById(id) {
     if (rows.length === 0) return null;
     
     const question = rows[0];
+    // Lấy các đáp án bổ sung
+    const [answerRows] = await pool.query('SELECT id, answer FROM answers WHERE question_id = ?', [id]);
+    const acceptedAnswers = answerRows.map(r => ({ id: r.id, answer: r.answer }));
+
     return {
       id: question.id,
       text: question.text,
       answer: question.answer,
+      acceptedAnswers,
       category: question.category,
       difficulty: question.difficulty,
       createdBy: question.created_by,
@@ -61,10 +66,20 @@ async function getQuestionById(id) {
 async function getAllQuestions() {
   try {
     const [rows] = await pool.query('SELECT * FROM questions');
+    const ids = rows.map(q => q.id);
+    let answersMap = new Map();
+    if (ids.length > 0) {
+      const [ans] = await pool.query(`SELECT id, question_id, answer FROM answers WHERE question_id IN (${ids.map(() => '?').join(',')})`, ids);
+      for (const r of ans) {
+        if (!answersMap.has(r.question_id)) answersMap.set(r.question_id, []);
+        answersMap.get(r.question_id).push({ id: r.id, answer: r.answer });
+      }
+    }
     return rows.map(question => ({
       id: question.id,
       text: question.text,
       answer: question.answer,
+      acceptedAnswers: answersMap.get(question.id) || [],
       category: question.category,
       difficulty: question.difficulty,
       createdBy: question.created_by,
@@ -91,11 +106,23 @@ async function getRandomQuestions(count = 12, category = null) {
     params.push(count);
     
     const [rows] = await pool.query(query, params);
+
+    // Lấy accepted answers cho những câu hỏi này
+    const ids = rows.map(q => q.id);
+    let answersMap = new Map();
+    if (ids.length > 0) {
+      const [ans] = await pool.query(`SELECT id, question_id, answer FROM answers WHERE question_id IN (${ids.map(() => '?').join(',')})`, ids);
+      for (const r of ans) {
+        if (!answersMap.has(r.question_id)) answersMap.set(r.question_id, []);
+        answersMap.get(r.question_id).push({ id: r.id, answer: r.answer });
+      }
+    }
     
     return rows.map(question => ({
       id: question.id,
       text: question.text,
       answer: question.answer,
+      acceptedAnswers: answersMap.get(question.id) || [],
       category: question.category,
       difficulty: question.difficulty
     }));
@@ -106,10 +133,28 @@ async function getRandomQuestions(count = 12, category = null) {
 }
 
 // Kiểm tra câu trả lời
-function checkAnswer(userAnswer, correctAnswer) {
-  const normalizedUserAnswer = userAnswer.trim().toLowerCase();
-  const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
-  return normalizedUserAnswer === normalizedCorrectAnswer;
+function normalize(text) {
+  return (text || '').toString().trim().toLowerCase();
+}
+
+// Hỗ trợ kiểm tra với nhiều đáp án chấp nhận
+function checkAnswer(userAnswer, correctAnswer, acceptedAnswers = []) {
+  const normalizedUserAnswer = normalize(userAnswer);
+  const normalizedCorrectAnswer = normalize(correctAnswer);
+  
+  // Kiểm tra với đáp án chính
+  if (normalizedUserAnswer === normalizedCorrectAnswer) return true;
+  
+  // Kiểm tra với các đáp án bổ sung
+  if (Array.isArray(acceptedAnswers)) {
+    for (const a of acceptedAnswers) {
+      // Xử lý cả trường hợp a là string và a là object {id, answer}
+      const answerText = typeof a === 'string' ? a : (a && a.answer ? a.answer : '');
+      if (normalize(answerText) === normalizedUserAnswer) return true;
+    }
+  }
+  
+  return false;
 }
 
 // Nhập câu hỏi từ file CSV hoặc TXT (tab-separated)
@@ -333,18 +378,46 @@ export async function deleteAllQuestions() {
 // Cập nhật câu hỏi
 async function updateQuestion(id, question) {
   try {
-    const { text, answer, category, difficulty } = question;
+    const { text, answer, category, difficulty, acceptedAnswers } = question;
     
     const [result] = await pool.query(
       'UPDATE questions SET text = ?, answer = ?, category = ?, difficulty = ? WHERE id = ?',
       [text, answer, category, difficulty, id]
     );
-    
+    // Cập nhật accepted answers nếu truyền vào
+    if (Array.isArray(acceptedAnswers)) {
+      // Xóa tất cả và thêm lại để đơn giản
+      await pool.query('DELETE FROM answers WHERE question_id = ?', [id]);
+      if (acceptedAnswers.length > 0) {
+        const values = acceptedAnswers
+          .map(a => (typeof a === 'string' ? a : a?.answer))
+          .filter(a => a && a.toString().trim() !== '')
+          .map(a => [id, a.toString().trim()]);
+        if (values.length > 0) {
+          const placeholders = values.map(() => '(?, ?)').join(',');
+          await pool.query(`INSERT INTO answers (question_id, answer) VALUES ${placeholders}`, values.flat());
+        }
+      }
+    }
+
     return result.affectedRows > 0;
   } catch (error) {
     console.error('Lỗi khi cập nhật câu hỏi:', error);
     throw error;
   }
+}
+
+// Thêm/xóa đáp án bổ sung riêng lẻ
+async function addAcceptedAnswer(questionId, answer) {
+  const a = (answer || '').toString().trim();
+  if (!a) return null;
+  const [res] = await pool.query('INSERT INTO answers (question_id, answer) VALUES (?, ?)', [questionId, a]);
+  return { id: res.insertId, questionId, answer: a };
+}
+
+async function removeAcceptedAnswer(answerId) {
+  const [res] = await pool.query('DELETE FROM answers WHERE id = ?', [answerId]);
+  return res.affectedRows > 0;
 }
 
 // Thêm nhiều câu hỏi mẫu
@@ -445,5 +518,7 @@ export {
   importQuestionsFromCSV,
   deleteQuestion,
   updateQuestion,
-  seedSampleQuestions
+  seedSampleQuestions,
+  addAcceptedAnswer,
+  removeAcceptedAnswer
 };
