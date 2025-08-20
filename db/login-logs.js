@@ -116,42 +116,52 @@ async function getAllLoginLogs(filters = {}, limit = 50, offset = 0) {
     const params = [];
 
     if (filters.userId) {
-      conditions.push('user_id = ?');
+      conditions.push('l.user_id = ?');
       params.push(filters.userId);
     }
 
     if (filters.username) {
-      conditions.push('username LIKE ?');
+      conditions.push('l.username LIKE ?');
       params.push(`%${filters.username}%`);
     }
 
     if (filters.ipAddress) {
-      conditions.push('ip_address LIKE ?');
+      conditions.push('l.ip_address LIKE ?');
       params.push(`%${filters.ipAddress}%`);
     }
 
     if (filters.deviceType) {
-      conditions.push('device_type = ?');
+      conditions.push('l.device_type = ?');
       params.push(filters.deviceType);
     }
 
     if (filters.loginStatus) {
-      conditions.push('login_status = ?');
+      conditions.push('l.login_status = ?');
       params.push(filters.loginStatus);
     }
 
-    if (filters.fromDate) {
-      conditions.push('login_at >= ?');
-      params.push(filters.fromDate);
+    // Xử lý filter theo ngày/giờ tương tự countLoginLogs để đồng nhất kết quả
+    if (filters.fromDate && filters.toDate && filters.fromHour !== null && filters.toHour !== null) {
+      conditions.push(`
+        CONVERT_TZ(l.login_at, 'UTC', 'Asia/Ho_Chi_Minh') BETWEEN 
+        CONCAT(?, ' ', LPAD(?, 2, '0'), ':00:00') AND 
+        CONCAT(?, ' ', LPAD(?, 2, '0'), ':59:59')
+      `);
+      params.push(filters.fromDate, filters.fromHour, filters.toDate, filters.toHour);
+    } else if (filters.fromDate && filters.toDate) {
+      conditions.push('l.login_at BETWEEN ? AND ?');
+      params.push(`${filters.fromDate} 00:00:00`, `${filters.toDate} 23:59:59`);
+    } else if (filters.fromHour !== null && filters.toHour !== null) {
+      conditions.push(`
+        CONVERT_TZ(l.login_at, 'UTC', 'Asia/Ho_Chi_Minh') BETWEEN 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':00:00') AND 
+        CONCAT(CURDATE(), ' ', LPAD(?, 2, '0'), ':59:59')
+      `);
+      params.push(filters.fromHour, filters.toHour);
     }
 
-    if (filters.toDate) {
-      conditions.push('login_at <= ?');
-      params.push(filters.toDate);
-    }
-
-    if (filters.isSuspicious !== undefined) {
-      conditions.push('is_suspicious = ?');
+    if (filters.isSuspicious !== undefined && filters.isSuspicious !== null) {
+      conditions.push('l.is_suspicious = ?');
       params.push(filters.isSuspicious);
     }
 
@@ -258,7 +268,7 @@ async function countLoginLogs(filters = {}) {
       params.push(filters.fromHour, filters.toHour);
     }
 
-    if (filters.isSuspicious !== undefined) {
+    if (filters.isSuspicious !== undefined && filters.isSuspicious !== null) {
       conditions.push('is_suspicious = ?');
       params.push(filters.isSuspicious);
     }

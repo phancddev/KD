@@ -470,13 +470,32 @@ router.get('/login-logs', checkAdmin, async (req, res) => {
       toDate: req.query.toDate || null,
       fromHour: req.query.fromHour && !isNaN(parseInt(req.query.fromHour)) ? parseInt(req.query.fromHour) : null,
       toHour: req.query.toHour && !isNaN(parseInt(req.query.toHour)) ? parseInt(req.query.toHour) : null,
-      isSuspicious: req.query.isSuspicious !== undefined ? req.query.isSuspicious === 'true' : null
+      isSuspicious: req.query.isSuspicious !== undefined && req.query.isSuspicious !== '' ? req.query.isSuspicious === 'true' : null
     };
+
+    // Xuất CSV nếu yêu cầu
+    const exportCsv = req.query.export === 'csv';
     
     const [logs, total] = await Promise.all([
-      getAllLoginLogs(filters, limit, offset),
+      getAllLoginLogs(filters, exportCsv ? 10000 : limit, exportCsv ? 0 : offset),
       countLoginLogs(filters)
     ]);
+
+    if (exportCsv) {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="login-logs-${new Date().toISOString().split('T')[0]}.csv"`);
+      const header = [
+        'id','userId','username','ipAddress','userAgent','deviceType','browser','os','deviceModel','country','city','timezone','loginStatus','loginMethod','sessionId','loginAt','logoutAt','sessionDuration','isSuspicious','suspiciousReason','createdAt'
+      ];
+      const rows = logs.map(l => [
+        l.id, l.userId ?? '', l.username, l.ipAddress, (l.userAgent || '').replace(/"/g, '\\"'), l.deviceType,
+        l.browser, l.os, l.deviceModel, l.location?.split(', ')[1] || '', l.location?.split(', ')[0] || '', l.timezone,
+        l.loginStatus, l.loginMethod, l.sessionId, l.loginAt, l.logoutAt, l.sessionDuration, l.isSuspicious ? 1 : 0,
+        (l.suspiciousReason || '').replace(/"/g, '\\"'), l.createdAt
+      ]);
+      const csv = [header.join(','), ...rows.map(r => r.map(v => typeof v === 'string' ? `"${v}"` : v).join(','))].join('\n');
+      return res.send(csv);
+    }
     
     res.json({
       logs,
@@ -500,7 +519,10 @@ router.get('/login-stats', checkAdmin, async (req, res) => {
     
     const filters = {
       fromDate: req.query.fromDate || null,
-      toDate: req.query.toDate || null
+      toDate: req.query.toDate || null,
+      fromHour: req.query.fromHour && !isNaN(parseInt(req.query.fromHour)) ? parseInt(req.query.fromHour) : null,
+      toHour: req.query.toHour && !isNaN(parseInt(req.query.toHour)) ? parseInt(req.query.toHour) : null,
+      isSuspicious: req.query.isSuspicious !== undefined && req.query.isSuspicious !== '' ? req.query.isSuspicious === 'true' : null
     };
     
     const stats = await getLoginStats(filters);

@@ -45,20 +45,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderPagination(pagination) {
     totalItems = pagination.total || 0;
-    pageSize = pagination.limit || 10;
-    currentPage = pagination.page || 1;
+    pageSize = pagination.limit || pageSize || 10;
+    currentPage = pagination.page || currentPage || 1;
     const pages = Math.max(pagination.pages || 1, 1);
+
+    const isFirst = currentPage <= 1;
+    const isLast = currentPage >= pages;
+
     let html = '';
-    for (let p = 1; p <= pages; p++) {
-      html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`;
-    }
+    html += `<button class="page-btn first" data-page="1" ${isFirst ? 'disabled' : ''}>«</button>`;
+    html += `<button class="page-btn prev" data-page="${Math.max(1, currentPage - 1)}" ${isFirst ? 'disabled' : ''}>‹</button>`;
+    html += `
+      <div class="page-input-container" style="display:flex;align-items:center;gap:.5rem;padding:.25rem .5rem;border:1px solid #d1d5db;border-radius:8px;background:rgba(255,255,255,0.8)">
+        <span>Trang</span>
+        <input type="number" id="page-jump" min="1" max="${pages}" value="${currentPage}" style="width:70px;padding:.35rem .5rem;border:1px solid #d1d5db;border-radius:6px;text-align:center" />
+        <span>của <strong>${pages}</strong></span>
+      </div>`;
+    html += `<button class="page-btn next" data-page="${Math.min(pages, currentPage + 1)}" ${isLast ? 'disabled' : ''}>›</button>`;
+    html += `<button class="page-btn last" data-page="${pages}" ${isLast ? 'disabled' : ''}>»</button>`;
+    html += `
+      <div class="pagination-size" style="display:flex;align-items:center;gap:.5rem;margin-left:.5rem">
+        <label for="page-size-select">Hiển thị:</label>
+        <select id="page-size-select" class="page-size-select">
+          <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+          <option value="20" ${pageSize === 20 ? 'selected' : ''}>20</option>
+          <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+          <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+        </select>
+        <span>/trang</span>
+      </div>`;
+
     paginationEl.innerHTML = html;
-    paginationEl.querySelectorAll('.page-btn').forEach(btn => {
+
+    const bindNav = (selector) => {
+      const btn = paginationEl.querySelector(selector);
+      if (!btn) return;
       btn.addEventListener('click', () => {
-        currentPage = parseInt(btn.getAttribute('data-page'));
+        const page = parseInt(btn.getAttribute('data-page'));
+        if (!Number.isFinite(page)) return;
+        currentPage = Math.min(Math.max(1, page), pages);
         loadGames();
       });
-    });
+    };
+
+    bindNav('.first');
+    bindNav('.prev');
+    bindNav('.next');
+    bindNav('.last');
+
+    const jump = paginationEl.querySelector('#page-jump');
+    if (jump) {
+      jump.addEventListener('keypress', (e) => {
+        if (e.key !== 'Enter') return;
+        const val = parseInt(jump.value);
+        if (Number.isFinite(val) && val >= 1 && val <= pages) {
+          currentPage = val;
+          loadGames();
+        } else {
+          jump.value = String(currentPage);
+        }
+      });
+    }
+
+    const sizeSel = paginationEl.querySelector('#page-size-select');
+    if (sizeSel) {
+      sizeSel.addEventListener('change', () => {
+        const val = parseInt(sizeSel.value) || 10;
+        if (val !== pageSize) {
+          pageSize = val;
+          currentPage = 1;
+          loadGames();
+        }
+      });
+    }
   }
 
   function renderTable(games) {
