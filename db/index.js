@@ -57,6 +57,8 @@ async function initDatabase() {
         }
       }
       
+      // Sau khi init từ file, chạy migrations an toàn
+      await runMigrations();
       console.log('Khởi tạo cơ sở dữ liệu thành công!');
       return true;
     } catch (fileError) {
@@ -64,6 +66,8 @@ async function initDatabase() {
       // Fallback: tạo các bảng cơ bản
       console.log('Sử dụng fallback: tạo bảng cơ bản...');
       await createBasicTables();
+      // Dù fallback hay không cũng chạy migrations an toàn
+      await runMigrations();
       return true;
     }
   } catch (error) {
@@ -285,6 +289,100 @@ async function createBasicTables() {
   `);
 
   console.log('Tạo bảng cơ bản thành công!');
+}
+
+// Chạy các migration an toàn cho DB hiện hữu (idempotent)
+async function runMigrations() {
+  try {
+    // Đảm bảo cột accepted_answers tồn tại trong question_reports
+    await ensureColumnExists(
+      'question_reports',
+      'accepted_answers',
+      "ADD COLUMN accepted_answers JSON NULL AFTER report_text"
+    );
+
+    // Đảm bảo bảng answers tồn tại (trong trường hợp DB cũ)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS answers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        question_id INT NOT NULL,
+        answer TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Đảm bảo bảng question_reports tồn tại (nếu thiếu)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS question_reports (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        session_id INT NULL,
+        room_id INT NULL,
+        mode ENUM('solo','room') NOT NULL,
+        question_id INT NULL,
+        question_text TEXT NOT NULL,
+        correct_answer TEXT NOT NULL,
+        user_answer TEXT NULL,
+        report_text TEXT NOT NULL,
+        accepted_answers JSON NULL,
+        status ENUM('open','resolved') DEFAULT 'open',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TIMESTAMP NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (session_id) REFERENCES game_sessions(id) ON DELETE SET NULL,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL,
+        FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Đảm bảo các bảng đề xuất tồn tại
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS answer_suggestions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        report_id INT NOT NULL,
+        question_id INT NULL,
+        user_id INT NULL,
+        suggested_answer TEXT NOT NULL,
+        status ENUM('pending','approved','rejected') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (report_id) REFERENCES question_reports(id) ON DELETE CASCADE,
+        FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS answer_suggestion_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        suggestion_id INT NOT NULL,
+        admin_id INT NULL,
+        action VARCHAR(20) NOT NULL,
+        old_value TEXT NULL,
+        new_value TEXT NULL,
+        note TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (suggestion_id) REFERENCES answer_suggestions(id) ON DELETE CASCADE,
+        FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+  } catch (err) {
+    console.error('Lỗi khi chạy migrations:', err);
+  }
+}
+
+// Helper: thêm cột nếu chưa tồn tại
+async function ensureColumnExists(tableName, columnName, alterClause) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [config.db.database, tableName, columnName]
+  );
+  const exists = rows && rows[0] && Number(rows[0].cnt) > 0;
+  if (!exists) {
+    console.log(`⚙️  Thêm cột ${columnName} vào bảng ${tableName}...`);
+    await pool.query(`ALTER TABLE ${tableName} ${alterClause}`);
+  }
 }
 
 export { pool, testConnection, initDatabase };
