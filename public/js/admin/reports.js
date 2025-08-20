@@ -136,6 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <pre>${escapeHtml(r.question_text || '')}</pre>
       <p><strong>Đáp án đúng:</strong></p>
       <pre>${escapeHtml(r.correct_answer || '')}</pre>
+      ${r.accepted_answers ? `<p><strong>Các đáp án được chấp nhận:</strong></p>
+      <pre>${escapeHtml(JSON.parse(r.accepted_answers).map(a => a.answer || a).join(', '))}</pre>` : ''}
       <p><strong>Đáp án người dùng:</strong></p>
       <pre>${escapeHtml(r.user_answer || '')}</pre>
       <p><strong>Nội dung báo lỗi:</strong></p>

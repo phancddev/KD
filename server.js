@@ -254,7 +254,8 @@ app.post('/api/report-question', async (req, res) => {
       questionText,
       correctAnswer,
       userAnswer: userAnswer || null,
-      reportText: reportTextToSave
+      reportText: reportTextToSave,
+      acceptedAnswers: req.body.acceptedAnswers || null
     });
     // Lưu các đề xuất đáp án nếu có
     for (const trimmed of suggestionList) {

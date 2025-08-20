@@ -240,6 +240,7 @@ async function createBasicTables() {
       correct_answer TEXT NOT NULL,
       user_answer TEXT NULL,
       report_text TEXT NOT NULL,
+      accepted_answers JSON NULL,
       status ENUM('open','resolved') DEFAULT 'open',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       resolved_at TIMESTAMP NULL,

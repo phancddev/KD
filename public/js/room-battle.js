@@ -1484,7 +1484,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Câu trả lời của bạn: <strong>${answer.userAnswer || 'Không trả lời'}</strong></p>
                     <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
                     <div style="margin-top:8px">
-                      <button class="report-btn" data-mode="room" data-qid="${question.id || ''}" data-qtext="${encodeURIComponent(question.text || question.question || '')}" data-correct="${encodeURIComponent(question.answer || '')}" data-userans="${encodeURIComponent(answer.userAnswer || 'Không trả lời')}">🚩 Báo lỗi</button>
+                      <button class="report-btn" data-mode="room" data-qid="${question.id || ''}" data-qtext="${encodeURIComponent(question.text || question.question || '')}" data-correct="${encodeURIComponent(question.answer || '')}" data-userans="${encodeURIComponent(answer.userAnswer || 'Không trả lời')}" data-accepted="${encodeURIComponent(JSON.stringify(question.acceptedAnswers || []))}">🚩 Báo lỗi</button>
                     </div>
                 `;
             } else {
@@ -1496,7 +1496,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Câu trả lời của bạn: <strong>Không trả lời</strong></p>
                     <p>Câu trả lời đúng: <strong>${question.answer}</strong></p>
                     <div style="margin-top:8px">
-                      <button class="report-btn" data-mode="room" data-qid="${question.id || ''}" data-qtext="${encodeURIComponent(question.text || question.question || '')}" data-correct="${encodeURIComponent(question.answer || '')}" data-userans="${encodeURIComponent('Không trả lời')}">🚩 Báo lỗi</button>
+                      <button class="report-btn" data-mode="room" data-qid="${question.id || ''}" data-qtext="${encodeURIComponent(question.text || question.question || '')}" data-correct="${encodeURIComponent(question.answer || '')}" data-userans="${encodeURIComponent('Không trả lời')}" data-accepted="${encodeURIComponent(JSON.stringify(question.acceptedAnswers || []))}">🚩 Báo lỗi</button>
                     </div>
                 `;
             }
@@ -1515,7 +1515,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     questionId: btn.getAttribute('data-qid') ? parseInt(btn.getAttribute('data-qid')) : null,
                     questionText: decodeURIComponent(btn.getAttribute('data-qtext') || ''),
                     correctAnswer: decodeURIComponent(btn.getAttribute('data-correct') || ''),
-                    userAnswer: decodeURIComponent(btn.getAttribute('data-userans') || '')
+                    userAnswer: decodeURIComponent(btn.getAttribute('data-userans') || ''),
+                    acceptedAnswers: JSON.parse(decodeURIComponent(btn.getAttribute('data-accepted') || '[]'))
                 };
                 if (window.__openReportModal) window.__openReportModal(payload);
             });

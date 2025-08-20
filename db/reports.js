@@ -1,10 +1,10 @@
 import { pool } from './index.js';
 
-export async function createQuestionReport({ userId, sessionId = null, roomId = null, mode, questionId = null, questionText, correctAnswer, userAnswer = null, reportText }) {
+export async function createQuestionReport({ userId, sessionId = null, roomId = null, mode, questionId = null, questionText, correctAnswer, userAnswer = null, reportText, acceptedAnswers = null }) {
   const [result] = await pool.query(
-    `INSERT INTO question_reports (user_id, session_id, room_id, mode, question_id, question_text, correct_answer, user_answer, report_text)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [userId || null, sessionId || null, roomId || null, mode, questionId || null, questionText, correctAnswer, userAnswer, reportText]
+    `INSERT INTO question_reports (user_id, session_id, room_id, mode, question_id, question_text, correct_answer, user_answer, report_text, accepted_answers)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [userId || null, sessionId || null, roomId || null, mode, questionId || null, questionText, correctAnswer, userAnswer, reportText, acceptedAnswers ? JSON.stringify(acceptedAnswers) : null]
   );
   return { id: result.insertId };
 }
