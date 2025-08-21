@@ -1,6 +1,6 @@
 import express from 'express';
 import { getAllUsers, findUserById, createUser, updateUser, deleteUser, setAdminStatus } from '../db/users.js';
-import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, importQuestionsFromCSV } from '../db/questions.js';
+import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, importQuestionsFromCSV, getQuestionById } from '../db/questions.js';
 import { getUserGameStats, getUserGameHistory, getUserGameHistoryByMonth, getGameSessionDetails, getGameHistory, countGameHistory } from '../db/game-sessions.js';
 import multer from 'multer';
 import { listQuestionReports, getQuestionReport, updateReportStatus, updateAnswerSuggestion, approveAnswerSuggestions, rejectAnswerSuggestion, addAnswerSuggestion } from '../db/reports.js';
@@ -115,6 +115,28 @@ router.get('/reports/:id', checkAdmin, async (req, res) => {
   try {
     const report = await getQuestionReport(parseInt(req.params.id));
     if (!report) return res.status(404).json({ error: 'Report not found' });
+    // Nếu report có question_id, lấy dữ liệu câu hỏi mới nhất để hiển thị cập nhật
+    if (report.question_id) {
+      try {
+        const latest = await getQuestionById(report.question_id);
+        if (latest) {
+          // Cập nhật các trường hiển thị để luôn phản ánh dữ liệu mới nhất
+          report.correct_answer = latest.answer;
+          // accepted_answers mong đợi là JSON string ở phía client
+          report.accepted_answers = JSON.stringify(latest.acceptedAnswers || []);
+          // Có thể đính kèm thêm trường tham khảo nếu cần ở client
+          report.latest_question = {
+            id: latest.id,
+            text: latest.text,
+            answer: latest.answer,
+            acceptedAnswers: latest.acceptedAnswers || []
+          };
+        }
+      } catch (e) {
+        // Không chặn response nếu lỗi phụ
+        console.warn('Không thể tải câu hỏi mới nhất cho report:', e?.message || e);
+      }
+    }
     return res.json(report);
   } catch (error) {
     console.error('Lỗi khi lấy report:', error);
