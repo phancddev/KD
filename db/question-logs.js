@@ -36,7 +36,7 @@ export async function logQuestionDeletion({
       
       // Lưu các đáp án bổ sung nếu có
       const [answers] = await connection.query(
-        'SELECT answer_text, created_at FROM answers WHERE question_id = ?',
+        'SELECT answer, created_at FROM answers WHERE question_id = ?',
         [questionId]
       );
       
@@ -45,7 +45,7 @@ export async function logQuestionDeletion({
           await connection.query(`
             INSERT INTO deleted_question_answers (log_id, answer_text, created_at)
             VALUES (?, ?, ?)
-          `, [logId, answer.answer_text, answer.created_at]);
+          `, [logId, answer.answer, answer.created_at]);
         }
       }
       

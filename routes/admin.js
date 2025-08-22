@@ -23,6 +23,9 @@ const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Middleware để parse JSON body
+router.use(express.json());
+
 // Cấu hình multer cho file upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -220,8 +223,17 @@ router.delete('/api/answers/:answerId', checkAdmin, async (req, res) => {
 // API xóa câu hỏi
 router.delete('/api/questions/:id', checkAdmin, async (req, res) => {
     try {
+        console.log('🗑️ Bắt đầu xóa câu hỏi:', req.params.id);
+        console.log('🗑️ Request body:', req.body);
+        console.log('🗑️ Session user:', req.session.user);
+        
         const questionId = req.params.id;
         const { deletionReason, reportId } = req.body || {};
+        
+        console.log('🗑️ Question ID:', questionId);
+        console.log('🗑️ Deletion reason:', deletionReason);
+        console.log('🗑️ Report ID:', reportId);
+        console.log('🗑️ Deleted by user ID:', req.session.user.id);
         
         const success = await deleteQuestion(
             questionId, 
@@ -230,13 +242,15 @@ router.delete('/api/questions/:id', checkAdmin, async (req, res) => {
             reportId
         );
         
+        console.log('🗑️ Kết quả xóa câu hỏi:', success);
+        
         if (success) {
             res.json({ success: true });
         } else {
             res.status(404).json({ success: false, error: 'Không tìm thấy câu hỏi' });
         }
     } catch (error) {
-        console.error('Lỗi khi xóa câu hỏi:', error);
+        console.error('❌ Lỗi khi xóa câu hỏi:', error);
         res.status(500).json({ success: false, error: 'Không thể xóa câu hỏi' });
     }
 });
