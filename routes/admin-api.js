@@ -969,7 +969,7 @@ router.post('/ai/questions-single-answer', async (req, res) => {
     }
     
     // Kiểm tra limit
-    const maxLimit = Math.min(parseInt(limit) || 100, 1000); // Giới hạn tối đa 1000
+    const maxLimit = Math.min(parseInt(limit) || 100, 100000); // Giới hạn tối đa 100,000
     
     // Query để lấy câu hỏi chỉ có 1 đáp án (không có đáp án phụ)
     // Kiểm tra kỹ hơn: không có record nào trong bảng answers
