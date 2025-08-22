@@ -972,6 +972,7 @@ router.post('/ai/questions-single-answer', async (req, res) => {
     const maxLimit = Math.min(parseInt(limit) || 100, 1000); // Giới hạn tối đa 1000
     
     // Query để lấy câu hỏi chỉ có 1 đáp án (không có đáp án phụ)
+    // Kiểm tra kỹ hơn: không có record nào trong bảng answers
     const query = `
       SELECT 
         q.id,
@@ -979,12 +980,11 @@ router.post('/ai/questions-single-answer', async (req, res) => {
         q.answer,
         q.category,
         q.difficulty,
-        q.created_at,
-        COUNT(a.id) as accepted_answers_count
+        q.created_at
       FROM questions q
-      LEFT JOIN answers a ON q.id = a.question_id
-      GROUP BY q.id, q.text, q.answer, q.category, q.difficulty, q.created_at
-      HAVING COUNT(a.id) = 0
+      WHERE NOT EXISTS (
+        SELECT 1 FROM answers a WHERE a.question_id = q.id
+      )
       ORDER BY q.id ASC
       LIMIT ?
     `;
@@ -999,7 +999,7 @@ router.post('/ai/questions-single-answer', async (req, res) => {
       category: q.category || 'general',
       difficulty: q.difficulty || 'medium',
       createdAt: q.created_at,
-      acceptedAnswersCount: q.accepted_answers_count,
+      acceptedAnswersCount: 0, // Luôn là 0 vì đã kiểm tra NOT EXISTS
       needsAdditionalAnswers: true
     }));
     
