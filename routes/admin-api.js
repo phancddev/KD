@@ -6,6 +6,7 @@ import multer from 'multer';
 import { listQuestionReports, getQuestionReport, updateReportStatus, updateAnswerSuggestion, approveAnswerSuggestions, rejectAnswerSuggestion, addAnswerSuggestion } from '../db/reports.js';
 import { getQuestionDeletionLogs, getQuestionDeletionLog, restoreQuestionFromLog, permanentlyDeleteLog } from '../db/question-logs.js';
 import { isUserAdmin } from '../db/users.js';
+import { pool } from '../db/index.js'; // Added for AI API
 
 console.log('🚀 Loading admin-api.js routes...');
 
@@ -941,6 +942,207 @@ router.post('/question-logs/:id/permanently-delete', checkAdmin, async (req, res
   } catch (error) {
     console.error('Lỗi khi xóa vĩnh viễn log:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// ==================== AI API ENDPOINTS ====================
+
+// AI API - Lấy câu hỏi chỉ có 1 đáp án (chưa có đáp án phụ)
+router.post('/ai/questions-single-answer', async (req, res) => {
+  try {
+    const { username, password, limit = 100 } = req.body || {};
+    
+    // Kiểm tra thông tin đăng nhập
+    if (!username || !password) {
+      return res.status(400).json({ 
+        error: 'Thiếu username hoặc password',
+        required: ['username', 'password']
+      });
+    }
+    
+    // Kiểm tra thông tin admin
+    if (username !== 'admin' || password !== 'KDappNQD@') {
+      return res.status(401).json({ 
+        error: 'Thông tin đăng nhập không chính xác',
+        message: 'Username hoặc password sai'
+      });
+    }
+    
+    // Kiểm tra limit
+    const maxLimit = Math.min(parseInt(limit) || 100, 1000); // Giới hạn tối đa 1000
+    
+    // Query để lấy câu hỏi chỉ có 1 đáp án (không có đáp án phụ)
+    const query = `
+      SELECT 
+        q.id,
+        q.text,
+        q.answer,
+        q.category,
+        q.difficulty,
+        q.created_at,
+        COUNT(a.id) as accepted_answers_count
+      FROM questions q
+      LEFT JOIN answers a ON q.id = a.question_id
+      GROUP BY q.id, q.text, q.answer, q.category, q.difficulty, q.created_at
+      HAVING COUNT(a.id) = 0
+      ORDER BY q.id ASC
+      LIMIT ?
+    `;
+    
+    const [rows] = await pool.query(query, [maxLimit]);
+    
+    // Format dữ liệu cho AI
+    const formattedQuestions = rows.map(q => ({
+      id: q.id,
+      text: q.text,
+      answer: q.answer,
+      category: q.category || 'general',
+      difficulty: q.difficulty || 'medium',
+      createdAt: q.created_at,
+      acceptedAnswersCount: q.accepted_answers_count,
+      needsAdditionalAnswers: true
+    }));
+    
+    res.json({
+      success: true,
+      totalQuestions: formattedQuestions.length,
+      limit: maxLimit,
+      questions: formattedQuestions,
+      timestamp: new Date().toISOString(),
+      message: `Đã tìm thấy ${formattedQuestions.length} câu hỏi chỉ có 1 đáp án (cần thêm đáp án phụ)`
+    });
+    
+  } catch (error) {
+    console.error('Lỗi khi AI lấy câu hỏi chỉ có 1 đáp án:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Không thể lấy dữ liệu câu hỏi'
+    });
+  }
+});
+
+// AI API - Nhận đề xuất đáp án phụ từ AI
+router.post('/ai/add-accepted-answers', async (req, res) => {
+  try {
+    const { username, password, suggestions } = req.body || {};
+    
+    // Kiểm tra thông tin đăng nhập
+    if (!username || !password) {
+      return res.status(400).json({ 
+        error: 'Thiếu username hoặc password',
+        required: ['username', 'password']
+      });
+    }
+    
+    // Kiểm tra thông tin admin
+    if (username !== 'admin' || password !== 'KDappNQD@') {
+      return res.status(401).json({ 
+        error: 'Thông tin đăng nhập không chính xác',
+        message: 'Username hoặc password sai'
+      });
+    }
+    
+    // Kiểm tra dữ liệu đề xuất
+    if (!Array.isArray(suggestions) || suggestions.length === 0) {
+      return res.status(400).json({ 
+        error: 'Thiếu dữ liệu đề xuất',
+        required: ['suggestions'],
+        format: 'suggestions phải là array với format: [{questionId, additionalAnswers: [string]}]'
+      });
+    }
+    
+    const results = [];
+    
+    // Xử lý từng đề xuất
+    for (const suggestion of suggestions) {
+      const { questionId, additionalAnswers } = suggestion;
+      
+      if (!questionId || !Array.isArray(additionalAnswers) || additionalAnswers.length === 0) {
+        results.push({
+          questionId,
+          success: false,
+          error: 'Dữ liệu đề xuất không hợp lệ'
+        });
+        continue;
+      }
+      
+      try {
+        // Kiểm tra câu hỏi có tồn tại không
+        const question = await getQuestionById(questionId);
+        if (!question) {
+          results.push({
+            questionId,
+            success: false,
+            error: 'Không tìm thấy câu hỏi'
+          });
+          continue;
+        }
+        
+        // Kiểm tra câu hỏi đã có đáp án phụ chưa
+        if (question.acceptedAnswers && question.acceptedAnswers.length > 0) {
+          results.push({
+            questionId,
+            success: false,
+            error: 'Câu hỏi đã có đáp án phụ, không cần thêm'
+          });
+          continue;
+        }
+        
+        // Thêm các đáp án phụ vào database
+        const addedAnswers = [];
+        for (const answer of additionalAnswers) {
+          if (answer && answer.toString().trim()) {
+            const trimmedAnswer = answer.toString().trim();
+            // Sử dụng hàm addAcceptedAnswer có sẵn
+            const { addAcceptedAnswer } = await import('../db/questions.js');
+            const addedAnswer = await addAcceptedAnswer(questionId, trimmedAnswer);
+            addedAnswers.push({
+              id: addedAnswer.id,
+              answer: addedAnswer.answer
+            });
+          }
+        }
+        
+        if (addedAnswers.length > 0) {
+          results.push({
+            questionId,
+            success: true,
+            addedAnswers,
+            totalAdded: addedAnswers.length,
+            message: `Đã thêm ${addedAnswers.length} đáp án phụ thành công`
+          });
+        } else {
+          results.push({
+            questionId,
+            success: false,
+            error: 'Không có đáp án hợp lệ để thêm'
+          });
+        }
+        
+      } catch (error) {
+        console.error(`Lỗi khi xử lý đề xuất cho câu hỏi ${questionId}:`, error);
+        results.push({
+          questionId,
+          success: false,
+          error: 'Lỗi xử lý: ' + error.message
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      totalProcessed: suggestions.length,
+      results,
+      timestamp: new Date().toISOString(),
+      message: 'Đã xử lý tất cả đề xuất đáp án phụ từ AI'
+    });
+    
+  } catch (error) {
+    console.error('Lỗi khi AI thêm đáp án phụ:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Không thể xử lý đề xuất đáp án phụ từ AI'
+    });
   }
 });
 
