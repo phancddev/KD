@@ -348,8 +348,37 @@ async function importQuestionsFromCSV(filePath) {
 }
 
 // Xóa câu hỏi
-async function deleteQuestion(id) {
+async function deleteQuestion(id, deletionReason = null, deletedBy = null, reportId = null) {
   try {
+    // Lấy thông tin câu hỏi trước khi xóa để ghi log
+    const question = await getQuestionById(id);
+    if (!question) {
+      return false;
+    }
+
+    // Ghi log trước khi xóa
+    if (deletedBy) {
+      try {
+        const { logQuestionDeletion } = await import('./question-logs.js');
+        await logQuestionDeletion({
+          questionId: question.id,
+          questionText: question.text,
+          questionAnswer: question.answer,
+          questionCategory: question.category,
+          questionDifficulty: question.difficulty,
+          questionCreatedBy: question.createdBy,
+          questionCreatedAt: question.createdAt,
+          deletedBy,
+          deletionReason,
+          reportId
+        });
+      } catch (logError) {
+        console.warn('Không thể ghi log xóa câu hỏi:', logError);
+        // Vẫn tiếp tục xóa câu hỏi ngay cả khi ghi log thất bại
+      }
+    }
+
+    // Xóa câu hỏi
     const [result] = await pool.query('DELETE FROM questions WHERE id = ?', [id]);
     return result.affectedRows > 0;
   } catch (error) {

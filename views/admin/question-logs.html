@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Báo lỗi câu hỏi - Admin - KD APP</title>
+    <title>Logs xóa câu hỏi - Admin - KD APP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -31,11 +31,14 @@
         th,td{padding:1rem;text-align:left;border-bottom:1px solid rgba(239,68,68,.1);font-size:.9rem}
         th{font-weight:600;color:#ef4444}
         .badge{display:inline-block;padding:.25rem .5rem;border-radius:.5rem;font-size:.75rem}
-        .badge-open{background:rgba(239,68,68,.15);color:#dc2626;border:1px solid rgba(239,68,68,.3)}
-        .badge-resolved{background:rgba(16,185,129,.15);color:#059669;border:1px solid rgba(16,185,129,.3)}
+        .badge-restorable{background:rgba(16,185,129,.15);color:#059669;border:1px solid rgba(16,185,129,.3)}
+        .badge-restored{background:rgba(107,114,128,.15);color:#6b7280;border:1px solid rgba(107,114,128,.3)}
         .btn{padding:.5rem .9rem;border:none;border-radius:8px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
         .btn-outline{background:transparent;border:1px solid #ef4444;color:#ef4444}
         .btn-outline:hover{background:#ef4444;color:white}
+        .btn-success{background:#10b981;border:1px solid #10b981;color:white}
+        .btn-success:hover{background:#059669;border-color:#059669}
+        .btn-success:disabled{background:#9ca3af;border-color:#9ca3af;cursor:not-allowed}
         .filter-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem}
         .filter-row select,.filter-row input{padding:.5rem;border:1px solid #d1d5db;border-radius:8px;background:white}
         .pagination{display:flex;justify-content:center;gap:.5rem;margin-top:1rem}
@@ -44,6 +47,11 @@
         .modal-content{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);margin:5% auto;padding:1.5rem;border-radius:16px;width:92%;max-width:800px;position:relative}
         .close{position:absolute;right:1rem;top:1rem;font-size:1.25rem;color:#6b7280;cursor:pointer}
         pre{white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem}
+        .question-text{font-weight:600;color:#374151;margin-bottom:.5rem}
+        .question-answer{color:#6b7280;font-style:italic}
+        .log-details{margin-top:1rem;padding:1rem;background:#f3f4f6;border-radius:8px}
+        .log-details p{margin:.25rem 0}
+        .log-details strong{color:#374151}
     </style>
 </head>
 <body>
@@ -69,10 +77,10 @@
                     <li>
                         <a href="/admin/game-history"><i class="fas fa-history"></i><span>Lịch sử trận đấu</span></a>
                     </li>
-                    <li class="active">
+                    <li>
                         <a href="/admin/reports"><i class="fas fa-flag"></i><span>Báo lỗi câu hỏi</span></a>
                     </li>
-                    <li>
+                    <li class="active">
                         <a href="/admin/question-logs"><i class="fas fa-trash-alt"></i><span>Logs xóa câu hỏi</span></a>
                     </li>
                     <li>
@@ -86,7 +94,7 @@
         </div>
         <div class="admin-content">
             <div class="admin-header">
-                <h1><i class="fas fa-flag"></i> Báo lỗi câu hỏi</h1>
+                <h1><i class="fas fa-trash-alt"></i> Logs xóa câu hỏi</h1>
                 <div class="admin-user">
                     <span id="admin-name">Admin</span>
                     <div class="avatar"><span id="avatar-text">A</span></div>
@@ -94,14 +102,14 @@
             </div>
             <div class="admin-card">
                 <div class="card-header">
-                    <h2><i class="fas fa-list"></i> Danh sách báo lỗi</h2>
+                    <h2><i class="fas fa-list"></i> Danh sách logs</h2>
                     <div class="filter-row">
                         <select id="filter-status">
                             <option value="">Tất cả trạng thái</option>
-                            <option value="open">Chưa xử lý</option>
-                            <option value="resolved">Đã xử lý</option>
+                            <option value="true">Có thể khôi phục</option>
+                            <option value="false">Đã khôi phục</option>
                         </select>
-                        <input id="filter-q" placeholder="Tìm theo nội dung/câu hỏi..." />
+                        <input id="filter-q" placeholder="Tìm theo nội dung câu hỏi..." />
                         <select id="page-size" title="Hàng/trang">
                             <option value="10">10 hàng/trang</option>
                             <option value="20" selected>20 hàng/trang</option>
@@ -117,37 +125,35 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Thời gian</th>
-                                    <th>Người dùng</th>
-                                    <th>Chế độ</th>
+                                    <th>Thời gian xóa</th>
+                                    <th>Người xóa</th>
                                     <th>Câu hỏi</th>
+                                    <th>Lý do xóa</th>
                                     <th>Trạng thái</th>
                                     <th>Hành động</th>
                                 </tr>
                             </thead>
-                            <tbody id="reports-table"></tbody>
+                            <tbody id="logs-table"></tbody>
                         </table>
                     </div>
-                    <div class="pagination" id="reports-pagination"></div>
+                    <div class="pagination" id="logs-pagination"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="report-detail-modal" class="modal">
+    <div id="log-detail-modal" class="modal">
         <div class="modal-content">
             <span class="close" id="close-detail">&times;</span>
-            <h2>Chi tiết báo lỗi</h2>
-            <div id="report-detail"></div>
+            <h2>Chi tiết log xóa câu hỏi</h2>
+            <div id="log-detail"></div>
             <div style="margin-top:1rem;display:flex;gap:.5rem">
-                <button id="mark-resolved" class="btn btn-outline"><i class="fas fa-check"></i> Đánh dấu đã xử lý</button>
-                <button id="mark-open" class="btn btn-outline"><i class="fas fa-undo"></i> Chuyển lại mở</button>
-                <button id="delete-question" class="btn btn-outline" style="background:#dc2626;color:white;border-color:#dc2626"><i class="fas fa-trash"></i> ⚠️ Xóa câu hỏi</button>
+                <button id="restore-question" class="btn btn-success"><i class="fas fa-undo"></i> Khôi phục câu hỏi</button>
+                <button id="permanently-delete" class="btn btn-outline" style="background:#dc2626;color:white;border-color:#dc2626"><i class="fas fa-trash"></i> Xóa vĩnh viễn</button>
             </div>
         </div>
     </div>
 
-    <script src="/js/admin/reports.js"></script>
+    <script src="/js/admin/question-logs.js"></script>
 </body>
 </html>
-

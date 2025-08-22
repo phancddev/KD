@@ -221,7 +221,14 @@ router.delete('/api/answers/:answerId', checkAdmin, async (req, res) => {
 router.delete('/api/questions/:id', checkAdmin, async (req, res) => {
     try {
         const questionId = req.params.id;
-        const success = await deleteQuestion(questionId);
+        const { deletionReason, reportId } = req.body || {};
+        
+        const success = await deleteQuestion(
+            questionId, 
+            deletionReason, 
+            req.session.user.id, 
+            reportId
+        );
         
         if (success) {
             res.json({ success: true });

@@ -10,11 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const detailContainer = document.getElementById('report-detail');
   const markResolvedBtn = document.getElementById('mark-resolved');
   const markOpenBtn = document.getElementById('mark-open');
+  const deleteQuestionBtn = document.getElementById('delete-question');
 
   let currentPage = 1;
   let currentLimit = parseInt(pageSizeSelect?.value || '20');
   let currentReports = [];
   let currentSelectedId = null;
+  let currentQuestionId = null;
 
   async function loadReports(page = 1) {
     const params = new URLSearchParams();
@@ -118,12 +120,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!res.ok) { alert('Không thể tải chi tiết'); return; }
     const r = await res.json();
     currentSelectedId = r.id;
+    currentQuestionId = r.question_id;
     const suggestionsHtml = (r.suggestions||[]).map(s => `
       <div data-sid="${s.id}" style="display:flex; gap:.5rem; align-items:center; margin:.25rem 0;">
         <input type="text" value="${escapeHtml(s.suggested_answer||'')}" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;" ${s.status==='approved'?'disabled':''}>
         <span class="badge ${s.status==='approved'?'badge-resolved':'badge-open'}">${s.status}</span>
         ${s.status==='approved' ? '' : '<button class="btn btn-outline btn-save" data-action="save" title="Lưu chỉnh sửa">💾</button>'}
-        ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt">'}
+        ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt" checked>'}
       </div>
     `).join('');
     detailContainer.innerHTML = `
@@ -147,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <p style="font-weight:600; color:#ef4444;">Đáp án đề xuất từ thí sinh:</p>
         <div id="suggestions-list">${suggestionsHtml || '<em>Không có đề xuất</em>'}</div>
         <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
-          <button id="approve-selected" class="btn btn-outline">Duyệt vào database</button>
+          <button id="approve-selected" class="btn btn-outline" style="background:#ef4444;color:white;border-color:#ef4444;font-weight:600;padding:.75rem 1.5rem;">Duyệt vào database</button>
           <input id="approve-note" placeholder="Ghi chú (tuỳ chọn)" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;">
         </div>
         <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
@@ -157,6 +160,15 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
     modal.style.display = 'block';
+
+    // Hiển thị/ẩn nút xóa câu hỏi dựa trên việc có question_id
+    if (deleteQuestionBtn) {
+      if (currentQuestionId) {
+        deleteQuestionBtn.style.display = 'inline-flex';
+      } else {
+        deleteQuestionBtn.style.display = 'none';
+      }
+    }
 
     // Save edited suggestion
     detailContainer.querySelectorAll('.btn-save').forEach(btn => {
@@ -182,32 +194,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const note = detailContainer.querySelector('#approve-note')?.value || '';
       const res3 = await fetch(`/api/admin/reports/${r.id}/suggestions/approve`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'include', body: JSON.stringify({ suggestionIds: sids, note }) });
       if (!res3.ok) { alert('Duyệt thất bại'); return; }
-      alert('Đã duyệt và thêm vào database');
-      // Refresh detail without closing
-      const resRef = await fetch(`/api/admin/reports/${r.id}`, { credentials: 'include' });
-      if (resRef.ok) {
-        const r2 = await resRef.json();
-        // Reopen renderer by simulating click handler again
-        currentSelectedId = r2.id;
-        // Trigger same block by calling click handler-like flow
-        // Easiest: re-run this function by setting innerHTML again via recursion
-        // Simulate by programmatically clicking the same row button is complex; instead, replace content:
-        // Reuse code by dispatching a custom event
-        // For simplicity, call the same rendering snippet again:
-        // Build suggestionsHtml and replace content
-        const suggestionsHtml2 = (r2.suggestions||[]).map(s => `
-          <div data-sid="${s.id}" style=\"display:flex; gap:.5rem; align-items:center; margin:.25rem 0;\">\
-            <input type=\"text\" value=\"${escapeHtml(s.suggested_answer||'')}\" style=\"flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;\" ${s.status==='approved'?'disabled':''}>\
-            <span class=\"badge ${s.status==='approved'?'badge-resolved':'badge-open'}\">${s.status}</span>\
-            ${s.status==='approved' ? '' : '<button class=\\"btn btn-outline btn-save\\" data-action=\\"save\\" title=\\"Lưu chỉnh sửa\\">💾</button>'}\
-            ${s.status==='approved' ? '' : '<input type=\\"checkbox\\" class=\\"approve-checkbox\\" title=\\"Chọn duyệt\\">'}\
-          </div>
-        `).join('');
-        const containerHtml = detailContainer.innerHTML.replace(/<div id=\"suggestions-list\">[\s\S]*?<\/div>/, `<div id=\"suggestions-list\">${suggestionsHtml2 || '<em>Không có đề xuất</em>'}<\/div>`);
-        detailContainer.innerHTML = containerHtml;
-      } else {
-        loadReports(currentPage);
+      
+      // Tự động đánh dấu báo lỗi đã xử lý
+      try {
+        const statusRes = await fetch(`/api/admin/reports/${r.id}/status`, { 
+          method:'POST', 
+          headers:{ 'Content-Type':'application/json' }, 
+          credentials:'include', 
+          body: JSON.stringify({ status: 'resolved' }) 
+        });
+        if (statusRes.ok) {
+          console.log('Đã tự động đánh dấu báo lỗi đã xử lý');
+        }
+      } catch (statusError) {
+        console.warn('Không thể đánh dấu đã xử lý:', statusError);
       }
+      
+      alert('Đã duyệt và thêm vào database, báo lỗi đã được đánh dấu đã xử lý');
+      
+      // Đóng popup và reload danh sách
+      modal.style.display = 'none';
+      loadReports(currentPage);
     });
 
     // Add new suggestion by admin
@@ -229,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="text" value="${escapeHtml(s.suggested_answer||'')}" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;" ${s.status==='approved'?'disabled':''}>
             <span class="badge ${s.status==='approved'?'badge-resolved':'badge-open'}">${s.status}</span>
             ${s.status==='approved' ? '' : '<button class="btn btn-outline btn-save" data-action="save" title="Lưu chỉnh sửa">💾</button>'}
-            ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt">'}
+            ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt" checked>'}
           </div>
         `).join('');
       }
@@ -253,6 +260,47 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!res.ok) { alert('Cập nhật thất bại'); return; }
     modal.style.display = 'none';
     loadReports(currentPage);
+  });
+
+  deleteQuestionBtn.addEventListener('click', async () => {
+    if (!currentQuestionId) {
+      alert('Không tìm thấy ID câu hỏi để xóa');
+      return;
+    }
+
+    // Xác nhận xóa
+    const confirmed = confirm('Bạn có chắc chắn muốn xóa câu hỏi này không? Thao tác này không thể hoàn tác.');
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/admin/api/questions/${currentQuestionId}`, { 
+        method: 'DELETE', 
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          deletionReason: `Xóa từ báo lỗi #${currentSelectedId}`,
+          reportId: currentSelectedId
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.error || 'Không thể xóa câu hỏi');
+        return;
+      }
+
+      const result = await res.json();
+      if (result.success) {
+        alert('Đã xóa câu hỏi thành công');
+        modal.style.display = 'none';
+        loadReports(currentPage);
+      } else {
+        alert(result.error || 'Không thể xóa câu hỏi');
+      }
+    } catch (error) {
+      console.error('Lỗi khi xóa câu hỏi:', error);
+      alert('Có lỗi xảy ra khi xóa câu hỏi');
+    }
   });
 
   statusSelect.addEventListener('change', () => loadReports(1));

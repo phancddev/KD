@@ -195,3 +195,41 @@ CREATE TABLE IF NOT EXISTS answer_suggestion_logs (
 -- CREATE INDEX idx_login_logs_ip_address ON login_logs(ip_address);
 -- CREATE INDEX idx_login_logs_login_at ON login_logs(login_at);
 -- CREATE INDEX idx_ip_geolocation_ip ON ip_geolocation(ip_address);
+
+-- Bảng logs để ghi lại các hành động xóa câu hỏi và cho phép khôi phục
+CREATE TABLE IF NOT EXISTS question_deletion_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question_id INT NOT NULL,
+  question_text TEXT NOT NULL,
+  question_answer TEXT NOT NULL,
+  question_category VARCHAR(50) NULL,
+  question_difficulty ENUM('easy', 'medium', 'hard') DEFAULT 'medium',
+  question_created_by INT NULL,
+  question_created_at TIMESTAMP NULL,
+  deleted_by INT NOT NULL,
+  deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deletion_reason TEXT NULL,
+  report_id INT NULL,
+  can_restore BOOLEAN DEFAULT TRUE,
+  restored_at TIMESTAMP NULL,
+  restored_by INT NULL,
+  FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (question_created_by) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (report_id) REFERENCES question_reports(id) ON DELETE SET NULL,
+  FOREIGN KEY (restored_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Bảng lưu các đáp án bổ sung đã bị xóa
+CREATE TABLE IF NOT EXISTS deleted_question_answers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  log_id INT NOT NULL,
+  answer_text TEXT NOT NULL,
+  created_at TIMESTAMP NULL,
+  FOREIGN KEY (log_id) REFERENCES question_deletion_logs(id) ON DELETE CASCADE
+);
+
+-- Tạo index để tối ưu hiệu suất cho bảng logs
+CREATE INDEX idx_question_deletion_logs_deleted_at ON question_deletion_logs(deleted_at);
+CREATE INDEX idx_question_deletion_logs_deleted_by ON question_deletion_logs(deleted_by);
+CREATE INDEX idx_question_deletion_logs_can_restore ON question_deletion_logs(can_restore);
+CREATE INDEX idx_question_deletion_logs_question_id ON question_deletion_logs(question_id);

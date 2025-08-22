@@ -564,3 +564,7 @@ app.get('/admin/game-history', checkAdmin, (req, res) => {
 app.get('/admin/reports', checkAdmin, (req, res) => {
   res.sendFile(join(__dirname, 'views', 'admin', 'reports.html'));
 });
+
+app.get('/admin/question-logs', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'question-logs.html'));
+});

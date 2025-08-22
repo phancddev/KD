@@ -4,6 +4,7 @@ import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, import
 import { getUserGameStats, getUserGameHistory, getUserGameHistoryByMonth, getGameSessionDetails, getGameHistory, countGameHistory } from '../db/game-sessions.js';
 import multer from 'multer';
 import { listQuestionReports, getQuestionReport, updateReportStatus, updateAnswerSuggestion, approveAnswerSuggestions, rejectAnswerSuggestion, addAnswerSuggestion } from '../db/reports.js';
+import { getQuestionDeletionLogs, getQuestionDeletionLog, restoreQuestionFromLog, permanentlyDeleteLog } from '../db/question-logs.js';
 import { isUserAdmin } from '../db/users.js';
 
 console.log('🚀 Loading admin-api.js routes...');
@@ -893,5 +894,54 @@ function addActivity(activity) {
     global.recentActivities = global.recentActivities.slice(0, maxActivities);
   }
 }
+
+// Question Logs - list
+router.get('/question-logs', checkAdmin, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const canRestore = req.query.canRestore !== undefined ? req.query.canRestore === 'true' : null;
+    
+    const result = await getQuestionDeletionLogs({ page, limit, canRestore });
+    return res.json(result);
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách question logs:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Question Logs - detail
+router.get('/question-logs/:id', checkAdmin, async (req, res) => {
+  try {
+    const log = await getQuestionDeletionLog(parseInt(req.params.id));
+    if (!log) return res.status(404).json({ error: 'Log not found' });
+    return res.json(log);
+  } catch (error) {
+    console.error('Lỗi khi lấy chi tiết question log:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Question Logs - restore question
+router.post('/question-logs/:id/restore', checkAdmin, async (req, res) => {
+  try {
+    const result = await restoreQuestionFromLog(parseInt(req.params.id), req.session.user.id);
+    return res.json(result);
+  } catch (error) {
+    console.error('Lỗi khi khôi phục câu hỏi:', error);
+    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+});
+
+// Question Logs - permanently delete
+router.post('/question-logs/:id/permanently-delete', checkAdmin, async (req, res) => {
+  try {
+    const success = await permanentlyDeleteLog(parseInt(req.params.id));
+    return res.json({ success });
+  } catch (error) {
+    console.error('Lỗi khi xóa vĩnh viễn log:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 export default router;
