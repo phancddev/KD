@@ -1021,7 +1021,7 @@ router.post('/ai/questions-single-answer', async (req, res) => {
   }
 });
 
-// AI API - Nhận đề xuất đáp án phụ từ AI
+// AI API - Nhận đề xuất đáp án phụ từ AI (tạo report, không thêm trực tiếp vào database)
 router.post('/ai/add-accepted-answers', async (req, res) => {
   try {
     const { username, password, suggestions } = req.body || {};
@@ -1088,34 +1088,57 @@ router.post('/ai/add-accepted-answers', async (req, res) => {
           continue;
         }
         
-        // Thêm các đáp án phụ vào database
-        const addedAnswers = [];
+        // Tạo report với đề xuất đáp án phụ (KHÔNG thêm trực tiếp vào database)
+        const reportData = {
+          userId: null, // AI không có user ID
+          sessionId: null,
+          roomId: null,
+          mode: 'solo',
+          questionId: questionId,
+          questionText: question.text,
+          correctAnswer: question.answer,
+          userAnswer: null,
+          reportText: `Đề xuất đáp án phụ từ AI: ${additionalAnswers.join(' | ')}`,
+          acceptedAnswers: JSON.stringify(question.acceptedAnswers || [])
+        };
+        
+        // Lưu report vào bảng question_reports
+        const { createQuestionReport } = await import('../db/reports.js');
+        const report = await createQuestionReport(reportData);
+        
+        // Lưu các đề xuất đáp án vào bảng answer_suggestions (status: pending)
+        const savedSuggestions = [];
         for (const answer of additionalAnswers) {
           if (answer && answer.toString().trim()) {
             const trimmedAnswer = answer.toString().trim();
-            // Sử dụng hàm addAcceptedAnswer có sẵn
-            const { addAcceptedAnswer } = await import('../db/questions.js');
-            const addedAnswer = await addAcceptedAnswer(questionId, trimmedAnswer);
-            addedAnswers.push({
-              id: addedAnswer.id,
-              answer: addedAnswer.answer
+            const savedSuggestion = await addAnswerSuggestion({ 
+              reportId: report.id, 
+              questionId: questionId, 
+              userId: null, 
+              suggestedAnswer: trimmedAnswer 
+            });
+            savedSuggestions.push({
+              id: savedSuggestion.id,
+              answer: savedSuggestion.suggested_answer,
+              status: 'pending'
             });
           }
         }
         
-        if (addedAnswers.length > 0) {
+        if (savedSuggestions.length > 0) {
           results.push({
             questionId,
             success: true,
-            addedAnswers,
-            totalAdded: addedAnswers.length,
-            message: `Đã thêm ${addedAnswers.length} đáp án phụ thành công`
+            reportId: report.id,
+            savedSuggestions,
+            totalSaved: savedSuggestions.length,
+            message: `Đã tạo report và lưu ${savedSuggestions.length} đề xuất đáp án phụ (chờ admin duyệt)`
           });
         } else {
           results.push({
             questionId,
             success: false,
-            error: 'Không có đáp án hợp lệ để thêm'
+            error: 'Không có đề xuất hợp lệ để lưu'
           });
         }
         
@@ -1134,11 +1157,11 @@ router.post('/ai/add-accepted-answers', async (req, res) => {
       totalProcessed: suggestions.length,
       results,
       timestamp: new Date().toISOString(),
-      message: 'Đã xử lý tất cả đề xuất đáp án phụ từ AI'
+      message: 'Đã tạo report và lưu tất cả đề xuất đáp án phụ từ AI (chờ admin duyệt)'
     });
     
   } catch (error) {
-    console.error('Lỗi khi AI thêm đáp án phụ:', error);
+    console.error('Lỗi khi AI tạo đề xuất đáp án phụ:', error);
     res.status(500).json({ 
       error: 'Internal Server Error',
       message: 'Không thể xử lý đề xuất đáp án phụ từ AI'
