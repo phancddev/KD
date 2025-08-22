@@ -122,8 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
     currentSelectedId = r.id;
     currentQuestionId = r.question_id;
     const suggestionsHtml = (r.suggestions||[]).map(s => `
-      <div data-sid="${s.id}" style="display:flex; gap:.5rem; align-items:center; margin:.25rem 0;">
-        <input type="text" value="${escapeHtml(s.suggested_answer||'')}" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;" ${s.status==='approved'?'disabled':''}>
+      <div class="suggestion-item" data-sid="${s.id}">
+        <input type="text" value="${escapeHtml(s.suggested_answer||'')}" ${s.status==='approved'?'disabled':''}>
         <span class="badge ${s.status==='approved'?'badge-resolved':'badge-open'}">${s.status}</span>
         ${s.status==='approved' ? '' : '<button class="btn btn-outline btn-save" data-action="save" title="Lưu chỉnh sửa">💾</button>'}
         ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt" checked>'}
@@ -146,20 +146,21 @@ document.addEventListener('DOMContentLoaded', () => {
       <p><strong>Nội dung báo lỗi:</strong></p>
       <pre>${escapeHtml(r.report_text || '')}</pre>
       <p><strong>Trạng thái:</strong> ${r.status}</p>
-      <div style="margin-top:.75rem;">
-        <p style="font-weight:600; color:#ef4444;">Đáp án đề xuất từ thí sinh:</p>
+      <div class="suggestions-section">
+        <h3>Đáp án đề xuất từ thí sinh:</h3>
         <div id="suggestions-list">${suggestionsHtml || '<em>Không có đề xuất</em>'}</div>
-        <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+        <div class="suggestions-input-group">
           <button id="approve-selected" class="btn btn-outline" style="background:#ef4444;color:white;border-color:#ef4444;font-weight:600;padding:.75rem 1.5rem;">Duyệt vào database</button>
-          <input id="approve-note" placeholder="Ghi chú (tuỳ chọn)" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;">
+          <input id="approve-note" placeholder="Ghi chú (tuỳ chọn)" style="padding:.4rem; border:1px solid #d1d5db; border-radius:6px;">
         </div>
-        <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
-          <input id="new-suggestion" placeholder="Thêm đáp án đề xuất (admin)" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;">
+        <div class="suggestions-input-group">
+          <input id="new-suggestion" placeholder="Thêm đáp án đề xuất (admin)" style="padding:.4rem; border:1px solid #d1d5db; border-radius:6px;">
           <button id="add-suggestion" class="btn btn-outline">Thêm</button>
         </div>
       </div>
     `;
     modal.style.display = 'block';
+    document.body.classList.add('modal-open');
 
     // Hiển thị/ẩn nút xóa câu hỏi dựa trên việc có question_id
     if (deleteQuestionBtn) {
@@ -214,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Đóng popup và reload danh sách
       modal.style.display = 'none';
+      document.body.classList.remove('modal-open');
       loadReports(currentPage);
     });
 
@@ -232,8 +234,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const r2 = await resRef.json();
         const suggestionsList = detailContainer.querySelector('#suggestions-list');
         suggestionsList.innerHTML = (r2.suggestions||[]).map(s => `
-          <div data-sid="${s.id}" style="display:flex; gap:.5rem; align-items:center; margin:.25rem 0;">
-            <input type="text" value="${escapeHtml(s.suggested_answer||'')}" style="flex:1; padding:.4rem; border:1px solid #d1d5db; border-radius:6px;" ${s.status==='approved'?'disabled':''}>
+          <div class="suggestion-item" data-sid="${s.id}">
+            <input type="text" value="${escapeHtml(s.suggested_answer||'')}" ${s.status==='approved'?'disabled':''}>
             <span class="badge ${s.status==='approved'?'badge-resolved':'badge-open'}">${s.status}</span>
             ${s.status==='approved' ? '' : '<button class="btn btn-outline btn-save" data-action="save" title="Lưu chỉnh sửa">💾</button>'}
             ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt" checked>'}
@@ -243,14 +245,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  closeDetail.addEventListener('click', () => modal.style.display = 'none');
-  window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+  closeDetail.addEventListener('click', () => {
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  });
+  window.addEventListener('click', (e) => { if (e.target === modal) { modal.style.display = 'none'; document.body.classList.remove('modal-open'); } });
 
   markResolvedBtn.addEventListener('click', async () => {
     if (!currentSelectedId) return;
     const res = await fetch(`/api/admin/reports/${currentSelectedId}/status`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'include', body: JSON.stringify({ status: 'resolved' }) });
     if (!res.ok) { alert('Cập nhật thất bại'); return; }
     modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
     loadReports(currentPage);
   });
 
@@ -259,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const res = await fetch(`/api/admin/reports/${currentSelectedId}/status`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'include', body: JSON.stringify({ status: 'open' }) });
     if (!res.ok) { alert('Cập nhật thất bại'); return; }
     modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
     loadReports(currentPage);
   });
 
@@ -293,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (result.success) {
         alert('Đã xóa câu hỏi thành công');
         modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
         loadReports(currentPage);
       } else {
         alert(result.error || 'Không thể xóa câu hỏi');
