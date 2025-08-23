@@ -3,7 +3,7 @@
 
 export const featuresConfig = {
   // Chức năng đăng ký
-  enableRegistration: false, // true = bật, false = tắt
+  enableRegistration: true, // true = bật, false = tắt
   
   // Chức năng đăng nhập
   enableLogin: true, // true = bật, false = tắt
