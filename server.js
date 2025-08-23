@@ -287,16 +287,155 @@ app.get('/register', (req, res) => {
       <head>
         <title>Chức năng đăng ký đã bị tắt</title>
         <style>
-          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-          .error { color: #dc2626; font-size: 24px; margin-bottom: 20px; }
-          .message { color: #6b7280; font-size: 16px; margin-bottom: 30px; }
-          .back-link { color: #dc2626; text-decoration: none; font-weight: bold; }
+          body { 
+            font-family: 'Poppins', Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px; 
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            min-height: 100vh;
+            margin: 0;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+          }
+          .error { 
+            color: #dc2626; 
+            font-size: 28px; 
+            margin-bottom: 20px; 
+            font-weight: 600;
+          }
+          .message { 
+            color: #6b7280; 
+            font-size: 16px; 
+            margin-bottom: 30px; 
+            line-height: 1.6;
+          }
+          .contact-info {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 30px 0;
+            text-align: left;
+          }
+          .contact-title {
+            color: #374151;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+          }
+          .contact-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+          }
+          .contact-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            font-size: 18px;
+          }
+          .facebook-icon {
+            background: #1877f2;
+            color: white;
+          }
+          .email-icon {
+            background: #ea4335;
+            color: white;
+          }
+          .contact-details h4 {
+            margin: 0 0 4px 0;
+            color: #374151;
+            font-size: 16px;
+            font-weight: 600;
+          }
+          .contact-details p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+          }
+          .contact-link {
+            color: #1877f2;
+            text-decoration: none;
+            font-weight: 500;
+          }
+          .contact-link:hover {
+            text-decoration: underline;
+          }
+          .back-link { 
+            color: #dc2626; 
+            text-decoration: none; 
+            font-weight: 600;
+            background: #fef2f2;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+            transition: all 0.3s ease;
+            display: inline-block;
+          }
+          .back-link:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+          }
         </style>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
       </head>
       <body>
-        <div class="error">⚠️ Chức năng đăng ký đã bị tắt</div>
-        <div class="message">Hiện tại không thể tạo tài khoản mới. Vui lòng liên hệ quản trị viên để được hỗ trợ.</div>
-        <a href="/login" class="back-link">← Quay lại trang đăng nhập</a>
+        <div class="container">
+          <div class="error">⚠️ Chức năng đăng ký đã bị tắt</div>
+          <div class="message">
+            Hiện tại không thể tạo tài khoản mới. Vui lòng liên hệ quản trị viên để được hỗ trợ.
+          </div>
+          
+          <div class="contact-info">
+            <div class="contact-title">📞 Thông tin liên hệ</div>
+            
+            <div class="contact-item">
+              <div class="contact-icon facebook-icon">
+                <i class="fab fa-facebook-f"></i>
+              </div>
+              <div class="contact-details">
+                <h4>Facebook</h4>
+                <p>
+                  <a href="https://www.facebook.com/phan.cong.dung.239055" target="_blank" class="contact-link">
+                    Phan Công Dũng
+                  </a>
+                </p>
+              </div>
+            </div>
+            
+            <div class="contact-item">
+              <div class="contact-icon email-icon">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div class="contact-details">
+                <h4>Email</h4>
+                <p>
+                  <a href="mailto:phancddev@gmail.com" class="contact-link">
+                    phancddev@gmail.com
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <a href="/login" class="back-link">← Quay lại trang đăng nhập</a>
+        </div>
       </body>
       </html>
     `);
