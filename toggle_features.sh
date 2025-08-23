@@ -4,7 +4,6 @@
 # Sử dụng: ./toggle_features.sh [feature] [on/off]
 
 FEATURES_FILE="features.config.js"
-CONTAINER_NAME="kd-app-1"
 
 # Màu sắc cho output
 RED='\033[0;31m'
@@ -12,6 +11,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Hàm tìm tên container tự động
+find_container_name() {
+    # Tìm container có port 2701 (port của app)
+    local container_name=$(docker ps --format "table {{.Names}}\t{{.Ports}}" | grep ":2701->" | awk '{print $1}')
+    
+    if [ -z "$container_name" ]; then
+        # Nếu không tìm thấy port 2701, tìm container có tên chứa 'app' hoặc 'kd'
+        container_name=$(docker ps --format "{{.Names}}" | grep -E "(app|kd)" | head -1)
+    fi
+    
+    if [ -z "$container_name" ]; then
+        # Nếu vẫn không tìm thấy, lấy container đầu tiên đang chạy
+        container_name=$(docker ps --format "{{.Names}}" | head -1)
+    fi
+    
+    echo "$container_name"
+}
 
 # Hàm hiển thị help
 show_help() {
@@ -40,19 +57,24 @@ show_help() {
 # Hàm kiểm tra file cấu hình
 check_config_file() {
     if [ ! -f "$FEATURES_FILE" ]; then
-        echo -e "${RED}Lỗi: Không tìm thấy file $FEATURES_FILE${NC}"
+        echo -e "${RED}❌ Lỗi: Không tìm thấy file $FEATURES_FILE${NC}"
         exit 1
     fi
 }
 
 # Hàm kiểm tra Docker container
 check_docker_container() {
-    if ! docker ps | grep -q "$CONTAINER_NAME"; then
-        echo -e "${RED}Lỗi: Container $CONTAINER_NAME không chạy${NC}"
-        echo -e "${YELLOW}Hãy khởi động Docker container trước:${NC}"
-        echo "  docker-compose up -d"
+    local container_name=$(find_container_name)
+    
+    if [ -z "$container_name" ]; then
+        echo -e "${RED}❌ Lỗi: Không tìm thấy Docker container nào đang chạy${NC}" >&2
+        echo -e "${YELLOW}Hãy khởi động Docker container trước:${NC}" >&2
+        echo "  docker-compose up -d" >&2
         exit 1
     fi
+    
+    echo -e "${BLUE}🔍 Tìm thấy container: ${GREEN}$container_name${NC}" >&2
+    echo "$container_name"
 }
 
 # Hàm hiển thị trạng thái
@@ -73,11 +95,13 @@ show_status() {
 
 # Hàm hiển thị trạng thái Docker
 show_docker_status() {
+    local container_name=$(find_container_name)
+    
     echo -e "${BLUE}Trạng thái Docker container:${NC}"
     echo ""
     
-    if docker ps | grep -q "$CONTAINER_NAME"; then
-        echo -e "Container:   ${GREEN}$CONTAINER_NAME đang chạy${NC}"
+    if [ -n "$container_name" ]; then
+        echo -e "Container:   ${GREEN}$container_name đang chạy${NC}"
         
         # Kiểm tra API
         echo -e "API Status:  ${YELLOW}Đang kiểm tra...${NC}"
@@ -92,7 +116,7 @@ show_docker_status() {
             echo -e "API Response: ${YELLOW}curl không có sẵn để test${NC}"
         fi
     else
-        echo -e "Container:   ${RED}$CONTAINER_NAME không chạy${NC}"
+        echo -e "Container:   ${RED}Không tìm thấy container nào${NC}"
     fi
     echo ""
 }
@@ -101,12 +125,13 @@ show_docker_status() {
 apply_changes() {
     local feature=$1
     local action=$2
+    local container_name=$3
     
     echo -e "${BLUE}🔄 Đang áp dụng thay đổi...${NC}"
     
     # Copy file vào container
-    echo -e "${YELLOW}📁 Copy file cấu hình vào container...${NC}"
-    if docker cp "$FEATURES_FILE" "$CONTAINER_NAME:/app/$FEATURES_FILE"; then
+    echo -e "${YELLOW}📁 Copy file cấu hình vào container $container_name...${NC}"
+    if docker cp "$FEATURES_FILE" "$container_name:/app/$FEATURES_FILE"; then
         echo -e "${GREEN}✅ Copy file thành công${NC}"
     else
         echo -e "${RED}❌ Lỗi khi copy file${NC}"
@@ -114,8 +139,8 @@ apply_changes() {
     fi
     
     # Restart container
-    echo -e "${YELLOW}🔄 Restart container...${NC}"
-    if docker restart "$CONTAINER_NAME"; then
+    echo -e "${YELLOW}🔄 Restart container $container_name...${NC}"
+    if docker restart "$container_name"; then
         echo -e "${GREEN}✅ Restart container thành công${NC}"
     else
         echo -e "${RED}❌ Lỗi khi restart container${NC}"
@@ -159,6 +184,7 @@ apply_changes() {
 toggle_feature() {
     local feature=$1
     local action=$2
+    local container_name=$3
     
     case $feature in
         "registration")
@@ -196,7 +222,7 @@ toggle_feature() {
     esac
     
     # Tự động áp dụng thay đổi
-    apply_changes "$feature" "$action"
+    apply_changes "$feature" "$action" "$container_name"
 }
 
 # Main script
@@ -230,9 +256,10 @@ if [ "$2" != "on" ] && [ "$2" != "off" ]; then
 fi
 
 # Kiểm tra Docker container trước khi thực hiện
-check_docker_container
+echo -e "${BLUE}🔍 Đang tìm Docker container...${NC}"
+CONTAINER_NAME=$(check_docker_container)
 
 echo -e "${BLUE}🚀 Bắt đầu thay đổi chức năng: $1 -> $2${NC}"
 echo ""
 
-toggle_feature "$1" "$2"
+toggle_feature "$1" "$2" "$CONTAINER_NAME"
