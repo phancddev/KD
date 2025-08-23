@@ -82,10 +82,10 @@ show_status() {
     echo -e "${YELLOW}Trạng thái các chức năng:${NC}"
     echo ""
     
-    # Đọc trạng thái từ file
-    REG_STATUS=$(grep "enableRegistration:" "$FEATURES_FILE" | grep -o "true\|false")
-    LOGIN_STATUS=$(grep "enableLogin:" "$FEATURES_FILE" | grep -o "true\|false")
-    GUEST_STATUS=$(grep "enableGuestMode:" "$FEATURES_FILE" | grep -o "true\|false")
+    # Đọc trạng thái từ file một cách chính xác hơn
+    REG_STATUS=$(grep "^  enableRegistration:" "$FEATURES_FILE" | grep -o "true\|false" | head -1)
+    LOGIN_STATUS=$(grep "^  enableLogin:" "$FEATURES_FILE" | grep -o "true\|false" | head -1)
+    GUEST_STATUS=$(grep "^  enableGuestMode:" "$FEATURES_FILE" | grep -o "true\|false" | head -1)
     
     echo -e "Đăng ký:     ${GREEN}$REG_STATUS${NC}"
     echo -e "Đăng nhập:   ${GREEN}$LOGIN_STATUS${NC}"
@@ -189,28 +189,70 @@ toggle_feature() {
     case $feature in
         "registration")
             if [ "$action" = "on" ]; then
-                sed -i '' 's/enableRegistration: false/enableRegistration: true/' "$FEATURES_FILE"
+                # Tương thích với cả macOS và Linux
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    # macOS
+                    sed -i '' 's/enableRegistration: false/enableRegistration: true/' "$FEATURES_FILE"
+                else
+                    # Linux
+                    sed -i 's/enableRegistration: false/enableRegistration: true/' "$FEATURES_FILE"
+                fi
                 echo -e "${GREEN}✅ Đã bật chức năng đăng ký${NC}"
             elif [ "$action" = "off" ]; then
-                sed -i '' 's/enableRegistration: true/enableRegistration: false/' "$FEATURES_FILE"
+                # Tương thích với cả macOS và Linux
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    # macOS
+                    sed -i '' 's/enableRegistration: true/enableRegistration: false/' "$FEATURES_FILE"
+                else
+                    # Linux
+                    sed -i 's/enableRegistration: true/enableRegistration: false/' "$FEATURES_FILE"
+                fi
                 echo -e "${RED}✅ Đã tắt chức năng đăng ký${NC}"
             fi
             ;;
         "login")
             if [ "$action" = "on" ]; then
-                sed -i '' 's/enableLogin: false/enableLogin: true/' "$FEATURES_FILE"
+                # Tương thích với cả macOS và Linux
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    # macOS
+                    sed -i '' 's/enableLogin: false/enableLogin: true/' "$FEATURES_FILE"
+                else
+                    # Linux
+                    sed -i 's/enableLogin: false/enableLogin: true/' "$FEATURES_FILE"
+                fi
                 echo -e "${GREEN}✅ Đã bật chức năng đăng nhập${NC}"
             elif [ "$action" = "off" ]; then
-                sed -i '' 's/enableLogin: true/enableLogin: false/' "$FEATURES_FILE"
+                # Tương thích với cả macOS và Linux
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    # macOS
+                    sed -i '' 's/enableLogin: true/enableLogin: false/' "$FEATURES_FILE"
+                else
+                    # Linux
+                    sed -i 's/enableLogin: true/enableLogin: false/' "$FEATURES_FILE"
+                fi
                 echo -e "${RED}✅ Đã tắt chức năng đăng nhập${NC}"
             fi
             ;;
         "guest")
             if [ "$action" = "on" ]; then
-                sed -i '' 's/enableGuestMode: false/enableGuestMode: true/' "$FEATURES_FILE"
+                # Tương thích với cả macOS và Linux
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    # macOS
+                    sed -i '' 's/enableGuestMode: false/enableGuestMode: true/' "$FEATURES_FILE"
+                else
+                    # Linux
+                    sed -i 's/enableGuestMode: false/enableGuestMode: true/' "$FEATURES_FILE"
+                fi
                 echo -e "${GREEN}✅ Đã bật chế độ khách${NC}"
             elif [ "$action" = "off" ]; then
-                sed -i '' 's/enableGuestMode: true/enableGuestMode: false/' "$FEATURES_FILE"
+                # Tương thích với cả macOS và Linux
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    # macOS
+                    sed -i '' 's/enableGuestMode: true/enableGuestMode: false/' "$FEATURES_FILE"
+                else
+                    # Linux
+                    sed -i 's/enableGuestMode: true/enableGuestMode: false/' "$FEATURES_FILE"
+                fi
                 echo -e "${RED}✅ Đã tắt chế độ khách${NC}"
             fi
             ;;
