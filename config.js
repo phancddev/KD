@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+import { featuresConfig } from './features.config.js';
+
 dotenv.config();
 
 export default {
@@ -15,5 +17,11 @@ export default {
   },
   session: {
     secret: process.env.SESSION_SECRET || 'nqd-knowledge-duel-secret'
+  },
+  features: {
+    // Sử dụng cấu hình từ file features.config.js
+    enableRegistration: featuresConfig.enableRegistration,
+    enableLogin: featuresConfig.enableLogin,
+    enableGuestMode: featuresConfig.enableGuestMode
   }
 };

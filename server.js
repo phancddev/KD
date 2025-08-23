@@ -94,6 +94,16 @@ async function initApp() {
   }
 }
 
+// API Routes
+app.get('/api/features/registration-status', (req, res) => {
+  res.json({
+    enabled: config.features.enableRegistration,
+    message: config.features.enableRegistration 
+      ? 'Chức năng đăng ký đang hoạt động' 
+      : 'Chức năng đăng ký đã bị tắt'
+  });
+});
+
 // Routes
 app.get('/', (req, res) => {
   if (req.session.user) {
@@ -269,6 +279,29 @@ app.post('/api/report-question', async (req, res) => {
 });
 
 app.get('/register', (req, res) => {
+  // Kiểm tra xem chức năng register có được bật không
+  if (!config.features.enableRegistration) {
+    return res.status(403).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Chức năng đăng ký đã bị tắt</title>
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+          .error { color: #dc2626; font-size: 24px; margin-bottom: 20px; }
+          .message { color: #6b7280; font-size: 16px; margin-bottom: 30px; }
+          .back-link { color: #dc2626; text-decoration: none; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="error">⚠️ Chức năng đăng ký đã bị tắt</div>
+        <div class="message">Hiện tại không thể tạo tài khoản mới. Vui lòng liên hệ quản trị viên để được hỗ trợ.</div>
+        <a href="/login" class="back-link">← Quay lại trang đăng nhập</a>
+      </body>
+      </html>
+    `);
+  }
+  
   if (req.session.user) {
     return res.redirect('/');
   }
@@ -277,6 +310,14 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
+  // Kiểm tra xem chức năng register có được bật không
+  if (!config.features.enableRegistration) {
+    return res.status(403).json({
+      error: 'Chức năng đăng ký đã bị tắt',
+      message: 'Hiện tại không thể tạo tài khoản mới'
+    });
+  }
+  
   const { username, password, confirmPassword, email, fullName } = req.body;
   
   try {

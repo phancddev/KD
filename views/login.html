@@ -359,7 +359,7 @@
                     </button>
                 </div>
                 
-                <div class="auth-footer">
+                <div class="auth-footer" id="register-link" style="display: none;">
                     <p>Chưa có tài khoản? <a href="/register">Đăng ký ngay</a></p>
                 </div>
                 
@@ -369,6 +369,26 @@
     </div>
     
     <script>
+        // Kiểm tra xem chức năng register có được bật không
+        async function checkRegistrationStatus() {
+            try {
+                const response = await fetch('/api/features/registration-status');
+                const data = await response.json();
+                
+                if (data.enabled) {
+                    document.getElementById('register-link').style.display = 'block';
+                } else {
+                    document.getElementById('register-link').style.display = 'none';
+                }
+            } catch (error) {
+                console.log('Không thể kiểm tra trạng thái register, ẩn link đăng ký');
+                document.getElementById('register-link').style.display = 'none';
+            }
+        }
+
+        // Kiểm tra khi trang load
+        checkRegistrationStatus();
+
         // Basic form handling
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             const button = this.querySelector('.btn-primary');
