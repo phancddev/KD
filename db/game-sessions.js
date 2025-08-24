@@ -182,8 +182,10 @@ async function getUserGameHistoryByMonth(userId, year, month) {
 async function getPlayerRankingByMonth(year, month, limit = 100) {
   try {
     // Tạo ngày đầu tháng và cuối tháng
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0); // Ngày cuối của tháng
+    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)); // Ngày cuối của tháng với thời gian cuối ngày
+    
+    console.log(`Fetching ranking for ${month}/${year}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
     const [rows] = await pool.query(
       `SELECT 
@@ -204,6 +206,8 @@ async function getPlayerRankingByMonth(year, month, limit = 100) {
       [startDate, endDate, limit]
     );
     
+    console.log(`Found ${rows.length} players with ranking data`);
+    
     return rows.map((row, index) => ({
       rank: index + 1,
       userId: row.id,
@@ -215,6 +219,8 @@ async function getPlayerRankingByMonth(year, month, limit = 100) {
     }));
   } catch (error) {
     console.error('Lỗi khi lấy xếp hạng người chơi theo tháng:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
     throw error;
   }
 }

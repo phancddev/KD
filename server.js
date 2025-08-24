@@ -635,13 +635,23 @@ app.get('/api/ranking', async (req, res) => {
   try {
     const { month, year } = req.query;
     
+    console.log(`Ranking API called with month: ${month}, year: ${year}`);
+    
     if (!month || !year) {
       return res.status(400).json({ error: 'Month and year are required' });
     }
     
     const ranking = await getPlayerRankingByMonth(parseInt(month), parseInt(year));
     
-    res.json(ranking);
+    // Lấy ID của người dùng hiện tại nếu đã đăng nhập
+    const currentUserId = req.session.user ? req.session.user.id : null;
+    
+    console.log(`Ranking data: ${ranking.length} players, current user: ${currentUserId}`);
+    
+    res.json({
+      ranking: ranking,
+      currentUserId: currentUserId
+    });
   } catch (error) {
     console.error('Lỗi khi lấy bảng xếp hạng:', error);
     res.status(500).json({ error: 'Internal Server Error' });

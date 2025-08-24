@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Ranking page loaded');
+    
     // Lấy thông tin người dùng
     fetchUserInfo();
     
-    // Khởi tạo bộ chọn năm
+    // Khởi tạo bộ chọn năm và tháng
     initYearSelector();
     
     // Lấy dữ liệu xếp hạng
@@ -28,10 +30,12 @@ async function fetchUserInfo() {
     }
 }
 
-// Khởi tạo bộ chọn năm
+// Khởi tạo bộ chọn năm và tháng
 function initYearSelector() {
     const yearSelect = document.getElementById('year-select');
+    const monthSelect = document.getElementById('month-select');
     const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // getMonth() trả về 0-11
     
     // Thêm các năm từ năm hiện tại trở về 5 năm trước
     for (let year = currentYear; year >= currentYear - 5; year--) {
@@ -40,6 +44,12 @@ function initYearSelector() {
         option.textContent = year;
         yearSelect.appendChild(option);
     }
+    
+    // Đặt tháng và năm hiện tại làm mặc định
+    monthSelect.value = currentMonth;
+    yearSelect.value = currentYear;
+    
+    console.log(`Initialized month selector to: ${currentMonth}, year selector to: ${currentYear}`);
 }
 
 // Lấy dữ liệu xếp hạng
@@ -51,22 +61,48 @@ async function fetchRanking() {
         const month = monthSelect.value;
         const year = yearSelect.value;
         
+        console.log(`Fetching ranking for month: ${month}, year: ${year}`);
+        
         const response = await fetch(`/api/ranking?year=${year}&month=${month}`);
         if (!response.ok) {
             throw new Error('Không thể lấy dữ liệu xếp hạng');
         }
         
         const data = await response.json();
+        console.log('Ranking data received:', data);
+        
+        // Kiểm tra cấu trúc dữ liệu
+        if (!data || typeof data !== 'object') {
+            console.error('Invalid data structure received:', data);
+            return;
+        }
+        
+        if (!Array.isArray(data.ranking)) {
+            console.error('Ranking data is not an array:', data.ranking);
+            return;
+        }
         
         // Hiển thị xếp hạng
         displayRanking(data.ranking, data.currentUserId);
     } catch (error) {
         console.error('Lỗi khi lấy xếp hạng:', error);
+        
+        // Hiển thị thông báo lỗi
+        const noRankingDiv = document.getElementById('no-ranking');
+        if (noRankingDiv) {
+            noRankingDiv.style.display = 'block';
+            noRankingDiv.innerHTML = `
+                <p>Đã xảy ra lỗi khi tải dữ liệu xếp hạng.</p>
+                <p>Lỗi: ${error.message}</p>
+            `;
+        }
     }
 }
 
 // Hiển thị xếp hạng
 function displayRanking(ranking, currentUserId) {
+    console.log('Displaying ranking:', ranking, 'Current user ID:', currentUserId);
+    
     const tableBody = document.getElementById('ranking-table-body');
     const noRankingDiv = document.getElementById('no-ranking');
     
@@ -79,6 +115,17 @@ function displayRanking(ranking, currentUserId) {
     if (ranking.length === 0) {
         // Hiển thị thông báo không có dữ liệu
         noRankingDiv.style.display = 'block';
+        console.log('No ranking data to display');
+        
+        // Hiển thị thông báo chi tiết hơn
+        const monthSelect = document.getElementById('month-select');
+        const yearSelect = document.getElementById('year-select');
+        const selectedMonth = monthSelect ? monthSelect.value : new Date().getMonth() + 1;
+        const selectedYear = yearSelect ? yearSelect.value : new Date().getFullYear();
+        noRankingDiv.innerHTML = `
+            <p>Chưa có dữ liệu xếp hạng cho tháng ${selectedMonth}/${selectedYear}.</p>
+            <p>Hãy thử chọn tháng/năm khác hoặc chơi một số trận đấu để có dữ liệu xếp hạng.</p>
+        `;
         return;
     }
     
