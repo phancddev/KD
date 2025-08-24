@@ -132,13 +132,8 @@ function displayRanking(ranking, currentUserId) {
     // Ẩn thông báo không có dữ liệu
     noRankingDiv.style.display = 'none';
     
-    // Thêm dữ liệu mới
+    // Thêm dữ liệu mới - hiển thị TẤT CẢ players trong bảng
     ranking.forEach(player => {
-        // Bỏ qua top 3 vì đã hiển thị ở trên
-        if (player.rank <= 3) {
-            return;
-        }
-        
         const row = document.createElement('tr');
         if (player.userId === currentUserId) {
             row.className = 'highlight';
@@ -149,6 +144,7 @@ function displayRanking(ranking, currentUserId) {
         rankCell.textContent = player.rank;
         if (player.rank <= 3) {
             rankCell.className = `rank-${player.rank}`;
+            row.className = `top-${player.rank}`; // Thêm class cho top 3
         }
         row.appendChild(rankCell);
         
