@@ -181,32 +181,55 @@ async function getUserGameHistoryByMonth(userId, year, month) {
 // Lấy xếp hạng người chơi theo số trận đấu trong tháng
 async function getPlayerRankingByMonth(year, month, limit = 100) {
   try {
-    // Tạo ngày đầu tháng và cuối tháng
-    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)); // Ngày cuối của tháng với thời gian cuối ngày
+    console.log(`Fetching ranking for month ${month}, year ${year}`);
     
-    console.log(`Fetching ranking for ${month}/${year}: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    // Debug: Kiểm tra xem có game sessions nào trong tháng này không
+    const [testSessions] = await pool.query(
+      'SELECT COUNT(*) as count FROM game_sessions WHERE MONTH(started_at) = ? AND YEAR(started_at) = ?',
+      [month, year]
+    );
+    console.log(`Total sessions in ${month}/${year}: ${testSessions[0].count}`);
     
+    // Debug: Kiểm tra một số sessions mẫu
+    const [sampleSessions] = await pool.query(
+      'SELECT id, user_id, started_at, score FROM game_sessions WHERE MONTH(started_at) = ? AND YEAR(started_at) = ? LIMIT 3',
+      [month, year]
+    );
+    console.log('Sample sessions:', sampleSessions);
+    
+    // Sử dụng query đơn giản hơn để test - chỉ dùng MONTH và YEAR functions
     const [rows] = await pool.query(
       `SELECT 
          u.id, 
          u.username, 
          u.full_name,
          COUNT(gs.id) as total_games,
-         SUM(gs.score) as total_score,
-         SUM(gs.correct_answers) as total_correct_answers
+         COALESCE(SUM(gs.score), 0) as total_score,
+         COALESCE(SUM(gs.correct_answers), 0) as total_correct_answers
        FROM users u
-       JOIN game_sessions gs ON u.id = gs.user_id
-       WHERE gs.started_at >= ? 
-       AND gs.started_at <= ?
-       AND gs.finished_at IS NOT NULL
-       GROUP BY u.id
+       LEFT JOIN game_sessions gs ON u.id = gs.user_id 
+         AND MONTH(gs.started_at) = ? 
+         AND YEAR(gs.started_at) = ?
+         AND gs.finished_at IS NOT NULL
+       GROUP BY u.id, u.username, u.full_name
+       HAVING total_games > 0
        ORDER BY total_games DESC, total_score DESC
        LIMIT ?`,
-      [startDate, endDate, limit]
+      [month, year, limit]
     );
     
     console.log(`Found ${rows.length} players with ranking data`);
+    
+    // Debug: Log từng row để kiểm tra
+    rows.forEach((row, index) => {
+      console.log(`Player ${index + 1}:`, {
+        id: row.id,
+        username: row.username,
+        games: row.total_games,
+        score: row.total_score,
+        correct: row.total_correct_answers
+      });
+    });
     
     return rows.map((row, index) => ({
       rank: index + 1,

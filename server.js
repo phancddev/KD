@@ -641,7 +641,7 @@ app.get('/api/ranking', async (req, res) => {
       return res.status(400).json({ error: 'Month and year are required' });
     }
     
-    const ranking = await getPlayerRankingByMonth(parseInt(month), parseInt(year));
+    const ranking = await getPlayerRankingByMonth(parseInt(year), parseInt(month));
     
     // Lấy ID của người dùng hiện tại nếu đã đăng nhập
     const currentUserId = req.session.user ? req.session.user.id : null;
