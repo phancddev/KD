@@ -145,12 +145,19 @@ function displayRanking(ranking, currentUserId) {
         if (player.rank <= 3) {
             rankCell.className = `rank-${player.rank}`;
             row.className = `top-${player.rank}`; // Thêm class cho top 3
+            // Thêm emoji cho top 3
+            rankCell.innerHTML = `${player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : '🥉'} ${player.rank}`;
         }
         row.appendChild(rankCell);
         
         // Người chơi
         const playerCell = document.createElement('td');
-        playerCell.textContent = player.fullName || player.username;
+        if (player.rank <= 3) {
+            // Thêm highlight cho top 3
+            playerCell.innerHTML = `<strong>${player.fullName || player.username}</strong> ${player.rank === 1 ? '👑' : ''}`;
+        } else {
+            playerCell.textContent = player.fullName || player.username;
+        }
         row.appendChild(playerCell);
         
         // Số trận
