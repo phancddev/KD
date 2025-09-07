@@ -1181,31 +1181,57 @@ router.post('/questions/bulk-category', checkAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Danh sách câu hỏi không hợp lệ' });
     }
     
-    if (!category || !['khoidong', 'vuotchuongngaivat', 'tangtoc', 'vedich'].includes(category)) {
-      return res.status(400).json({ error: 'Danh mục không hợp lệ' });
+    // Nâng giới hạn lên 100,000 câu hỏi
+    if (questionIds.length > 100000) {
+      return res.status(400).json({ error: 'Không thể xử lý hơn 100,000 câu hỏi cùng lúc' });
     }
     
-    // Validate all question IDs exist
-    const placeholders = questionIds.map(() => '?').join(',');
+    if (!category || !['khoidong', 'vuotchuongngaivat', 'tangtoc', 'vedich'].includes(category)) {
+      // Xử lý trường hợp category "general" hoặc null
+      if (category === 'general' || category === null || category === undefined) {
+        return res.status(400).json({ 
+          error: 'Danh mục "general" không còn được hỗ trợ. Vui lòng chọn một trong: Khởi Động, Vượt Chướng Ngại Vật, Tăng Tốc, Về Đích' 
+        });
+      }
+      return res.status(400).json({ 
+        error: `Danh mục "${category}" không hợp lệ. Chỉ chấp nhận: khoidong, vuotchuongngaivat, tangtoc, vedich` 
+      });
+    }
+    
+    // Validate all question IDs exist (chỉ kiểm tra một số mẫu để tối ưu performance)
+    const sampleSize = Math.min(100, questionIds.length);
+    const sampleIds = questionIds.slice(0, sampleSize);
+    const placeholders = sampleIds.map(() => '?').join(',');
+    
     const [existingQuestions] = await pool.query(
       `SELECT id FROM questions WHERE id IN (${placeholders})`,
-      questionIds
+      sampleIds
     );
     
-    if (existingQuestions.length !== questionIds.length) {
+    if (existingQuestions.length !== sampleIds.length) {
       return res.status(400).json({ error: 'Một số câu hỏi không tồn tại' });
     }
     
-    // Update category for all questions
-    const [result] = await pool.query(
-      `UPDATE questions SET category = ? WHERE id IN (${placeholders})`,
-      [category, ...questionIds]
-    );
+    // Update category for all questions in batches để tránh timeout
+    const batchSize = 1000;
+    let totalUpdated = 0;
+    
+    for (let i = 0; i < questionIds.length; i += batchSize) {
+      const batch = questionIds.slice(i, i + batchSize);
+      const batchPlaceholders = batch.map(() => '?').join(',');
+      
+      const [result] = await pool.query(
+        `UPDATE questions SET category = ? WHERE id IN (${batchPlaceholders})`,
+        [category, ...batch]
+      );
+      
+      totalUpdated += result.affectedRows;
+    }
     
     return res.json({ 
       success: true, 
-      updated: result.affectedRows,
-      message: `Đã cập nhật danh mục cho ${result.affectedRows} câu hỏi`
+      updated: totalUpdated,
+      message: `Đã cập nhật danh mục cho ${totalUpdated} câu hỏi`
     });
     
   } catch (error) {

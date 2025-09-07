@@ -939,20 +939,35 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Kiểm tra giới hạn
+        if (selectedIds.length > 100000) {
+            showNotification('Không thể xử lý hơn 100,000 câu hỏi cùng lúc. Vui lòng chọn ít hơn.', 'error');
+            return;
+        }
+        
         // Kiểm tra xem có câu hỏi nào đang ở danh mục hiện tại không
         const questionsInCurrentCategory = selectedIds.filter(id => {
             const question = questions.find(q => q.id == id);
             return question && question.category === newCategory;
         });
         
-        let confirmMessage = `Bạn có chắc chắn muốn đổi danh mục cho ${selectedIds.length} câu hỏi đã chọn thành "${newCategoryDisplay}" không?`;
+        let confirmMessage = `Bạn có chắc chắn muốn đổi danh mục cho ${selectedIds.length.toLocaleString()} câu hỏi đã chọn thành "${newCategoryDisplay}" không?`;
+        
+        if (selectedIds.length > 1000) {
+            confirmMessage += `\n\n⚠️ Lưu ý: Đây là thao tác với số lượng lớn (${selectedIds.length.toLocaleString()} câu hỏi), có thể mất vài phút để hoàn thành.`;
+        }
         
         if (questionsInCurrentCategory.length > 0) {
-            confirmMessage += `\n\nLưu ý: ${questionsInCurrentCategory.length} câu hỏi đã ở danh mục "${newCategoryDisplay}" sẽ được cập nhật lại (không gây lỗi).`;
+            confirmMessage += `\n\nLưu ý: ${questionsInCurrentCategory.length.toLocaleString()} câu hỏi đã ở danh mục "${newCategoryDisplay}" sẽ được cập nhật lại (không gây lỗi).`;
         }
         
         if (!confirm(confirmMessage)) {
             return;
+        }
+        
+        // Hiển thị loading cho bulk operations lớn
+        if (selectedIds.length > 1000) {
+            showNotification(`🔄 Đang xử lý ${selectedIds.length.toLocaleString()} câu hỏi... Vui lòng đợi.`, 'info');
         }
         
         // Sử dụng API bulk category change

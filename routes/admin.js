@@ -175,10 +175,24 @@ router.put('/api/questions/:id', checkAdmin, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Thiếu thông tin câu hỏi hoặc câu trả lời' });
         }
         
+        // Xử lý category validation
+        let validCategory = category || 'khoidong';
+        
+        if (category === 'general' || category === null || category === undefined) {
+            validCategory = 'khoidong'; // Convert general to khoidong
+        }
+        
+        if (!['khoidong', 'vuotchuongngaivat', 'tangtoc', 'vedich'].includes(validCategory)) {
+            return res.status(400).json({ 
+                success: false, 
+                error: `Danh mục "${category}" không hợp lệ. Chỉ chấp nhận: khoidong, vuotchuongngaivat, tangtoc, vedich` 
+            });
+        }
+        
         const success = await updateQuestion(questionId, {
             text,
             answer,
-            category: category || 'khoidong', // Default to khoidong if not provided
+            category: validCategory,
             acceptedAnswers: Array.isArray(acceptedAnswers) ? acceptedAnswers : undefined
         });
         
