@@ -970,7 +970,10 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification(`🔄 Đang xử lý ${selectedIds.length.toLocaleString()} câu hỏi... Vui lòng đợi.`, 'info');
         }
         
-        // Sử dụng API bulk category change
+        // Sử dụng API bulk category change với timeout cho requests lớn
+        const controller = new AbortController();
+        const timeoutId = selectedIds.length > 1000 ? setTimeout(() => controller.abort(), 300000) : null; // 5 phút timeout cho requests lớn
+        
         fetch('/api/admin/questions/bulk-category', {
             method: 'POST',
             headers: {
@@ -979,10 +982,14 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 questionIds: selectedIds,
                 category: newCategory
-            })
+            }),
+            signal: controller.signal
         })
         .then(response => response.json())
         .then(data => {
+            // Clear timeout
+            if (timeoutId) clearTimeout(timeoutId);
+            
             if (data.success) {
                 showNotification(`✅ ${data.message}`, 'success');
                 
@@ -997,8 +1004,23 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
+            // Clear timeout
+            if (timeoutId) clearTimeout(timeoutId);
+            
             console.error('❌ Lỗi khi cập nhật danh mục hàng loạt:', error);
-            showNotification('❌ Không thể cập nhật danh mục hàng loạt', 'error');
+            
+            // Xử lý lỗi timeout
+            if (error.name === 'AbortError') {
+                showNotification('❌ Lỗi: Request timeout. Vui lòng thử lại với ít câu hỏi hơn.', 'error');
+            }
+            // Xử lý lỗi 413 Payload Too Large
+            else if (error.message && error.message.includes('413')) {
+                showNotification('❌ Lỗi: Dữ liệu quá lớn. Vui lòng chọn ít câu hỏi hơn hoặc thử lại sau.', 'error');
+            } else if (error.message && error.message.includes('Unexpected token')) {
+                showNotification('❌ Lỗi: Server trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'error');
+            } else {
+                showNotification('❌ Không thể cập nhật danh mục hàng loạt. Vui lòng thử lại.', 'error');
+            }
         });
     }
     

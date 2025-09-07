@@ -1216,16 +1216,29 @@ router.post('/questions/bulk-category', checkAdmin, async (req, res) => {
     const batchSize = 1000;
     let totalUpdated = 0;
     
+    console.log(`🔄 Processing ${questionIds.length} questions in batches of ${batchSize}...`);
+    
     for (let i = 0; i < questionIds.length; i += batchSize) {
       const batch = questionIds.slice(i, i + batchSize);
       const batchPlaceholders = batch.map(() => '?').join(',');
       
-      const [result] = await pool.query(
-        `UPDATE questions SET category = ? WHERE id IN (${batchPlaceholders})`,
-        [category, ...batch]
-      );
-      
-      totalUpdated += result.affectedRows;
+      try {
+        const [result] = await pool.query(
+          `UPDATE questions SET category = ? WHERE id IN (${batchPlaceholders})`,
+          [category, ...batch]
+        );
+        
+        totalUpdated += result.affectedRows;
+        
+        // Log progress for large operations
+        if (questionIds.length > 1000) {
+          const progress = Math.round(((i + batchSize) / questionIds.length) * 100);
+          console.log(`📊 Progress: ${progress}% (${i + batchSize}/${questionIds.length})`);
+        }
+      } catch (error) {
+        console.error(`❌ Error processing batch ${i}-${i + batchSize}:`, error);
+        throw error;
+      }
     }
     
     return res.json({ 

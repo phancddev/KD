@@ -52,8 +52,9 @@ app.use((req, res, next) => {
 });
 
 // Parse JSON và form data (nhưng không xử lý multipart/form-data)
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Tăng giới hạn body size để hỗ trợ bulk operations lớn
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Debug middleware để xem request sau khi đã parse body
 app.use((req, res, next) => {
