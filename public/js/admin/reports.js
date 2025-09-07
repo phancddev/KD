@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Không thể đánh dấu đã xử lý:', statusError);
       }
       
-      alert('Đã duyệt và thêm vào database, báo lỗi đã được đánh dấu đã xử lý');
+      showToast('Đã duyệt và thêm vào database, báo lỗi đã được đánh dấu đã xử lý', 'success');
       
       // Đóng popup và reload danh sách
       modal.style.display = 'none';
@@ -342,6 +342,56 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function escapeHtml(s) {
     return (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+
+  // Toast notification function
+  function showToast(message, type = 'success') {
+    // Remove existing toast if any
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) {
+      existingToast.remove();
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = message;
+    
+    // Add styles
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: ${type === 'success' ? '#22c55e' : '#ef4444'};
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 10000;
+      font-weight: 500;
+      transform: translateX(100%);
+      transition: transform 0.3s ease-in-out;
+      max-width: 300px;
+      word-wrap: break-word;
+    `;
+
+    // Add to DOM
+    document.body.appendChild(toast);
+
+    // Show toast
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)';
+    }, 100);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
   }
 
   loadReports(1);
