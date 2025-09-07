@@ -5,7 +5,7 @@ import { parse } from 'csv-parse/sync';
 // Thêm câu hỏi mới
 async function createQuestion(questionData) {
     try {
-        const { text, answer, category = 'general', difficulty = 'medium', createdBy = null } = questionData;
+        const { text, answer, category = 'khoidong', difficulty = 'medium', createdBy = null } = questionData;
         
         if (!text || !answer) {
             throw new Error('Câu hỏi và đáp án không được để trống');
@@ -91,12 +91,13 @@ async function getAllQuestions() {
   }
 }
 
-// Lấy câu hỏi ngẫu nhiên
-async function getRandomQuestions(count = 12, category = null) {
+// Lấy câu hỏi ngẫu nhiên - mặc định chỉ lấy "khoidong" cho game  
+async function getRandomQuestions(count = 12, category = 'khoidong') {
   try {
     let query = 'SELECT * FROM questions';
     const params = [];
     
+    // Mặc định chỉ lấy câu hỏi "khoidong" để giới hạn game hiện tại
     if (category) {
       query += ' WHERE category = ?';
       params.push(category);
@@ -266,7 +267,7 @@ async function importQuestionsFromCSV(filePath) {
             console.log('Processing header mode. Sample record keys:', Object.keys(records[0] || {}));
             
             for (const record of records) {
-                let text, answer;
+                let text, answer, category;
                 const keys = Object.keys(record);
                 console.log('Record keys:', keys);
                 console.log('Record values:', Object.values(record));
@@ -288,30 +289,58 @@ async function importQuestionsFromCSV(filePath) {
                            lowerKey.includes('câu trả lời') ||
                            lowerKey.includes('cau tra loi');
                 });
+
+                // Tìm cột category
+                const categoryKey = keys.find(key => {
+                    const lowerKey = key.toLowerCase().trim();
+                    return lowerKey.includes('category') || 
+                           lowerKey.includes('danh mục') ||
+                           lowerKey.includes('danh muc') ||
+                           lowerKey.includes('loại') ||
+                           lowerKey.includes('loai');
+                });
                 
-                console.log('Found questionKey:', questionKey, 'answerKey:', answerKey);
+                console.log('Found questionKey:', questionKey, 'answerKey:', answerKey, 'categoryKey:', categoryKey);
                 
                 if (questionKey && answerKey) {
                     text = record[questionKey]?.trim();
                     answer = record[answerKey]?.trim();
+                    category = categoryKey ? record[categoryKey]?.trim() : null;
                     console.log('Extracted - Question:', text?.substring(0, 50) + '...');
                     console.log('Extracted - Answer:', answer);
+                    console.log('Extracted - Category:', category);
                 } else {
-                    // Fallback: lấy 2 cột đầu tiên
+                    // Fallback: lấy các cột theo thứ tự
                     if (keys.length >= 2) {
                         text = record[keys[0]]?.trim();
                         answer = record[keys[1]]?.trim();
+                        category = keys.length >= 3 ? record[keys[2]]?.trim() : null;
                         console.log('Fallback mode - Question:', text?.substring(0, 50) + '...');
                         console.log('Fallback mode - Answer:', answer);
+                        console.log('Fallback mode - Category:', category);
                     }
                 }
                 
                 if (text && answer && text !== answer) {
+                    // Validate category - chuyển đổi từ display name sang key
+                    const categoryMapping = {
+                        'Khởi Động': 'khoidong',
+                        'Vượt Chướng Ngại Vật': 'vuotchuongngaivat', 
+                        'Tăng Tốc': 'tangtoc',
+                        'Về Đích': 'vedich',
+                        'khoidong': 'khoidong',
+                        'vuotchuongngaivat': 'vuotchuongngaivat',
+                        'tangtoc': 'tangtoc',
+                        'vedich': 'vedich'
+                    };
+                    const finalCategory = categoryMapping[category] || 'khoidong';
+                    
                     questions.push({
                         text: text,
-                        answer: answer
+                        answer: answer,
+                        category: finalCategory
                     });
-                    console.log('Added question successfully');
+                    console.log('Added question successfully with category:', finalCategory);
                 } else {
                     console.log('Skipped question - text:', !!text, 'answer:', !!answer, 'same:', text === answer);
                 }
@@ -322,12 +351,28 @@ async function importQuestionsFromCSV(filePath) {
                 if (record.length >= 2) {
                     const text = record[0]?.trim();
                     const answer = record[1]?.trim();
+                    const category = record.length >= 3 ? record[2]?.trim() : null;
                     
                     if (text && answer) {
+                        // Validate category - chuyển đổi từ display name sang key
+                        const categoryMapping = {
+                            'Khởi Động': 'khoidong',
+                            'Vượt Chướng Ngại Vật': 'vuotchuongngaivat', 
+                            'Tăng Tốc': 'tangtoc',
+                            'Về Đích': 'vedich',
+                            'khoidong': 'khoidong',
+                            'vuotchuongngaivat': 'vuotchuongngaivat',
+                            'tangtoc': 'tangtoc',
+                            'vedich': 'vedich'
+                        };
+                        const finalCategory = categoryMapping[category] || 'khoidong';
+                        
                         questions.push({
                             text: text,
-                            answer: answer
+                            answer: answer,
+                            category: finalCategory
                         });
+                        console.log('Added question (no header) with category:', finalCategory);
                     }
                 }
             }
@@ -455,73 +500,73 @@ async function seedSampleQuestions(userId) {
     {
       text: 'Thủ đô của Việt Nam là gì?',
       answer: 'Hà Nội',
-      category: 'geography',
+      category: 'khoidong',
       difficulty: 'easy'
     },
     {
       text: 'Ngôn ngữ lập trình nào không phải là ngôn ngữ hướng đối tượng?',
       answer: 'C',
-      category: 'programming',
+      category: 'vuotchuongngaivat',
       difficulty: 'medium'
     },
     {
       text: 'Đâu là một hệ điều hành mã nguồn mở?',
       answer: 'Linux',
-      category: 'technology',
+      category: 'khoidong',
       difficulty: 'easy'
     },
     {
       text: 'HTML là viết tắt của gì?',
       answer: 'Hyper Text Markup Language',
-      category: 'web',
+      category: 'khoidong',
       difficulty: 'easy'
     },
     {
       text: 'Đâu là một ngôn ngữ lập trình phía máy chủ (server-side)?',
       answer: 'PHP',
-      category: 'programming',
+      category: 'vuotchuongngaivat',
       difficulty: 'easy'
     },
     {
       text: 'Hệ quản trị cơ sở dữ liệu nào là mã nguồn mở?',
       answer: 'MySQL',
-      category: 'database',
+      category: 'tangtoc',
       difficulty: 'medium'
     },
     {
       text: 'Giao thức nào được sử dụng để truyền tải trang web?',
       answer: 'HTTP',
-      category: 'networking',
+      category: 'khoidong',
       difficulty: 'easy'
     },
     {
       text: 'Đơn vị đo tốc độ xử lý của CPU là gì?',
       answer: 'Hertz',
-      category: 'hardware',
+      category: 'tangtoc',
       difficulty: 'medium'
     },
     {
       text: 'Ngôn ngữ lập trình nào được phát triển bởi Google?',
       answer: 'Go',
-      category: 'programming',
+      category: 'vedich',
       difficulty: 'medium'
     },
     {
       text: 'Đâu là một framework JavaScript phổ biến?',
       answer: 'React',
-      category: 'web',
+      category: 'tangtoc',
       difficulty: 'medium'
     },
     {
       text: 'Hệ điều hành Android được phát triển dựa trên nhân (kernel) nào?',
       answer: 'Linux',
-      category: 'mobile',
+      category: 'vedich',
       difficulty: 'medium'
     },
     {
       text: 'Đâu là một công cụ quản lý phiên bản mã nguồn?',
       answer: 'Git',
-      category: 'development',
+      category: 'khoidong',
       difficulty: 'easy'
     }
   ];

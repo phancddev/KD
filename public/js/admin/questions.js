@@ -4,10 +4,32 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPage = 1;
     const questionsPerPage = 10;
     
+    // Category mapping
+    const categoryDisplayNames = {
+        'khoidong': 'Khởi Động',
+        'vuotchuongngaivat': 'Vượt Chướng Ngại Vật',
+        'tangtoc': 'Tăng Tốc',
+        'vedich': 'Về Đích'
+    };
+    
+    const categoryKeys = {
+        'Khởi Động': 'khoidong',
+        'Vượt Chướng Ngại Vật': 'vuotchuongngaivat',
+        'Tăng Tốc': 'tangtoc',
+        'Về Đích': 'vedich'
+    };
+    
+    // Debug: Log category mapping for admin
+    console.log('🔧 Category Mapping Debug:', {
+        displayNames: categoryDisplayNames,
+        keys: categoryKeys
+    });
+    
     // Các phần tử DOM
     const questionsList = document.getElementById('questions-list');
     const questionsPagination = document.getElementById('questions-pagination');
     const searchInput = document.getElementById('search-questions');
+    const categoryFilter = document.getElementById('category-filter');
     const addQuestionForm = document.getElementById('add-question-form');
     const importQuestionsForm = document.getElementById('import-questions-form');
     const editModal = document.getElementById('edit-modal');
@@ -18,6 +40,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('select-all');
     const deleteSelectedBtn = document.getElementById('delete-selected');
     const selectAllBtn = document.getElementById('select-all-questions');
+    const bulkCategoryBtn = document.getElementById('bulk-category-change');
+    const bulkCategoryModal = document.getElementById('bulk-category-modal');
+    const closeBulkModalBtn = document.getElementById('close-bulk-modal');
+    const cancelBulkChangeBtn = document.getElementById('cancel-bulk-change');
+    const bulkCategoryForm = document.getElementById('bulk-category-form');
+    const bulkSelectedCountSpan = document.getElementById('bulk-selected-count');
     console.log('🔍 selectAllBtn element:', selectAllBtn);
     const selectedCountSpan = document.getElementById('selected-count');
     
@@ -31,8 +59,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (deleteSelectedBtn) {
             deleteSelectedBtn.style.display = 'none';
         }
+        if (bulkCategoryBtn) {
+            bulkCategoryBtn.style.display = 'none';
+        }
         if (selectedCountSpan) {
             selectedCountSpan.textContent = '0';
+        }
+        if (bulkSelectedCountSpan) {
+            bulkSelectedCountSpan.textContent = '0';
         }
     }
     
@@ -69,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Lỗi khi lấy danh sách câu hỏi:', error);
-                showNotification('Không thể lấy danh sách câu hỏi', 'error');
+                showNotification('Không thể lấy danh sách câu hỏi. Kiểm tra kết nối database và category mapping.', 'error');
             });
     }
     
@@ -109,6 +143,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 minute: '2-digit'
             });
             
+            // Style category với màu khác nhau
+            const categoryColors = {
+                'khoidong': '#22c55e',
+                'vuotchuongngaivat': '#f59e0b', 
+                'tangtoc': '#ef4444',
+                'vedich': '#8b5cf6'
+            };
+            const categoryDisplayName = categoryDisplayNames[question.category] || question.category;
+            const categoryColor = categoryColors[question.category] || '#6b7280';
+            
+            // Debug: Log category conversion for admin
+            if (question.category && !categoryDisplayNames[question.category]) {
+                console.warn('⚠️ Unknown category:', question.category, 'for question ID:', question.id);
+            }
+            
             row.innerHTML = `
                 <td>
                     <input type="checkbox" class="question-checkbox" data-id="${question.id}">
@@ -116,6 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>${sequenceNumber}</td>
                 <td title="${question.text}">${truncatedText}</td>
                 <td title="${question.answer}">${truncatedAnswer}${acceptedCount ? ` <span style="color:#999">(+${acceptedCount} đáp án)</span>` : ''}</td>
+                <td><span style="background: ${categoryColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; display: inline-block;">${categoryDisplayName}</span></td>
                 <td>${createdAt}</td>
                 <td>
                     <div class="table-actions">
@@ -377,27 +427,42 @@ document.addEventListener('DOMContentLoaded', function() {
         questionsPagination.appendChild(pageInputSection);
     }
     
+    // Hàm filter questions dựa trên search và category
+    function getFilteredQuestions() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        const selectedCategory = categoryFilter.value;
+        
+        return questions.filter(question => {
+            // Filter theo search term
+            const matchesSearch = searchTerm === '' || 
+                question.text.toLowerCase().includes(searchTerm) ||
+                question.answer.toLowerCase().includes(searchTerm);
+            
+            // Filter theo category
+            const matchesCategory = selectedCategory === '' || 
+                question.category === selectedCategory;
+            
+            return matchesSearch && matchesCategory;
+        });
+    }
+    
     // Tìm kiếm câu hỏi
     searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.trim().toLowerCase();
-        
         // Reset trạng thái "select all" khi tìm kiếm
         resetSelectAllState();
         
-        if (searchTerm === '') {
-            currentPage = 1;
-            renderQuestions();
-            renderPagination();
-            return;
-        }
+        const filteredQuestions = getFilteredQuestions();
+        currentPage = 1;
+        renderQuestions(filteredQuestions);
+        renderPagination(filteredQuestions);
+    });
+    
+    // Lọc theo category
+    categoryFilter.addEventListener('change', function() {
+        // Reset trạng thái "select all" khi filter
+        resetSelectAllState();
         
-        const filteredQuestions = questions.filter(question => {
-            return (
-                question.text.toLowerCase().includes(searchTerm) ||
-                question.answer.toLowerCase().includes(searchTerm)
-            );
-        });
-        
+        const filteredQuestions = getFilteredQuestions();
         currentPage = 1;
         renderQuestions(filteredQuestions);
         renderPagination(filteredQuestions);
@@ -409,7 +474,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const formData = {
             text: document.getElementById('question-text').value.trim(),
-            answer: document.getElementById('question-answer').value.trim()
+            answer: document.getElementById('question-answer').value.trim(),
+            category: categoryKeys[document.getElementById('question-category').value] || 'khoidong'
         };
         
         if (!formData.text || !formData.answer) {
@@ -431,7 +497,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 addQuestionForm.reset();
                 fetchQuestions();
             } else {
-                showNotification('Không thể thêm câu hỏi: ' + data.error, 'error');
+                showNotification('Không thể thêm câu hỏi: ' + data.error + ' (Category: ' + formData.category + ')', 'error');
             }
         })
         .catch(error => {
@@ -487,6 +553,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('edit-question-id').value = question.id;
         document.getElementById('edit-question-text').value = question.text;
         document.getElementById('edit-question-answer').value = question.answer;
+        document.getElementById('edit-question-category').value = categoryDisplayNames[question.category] || 'Khởi Động';
         // Render accepted answers list
         const list = document.getElementById('accepted-answers-list');
         if (list) {
@@ -560,6 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = {
             text: document.getElementById('edit-question-text').value.trim(),
             answer: document.getElementById('edit-question-answer').value.trim(),
+            category: categoryKeys[document.getElementById('edit-question-category').value] || 'khoidong',
             acceptedAnswers: (questions.find(q => q.id == questionId)?.acceptedAnswers) || []
         };
         
@@ -582,7 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 editModal.style.display = 'none';
                 fetchQuestions();
             } else {
-                showNotification('Không thể cập nhật câu hỏi: ' + data.error, 'error');
+                showNotification('Không thể cập nhật câu hỏi: ' + data.error + ' (Category: ' + formData.category + ')', 'error');
             }
         })
         .catch(error => {
@@ -669,8 +737,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Nếu đang trong trạng thái "select all", hiển thị tổng số câu hỏi
         if (window.selectAllQuestionsSelected) {
-            selectedCountSpan.textContent = questions.length;
+            const totalCount = questions.length;
+            selectedCountSpan.textContent = totalCount;
+            bulkSelectedCountSpan.textContent = totalCount;
             deleteSelectedBtn.style.display = 'inline-block';
+            bulkCategoryBtn.style.display = 'inline-block';
             
             // Update select all checkbox state
             if (selectAllCheckbox) {
@@ -683,11 +754,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Logic bình thường khi không phải "select all"
         const count = selectedCheckboxes.length;
         selectedCountSpan.textContent = count;
+        bulkSelectedCountSpan.textContent = count;
         
         if (count > 0) {
             deleteSelectedBtn.style.display = 'inline-block';
+            bulkCategoryBtn.style.display = 'inline-block';
         } else {
             deleteSelectedBtn.style.display = 'none';
+            bulkCategoryBtn.style.display = 'none';
         }
         
         // Update select all checkbox state
@@ -822,6 +896,97 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Bulk category change functions
+    function openBulkCategoryModal() {
+        let selectedIds = getSelectedQuestionIds();
+        
+        // Nếu đang trong trạng thái "select all", lấy tất cả IDs từ questions array
+        if (window.selectAllQuestionsSelected) {
+            selectedIds = questions.map(q => q.id);
+        }
+        
+        if (selectedIds.length === 0) {
+            showNotification('Vui lòng chọn ít nhất một câu hỏi để đổi danh mục', 'error');
+            return;
+        }
+        
+        document.getElementById('bulk-change-count').textContent = selectedIds.length;
+        document.getElementById('bulk-new-category').value = '';
+        bulkCategoryModal.style.display = 'block';
+    }
+    
+    function closeBulkCategoryModal() {
+        bulkCategoryModal.style.display = 'none';
+    }
+    
+    function bulkChangeCategoryQuestions() {
+        let selectedIds = getSelectedQuestionIds();
+        
+        // Nếu đang trong trạng thái "select all", lấy tất cả IDs từ questions array
+        if (window.selectAllQuestionsSelected) {
+            selectedIds = questions.map(q => q.id);
+        }
+        
+        if (selectedIds.length === 0) {
+            showNotification('Vui lòng chọn ít nhất một câu hỏi để đổi danh mục', 'error');
+            return;
+        }
+        
+        const newCategoryDisplay = document.getElementById('bulk-new-category').value;
+        const newCategory = categoryKeys[newCategoryDisplay] || 'khoidong';
+        if (!newCategoryDisplay) {
+            showNotification('Vui lòng chọn danh mục mới', 'error');
+            return;
+        }
+        
+        // Kiểm tra xem có câu hỏi nào đang ở danh mục hiện tại không
+        const questionsInCurrentCategory = selectedIds.filter(id => {
+            const question = questions.find(q => q.id == id);
+            return question && question.category === newCategory;
+        });
+        
+        let confirmMessage = `Bạn có chắc chắn muốn đổi danh mục cho ${selectedIds.length} câu hỏi đã chọn thành "${newCategoryDisplay}" không?`;
+        
+        if (questionsInCurrentCategory.length > 0) {
+            confirmMessage += `\n\nLưu ý: ${questionsInCurrentCategory.length} câu hỏi đã ở danh mục "${newCategoryDisplay}" sẽ được cập nhật lại (không gây lỗi).`;
+        }
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        // Sử dụng API bulk category change
+        fetch('/api/admin/questions/bulk-category', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                questionIds: selectedIds,
+                category: newCategory
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(`✅ ${data.message}`, 'success');
+                
+                // Reset trạng thái select all
+                resetSelectAllState();
+                closeBulkCategoryModal();
+                
+                // Refresh danh sách câu hỏi
+                fetchQuestions();
+            } else {
+                showNotification(`❌ Lỗi: ${data.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Lỗi khi cập nhật danh mục hàng loạt:', error);
+            showNotification('❌ Không thể cập nhật danh mục hàng loạt', 'error');
+        });
+    }
+    
     // Event listeners cho bulk operations
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
@@ -842,6 +1007,32 @@ document.addEventListener('DOMContentLoaded', function() {
     if (deleteSelectedBtn) {
         deleteSelectedBtn.addEventListener('click', deleteSelectedQuestions);
     }
+    
+    if (bulkCategoryBtn) {
+        bulkCategoryBtn.addEventListener('click', openBulkCategoryModal);
+    }
+    
+    if (closeBulkModalBtn) {
+        closeBulkModalBtn.addEventListener('click', closeBulkCategoryModal);
+    }
+    
+    if (cancelBulkChangeBtn) {
+        cancelBulkChangeBtn.addEventListener('click', closeBulkCategoryModal);
+    }
+    
+    if (bulkCategoryForm) {
+        bulkCategoryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            bulkChangeCategoryQuestions();
+        });
+    }
+    
+    // Close modal khi click outside
+    window.addEventListener('click', function(event) {
+        if (event.target === bulkCategoryModal) {
+            closeBulkCategoryModal();
+        }
+    });
 
     if (selectAllBtn) {
         console.log('🔍 Gắn event listener cho selectAllBtn');
@@ -864,6 +1055,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.fetchQuestions = fetchQuestions;
     window.renderQuestions = renderQuestions;
     window.renderPagination = renderPagination;
+    window.getFilteredQuestions = getFilteredQuestions;
+    window.openBulkCategoryModal = openBulkCategoryModal;
+    window.bulkChangeCategoryQuestions = bulkChangeCategoryQuestions;
     
     console.log('✅ Functions và biến đã được expose ra global scope');
     console.log('🔍 Có thể gọi: selectAllQuestions(), updateSelectedCount(), deleteSelectedQuestions()');

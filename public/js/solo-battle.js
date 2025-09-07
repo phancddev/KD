@@ -199,9 +199,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let totalTimeRemaining = 60; // Tổng thời gian (có thể điều chỉnh theo số câu hỏi nếu cần)
     let soloSessionId = null; // ID phiên solo sau khi lưu
     
-    // Hàm lấy câu hỏi từ server và bắt đầu trò chơi
+    // Hàm lấy câu hỏi từ server và bắt đầu trò chơi (chỉ "khoidong")
     function fetchQuestionsAndStart() {
-        fetch('/admin/api/questions/random?count=20')
+        fetch('/admin/api/questions/random?count=20&category=khoidong')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);

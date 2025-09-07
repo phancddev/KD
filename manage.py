@@ -66,7 +66,7 @@ function showMenu() {
         break;
     }
   });
-}
+} 
 
 // Hàm tạo người dùng mới
 async function createNewUser(isAdmin = false) {

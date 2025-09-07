@@ -126,11 +126,14 @@ router.get('/reports/:id', checkAdmin, async (req, res) => {
           report.correct_answer = latest.answer;
           // accepted_answers mong đợi là JSON string ở phía client
           report.accepted_answers = JSON.stringify(latest.acceptedAnswers || []);
+          // Thêm category để admin có thể thấy
+          report.category = latest.category;
           // Có thể đính kèm thêm trường tham khảo nếu cần ở client
           report.latest_question = {
             id: latest.id,
             text: latest.text,
             answer: latest.answer,
+            category: latest.category,
             acceptedAnswers: latest.acceptedAnswers || []
           };
         }
@@ -1166,6 +1169,48 @@ router.post('/ai/add-accepted-answers', async (req, res) => {
       error: 'Internal Server Error',
       message: 'Không thể xử lý đề xuất đáp án phụ từ AI'
     });
+  }
+});
+
+// Bulk category change for questions
+router.post('/questions/bulk-category', checkAdmin, async (req, res) => {
+  try {
+    const { questionIds, category } = req.body;
+    
+    if (!Array.isArray(questionIds) || questionIds.length === 0) {
+      return res.status(400).json({ error: 'Danh sách câu hỏi không hợp lệ' });
+    }
+    
+    if (!category || !['khoidong', 'vuotchuongngaivat', 'tangtoc', 'vedich'].includes(category)) {
+      return res.status(400).json({ error: 'Danh mục không hợp lệ' });
+    }
+    
+    // Validate all question IDs exist
+    const placeholders = questionIds.map(() => '?').join(',');
+    const [existingQuestions] = await pool.query(
+      `SELECT id FROM questions WHERE id IN (${placeholders})`,
+      questionIds
+    );
+    
+    if (existingQuestions.length !== questionIds.length) {
+      return res.status(400).json({ error: 'Một số câu hỏi không tồn tại' });
+    }
+    
+    // Update category for all questions
+    const [result] = await pool.query(
+      `UPDATE questions SET category = ? WHERE id IN (${placeholders})`,
+      [category, ...questionIds]
+    );
+    
+    return res.json({ 
+      success: true, 
+      updated: result.affectedRows,
+      message: `Đã cập nhật danh mục cho ${result.affectedRows} câu hỏi`
+    });
+    
+  } catch (error) {
+    console.error('Lỗi khi cập nhật danh mục hàng loạt:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

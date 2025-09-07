@@ -233,10 +233,10 @@ export function initSocketIO(server) {
           return callback({ success: false, error: 'Cần ít nhất 1 người tham gia để bắt đầu' });
         }
         
-        // Lấy câu hỏi ngẫu nhiên từ API (giống solo battle)
-        console.log('🔍 Đang lấy câu hỏi...');
-        const questions = await fetchQuestionsFromAPI(20);
-        console.log('✅ Đã lấy', questions.length, 'câu hỏi');
+        // Lấy câu hỏi ngẫu nhiên từ API (chỉ "khoidong")
+        console.log('🔍 Đang lấy câu hỏi category "khoidong"...');
+        const questions = await fetchQuestionsFromAPI(20, 'khoidong');
+        console.log('✅ Đã lấy', questions.length, 'câu hỏi "khoidong"');
         
         // Tạo trận đấu mới
         const gameId = Date.now();
@@ -844,12 +844,12 @@ function addActivity(activity) {
   }
 }
 
-// Helper function: Lấy câu hỏi từ API (giống solo battle)
-async function fetchQuestionsFromAPI(count = 20) {
+// Helper function: Lấy câu hỏi từ API (giới hạn "khoidong")
+async function fetchQuestionsFromAPI(count = 20, category = 'khoidong') {
   try {
-    console.log('🔍 Fetching questions from database, count:', count);
+    console.log(`🔍 Fetching questions from database, count: ${count}, category: ${category}`);
     // Sử dụng direct database call thay vì HTTP API để tránh vấn đề circular call
-    const questions = await getRandomQuestions(count);
+    const questions = await getRandomQuestions(count, category);
     console.log('📋 Questions fetched:', questions ? questions.length : 0);
     
     if (!questions || !Array.isArray(questions) || questions.length === 0) {

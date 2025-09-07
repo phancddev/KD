@@ -12,6 +12,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const markOpenBtn = document.getElementById('mark-open');
   const deleteQuestionBtn = document.getElementById('delete-question');
 
+  // Category mapping
+  const categoryDisplayNames = {
+    'khoidong': 'Khởi Động',
+    'vuotchuongngaivat': 'Vượt Chướng Ngại Vật',
+    'tangtoc': 'Tăng Tốc',
+    'vedich': 'Về Đích'
+  };
+  
+  const categoryColors = {
+    'khoidong': '#22c55e',
+    'vuotchuongngaivat': '#f59e0b', 
+    'tangtoc': '#ef4444',
+    'vedich': '#8b5cf6'
+  };
+
   let currentPage = 1;
   let currentLimit = parseInt(pageSizeSelect?.value || '20');
   let currentReports = [];
@@ -129,12 +144,17 @@ document.addEventListener('DOMContentLoaded', () => {
         ${s.status==='approved' ? '' : '<input type="checkbox" class="approve-checkbox" title="Chọn duyệt" checked>'}
       </div>
     `).join('');
+    // Get category display info
+    const categoryDisplayName = categoryDisplayNames[r.category] || r.category || 'Không xác định';
+    const categoryColor = categoryColors[r.category] || '#6b7280';
+    
     detailContainer.innerHTML = `
       <p><strong>ID:</strong> #${r.id}</p>
       <p><strong>Thời gian:</strong> ${formatDate(r.created_at)}</p>
       <p><strong>Người dùng:</strong> ${r.username || ''} (ID: ${r.user_id || ''})</p>
       <p><strong>Chế độ:</strong> ${r.mode}</p>
       <p><strong>Room/Session:</strong> Room ${r.room_id || ''} / Session ${r.session_id || ''}</p>
+      <p><strong>Danh mục:</strong> <span style="background: ${categoryColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; display: inline-block;">${categoryDisplayName}</span></p>
       <p><strong>Câu hỏi:</strong></p>
       <pre>${escapeHtml(r.question_text || '')}</pre>
       <p><strong>Đáp án đúng:</strong></p>

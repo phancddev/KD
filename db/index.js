@@ -101,7 +101,7 @@ async function createBasicTables() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       text TEXT NOT NULL,
       answer TEXT NOT NULL,
-      category VARCHAR(50),
+      category ENUM('khoidong', 'vuotchuongngaivat', 'tangtoc', 'vedich') DEFAULT 'khoidong',
       difficulty ENUM('easy', 'medium', 'hard') DEFAULT 'medium',
       created_by INT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

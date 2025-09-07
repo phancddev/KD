@@ -14,7 +14,8 @@ import {
     deleteQuestion, 
     importQuestionsFromCSV,
     addAcceptedAnswer,
-    removeAcceptedAnswer
+    removeAcceptedAnswer,
+    getRandomQuestions
 } from '../db/questions.js';
 
 const execAsync = promisify(exec);
@@ -123,18 +124,18 @@ router.get('/api/questions', checkAdmin, async (req, res) => {
   }
 });
 
-// API lấy câu hỏi ngẫu nhiên
+// API lấy câu hỏi ngẫu nhiên - hỗ trợ filter theo category
 router.get('/api/questions/random', async (req, res) => {
   try {
     const count = parseInt(req.query.count) || 12;
+    const category = req.query.category || 'khoidong'; // Mặc định "khoidong"
     
-    // Lấy tất cả câu hỏi trước, sau đó shuffle
-    const allQuestions = await getAllQuestions();
+    console.log(`🎯 Random questions API: count=${count}, category=${category}`);
     
-    // Shuffle và lấy số lượng cần thiết
-    const shuffled = allQuestions.sort(() => 0.5 - Math.random());
-    const questions = shuffled.slice(0, Math.min(count, shuffled.length));
+    // Sử dụng getRandomQuestions với category filter
+    const questions = await getRandomQuestions(count, category);
     
+    console.log(`✅ Returned ${questions.length} questions for category: ${category}`);
     res.json(questions);
   } catch (error) {
     console.error('Lỗi khi lấy câu hỏi ngẫu nhiên:', error);
@@ -168,7 +169,7 @@ router.post('/api/questions', checkAdmin, async (req, res) => {
 router.put('/api/questions/:id', checkAdmin, async (req, res) => {
     try {
         const questionId = req.params.id;
-        const { text, answer, acceptedAnswers } = req.body;
+        const { text, answer, acceptedAnswers, category } = req.body;
         
         if (!text || !answer) {
             return res.status(400).json({ success: false, error: 'Thiếu thông tin câu hỏi hoặc câu trả lời' });
@@ -177,6 +178,7 @@ router.put('/api/questions/:id', checkAdmin, async (req, res) => {
         const success = await updateQuestion(questionId, {
             text,
             answer,
+            category: category || 'khoidong', // Default to khoidong if not provided
             acceptedAnswers: Array.isArray(acceptedAnswers) ? acceptedAnswers : undefined
         });
         
@@ -367,6 +369,51 @@ router.post('/api/questions/import', checkAdmin, upload.single('csvFile'), async
 // Route test đơn giản
 router.get('/test', (req, res) => {
     res.json({ message: 'Admin router is working!' });
+});
+
+// Debug route để test database và category
+router.get('/debug/database', async (req, res) => {
+  try {
+    console.log('🔍 Debug database route');
+    
+    // Test database connection
+    const { getAllQuestions } = await import('../db/questions.js');
+    const allQuestions = await getAllQuestions();
+    console.log('📊 Total questions in database:', allQuestions.length);
+    
+    // Check categories
+    const categories = {};
+    allQuestions.forEach(q => {
+      categories[q.category] = (categories[q.category] || 0) + 1;
+    });
+    
+    console.log('📈 Categories distribution:', categories);
+    
+    // Test getRandomQuestions directly
+    const { getRandomQuestions } = await import('../db/questions.js');
+    const randomWithoutCategory = await getRandomQuestions(2);
+    const randomKhoidong = await getRandomQuestions(2, 'khoidong');
+    
+    res.json({
+      success: true,
+      totalQuestions: allQuestions.length,
+      categories,
+      randomWithoutCategory: randomWithoutCategory.length,
+      randomKhoidong: randomKhoidong.length,
+      sampleQuestions: allQuestions.slice(0, 3).map(q => ({
+        id: q.id,
+        text: q.text.substring(0, 50) + '...',
+        category: q.category
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Debug database error:', error);
+    res.json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
 });
 
 // Route cho login logs
