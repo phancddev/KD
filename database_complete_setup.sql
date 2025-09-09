@@ -1,8 +1,15 @@
+-- =============================================
+-- COMPLETE DATABASE SETUP FOR KD APP
+-- Bao gồm đầy đủ cấu trúc cho hệ thống Tăng Tốc
+-- =============================================
+
 -- Tạo cơ sở dữ liệu
-CREATE DATABASE IF NOT EXISTS nqd_database;
+CREATE DATABASE IF NOT EXISTS nqd_database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE nqd_database;
 
--- Tạo bảng users
+-- =============================================
+-- BẢNG USERS
+-- =============================================
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(50) NOT NULL UNIQUE,
@@ -17,22 +24,26 @@ CREATE TABLE IF NOT EXISTS users (
   last_ip VARCHAR(45) NULL
 );
 
--- Tạo bảng questions
+-- =============================================
+-- BẢNG QUESTIONS (ĐẦY ĐỦ CHO TĂNG TỐC)
+-- =============================================
 CREATE TABLE IF NOT EXISTS questions (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  question_number INT NULL,
-  text TEXT NOT NULL,
-  answer TEXT NOT NULL,
-  image_url TEXT NULL,
+  question_number INT NULL,                    -- Số câu hỏi (1,2,3,4) cho Tăng Tốc
+  text TEXT NOT NULL,                          -- Nội dung câu hỏi
+  answer TEXT NOT NULL,                        -- Đáp án
+  image_url TEXT NULL,                         -- Link hình ảnh
   category ENUM('khoidong', 'vuotchuongngaivat', 'tangtoc', 'vedich') DEFAULT 'khoidong',
   difficulty ENUM('easy', 'medium', 'hard') DEFAULT 'medium',
-  time_limit INT NULL,
+  time_limit INT NULL,                         -- Thời gian cho mỗi câu hỏi (giây)
   created_by INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Bảng lưu các đáp án chấp nhận thêm cho mỗi câu hỏi (ngoài đáp án hiển thị)
+-- =============================================
+-- BẢNG ANSWERS (Đáp án bổ sung)
+-- =============================================
 CREATE TABLE IF NOT EXISTS answers (
   id INT AUTO_INCREMENT PRIMARY KEY,
   question_id INT NOT NULL,
@@ -41,7 +52,9 @@ CREATE TABLE IF NOT EXISTS answers (
   FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
--- Tạo bảng rooms
+-- =============================================
+-- BẢNG ROOMS
+-- =============================================
 CREATE TABLE IF NOT EXISTS rooms (
   id INT AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(10) NOT NULL UNIQUE,
@@ -53,7 +66,9 @@ CREATE TABLE IF NOT EXISTS rooms (
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Tạo bảng room_participants
+-- =============================================
+-- BẢNG ROOM_PARTICIPANTS
+-- =============================================
 CREATE TABLE IF NOT EXISTS room_participants (
   id INT AUTO_INCREMENT PRIMARY KEY,
   room_id INT NOT NULL,
@@ -65,7 +80,9 @@ CREATE TABLE IF NOT EXISTS room_participants (
   UNIQUE KEY unique_room_user (room_id, user_id)
 );
 
--- Tạo bảng game_sessions
+-- =============================================
+-- BẢNG GAME_SESSIONS
+-- =============================================
 CREATE TABLE IF NOT EXISTS game_sessions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
@@ -81,7 +98,9 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
 );
 
--- Tạo bảng user_answers
+-- =============================================
+-- BẢNG USER_ANSWERS
+-- =============================================
 CREATE TABLE IF NOT EXISTS user_answers (
   id INT AUTO_INCREMENT PRIMARY KEY,
   session_id INT NOT NULL,
@@ -94,7 +113,9 @@ CREATE TABLE IF NOT EXISTS user_answers (
   FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
--- Tạo bảng login_logs để lưu trữ thông tin đăng nhập
+-- =============================================
+-- BẢNG LOGIN_LOGS
+-- =============================================
 CREATE TABLE IF NOT EXISTS login_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NULL,
@@ -122,7 +143,9 @@ CREATE TABLE IF NOT EXISTS login_logs (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Tạo bảng ip_geolocation để lưu thông tin IP
+-- =============================================
+-- BẢNG IP_GEOLOCATION
+-- =============================================
 CREATE TABLE IF NOT EXISTS ip_geolocation (
   id INT AUTO_INCREMENT PRIMARY KEY,
   ip_address VARCHAR(45) NOT NULL UNIQUE,
@@ -140,7 +163,9 @@ CREATE TABLE IF NOT EXISTS ip_geolocation (
   lookup_count INT DEFAULT 1
 );
 
--- Báo lỗi câu hỏi/đáp án do người dùng gửi
+-- =============================================
+-- BẢNG QUESTION_REPORTS
+-- =============================================
 CREATE TABLE IF NOT EXISTS question_reports (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NULL,
@@ -162,7 +187,9 @@ CREATE TABLE IF NOT EXISTS question_reports (
   FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL
 );
 
--- Bảng lưu đề xuất đáp án từ người dùng cho mỗi report
+-- =============================================
+-- BẢNG ANSWER_SUGGESTIONS
+-- =============================================
 CREATE TABLE IF NOT EXISTS answer_suggestions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   report_id INT NOT NULL,
@@ -177,7 +204,9 @@ CREATE TABLE IF NOT EXISTS answer_suggestions (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Bảng log lịch sử xử lý đề xuất đáp án
+-- =============================================
+-- BẢNG ANSWER_SUGGESTION_LOGS
+-- =============================================
 CREATE TABLE IF NOT EXISTS answer_suggestion_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   suggestion_id INT NOT NULL,
@@ -191,15 +220,9 @@ CREATE TABLE IF NOT EXISTS answer_suggestion_logs (
   FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Tạo index để tối ưu hiệu suất
--- Comment các dòng này để tránh lỗi duplicate index
--- CREATE INDEX idx_login_logs_user_id ON login_logs(user_id);
--- CREATE INDEX idx_login_logs_username ON login_logs(username);
--- CREATE INDEX idx_login_logs_ip_address ON login_logs(ip_address);
--- CREATE INDEX idx_login_logs_login_at ON login_logs(login_at);
--- CREATE INDEX idx_ip_geolocation_ip ON ip_geolocation(ip_address);
-
--- Bảng logs để ghi lại các hành động xóa câu hỏi và cho phép khôi phục
+-- =============================================
+-- BẢNG QUESTION_DELETION_LOGS
+-- =============================================
 CREATE TABLE IF NOT EXISTS question_deletion_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   question_id INT NOT NULL,
@@ -222,7 +245,9 @@ CREATE TABLE IF NOT EXISTS question_deletion_logs (
   FOREIGN KEY (restored_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Bảng lưu các đáp án bổ sung đã bị xóa
+-- =============================================
+-- BẢNG DELETED_QUESTION_ANSWERS
+-- =============================================
 CREATE TABLE IF NOT EXISTS deleted_question_answers (
   id INT AUTO_INCREMENT PRIMARY KEY,
   log_id INT NOT NULL,
@@ -231,13 +256,59 @@ CREATE TABLE IF NOT EXISTS deleted_question_answers (
   FOREIGN KEY (log_id) REFERENCES question_deletion_logs(id) ON DELETE CASCADE
 );
 
--- Tạo index để tối ưu hiệu suất cho bảng logs
+-- =============================================
+-- TẠO INDEX ĐỂ TỐI ƯU HIỆU SUẤT
+-- =============================================
+
+-- Index cho bảng questions
+CREATE INDEX idx_questions_category ON questions(category);
+CREATE INDEX idx_questions_tangtoc ON questions(category, question_number);
+CREATE INDEX idx_questions_difficulty ON questions(difficulty);
+
+-- Index cho bảng login_logs
+CREATE INDEX idx_login_logs_user_id ON login_logs(user_id);
+CREATE INDEX idx_login_logs_username ON login_logs(username);
+CREATE INDEX idx_login_logs_ip_address ON login_logs(ip_address);
+CREATE INDEX idx_login_logs_login_at ON login_logs(login_at);
+
+-- Index cho bảng ip_geolocation
+CREATE INDEX idx_ip_geolocation_ip ON ip_geolocation(ip_address);
+
+-- Index cho bảng question_deletion_logs
 CREATE INDEX idx_question_deletion_logs_deleted_at ON question_deletion_logs(deleted_at);
 CREATE INDEX idx_question_deletion_logs_deleted_by ON question_deletion_logs(deleted_by);
 CREATE INDEX idx_question_deletion_logs_can_restore ON question_deletion_logs(can_restore);
 CREATE INDEX idx_question_deletion_logs_question_id ON question_deletion_logs(question_id);
 
--- Tạo index để tối ưu hiệu suất cho bảng questions
-CREATE INDEX idx_questions_category ON questions(category);
-CREATE INDEX idx_questions_tangtoc ON questions(category, question_number);
-CREATE INDEX idx_questions_difficulty ON questions(difficulty);
+-- =============================================
+-- TẠO ADMIN MẶC ĐỊNH
+-- =============================================
+INSERT INTO users (username, password, email, full_name, is_admin, is_active)
+VALUES 
+  ('admin', 'admin123', 'admin@example.com', 'Quản trị viên', TRUE, TRUE)
+ON DUPLICATE KEY UPDATE id = id;
+
+-- =============================================
+-- THÊM CÂU HỎI MẪU
+-- =============================================
+INSERT INTO questions (text, answer, category, difficulty)
+VALUES
+  ('Thủ đô của Việt Nam là gì?', 'Hà Nội', 'khoidong', 'easy'),
+  ('Ngôn ngữ lập trình nào không phải là ngôn ngữ hướng đối tượng?', 'C', 'khoidong', 'medium'),
+  ('Đâu là một hệ điều hành mã nguồn mở?', 'Linux', 'khoidong', 'easy'),
+  ('HTML là viết tắt của gì?', 'Hyper Text Markup Language', 'khoidong', 'easy'),
+  ('Đâu là một ngôn ngữ lập trình phía máy chủ (server-side)?', 'PHP', 'khoidong', 'medium'),
+  ('Hệ quản trị cơ sở dữ liệu nào là mã nguồn mở?', 'MySQL', 'khoidong', 'medium'),
+  ('Giao thức nào được sử dụng để truyền tải trang web?', 'HTTP', 'khoidong', 'easy'),
+  ('Đơn vị đo tốc độ xử lý của CPU là gì?', 'Hertz', 'khoidong', 'medium'),
+  ('Ngôn ngữ lập trình nào được phát triển bởi Google?', 'Go', 'khoidong', 'medium'),
+  ('Đâu là một framework JavaScript phổ biến?', 'React', 'khoidong', 'medium'),
+  ('Hệ điều hành Android được phát triển dựa trên nhân (kernel) nào?', 'Linux', 'khoidong', 'medium'),
+  ('Đâu là một công cụ quản lý phiên bản mã nguồn?', 'Git', 'khoidong', 'easy');
+
+-- =============================================
+-- HOÀN TẤT
+-- =============================================
+SELECT 'Database setup completed successfully!' as status;
+SELECT 'Admin account created: admin / admin123' as admin_info;
+SELECT 'All tables and indexes created for TangToc system' as tangtoc_info;
