@@ -34,6 +34,7 @@ async function initDatabase() {
     const path = await import('path');
     
     const initSqlPath = path.join(process.cwd(), 'db', 'init', '01-init.sql');
+    const tangtocSqlPath = path.join(process.cwd(), 'db', 'init', '01-tangtoc-migration.sql');
     const adminSqlPath = path.join(process.cwd(), 'db', 'init', '02-create-admin.sql');
     
     try {
@@ -42,6 +43,16 @@ async function initDatabase() {
       const statements = initSql.split(';').filter(stmt => stmt.trim());
       
       for (const statement of statements) {
+        if (statement.trim()) {
+          await pool.query(statement);
+        }
+      }
+      
+      // Thực thi script migration Tăng Tốc
+      const tangtocSql = fs.readFileSync(tangtocSqlPath, 'utf8');
+      const tangtocStatements = tangtocSql.split(';').filter(stmt => stmt.trim());
+      
+      for (const statement of tangtocStatements) {
         if (statement.trim()) {
           await pool.query(statement);
         }
@@ -95,14 +106,17 @@ async function createBasicTables() {
     )
   `);
 
-  // Tạo bảng questions
+  // Tạo bảng questions (với đầy đủ cột cho Tăng Tốc)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS questions (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      question_number INT NULL,
       text TEXT NOT NULL,
       answer TEXT NOT NULL,
+      image_url TEXT NULL,
       category ENUM('khoidong', 'vuotchuongngaivat', 'tangtoc', 'vedich') DEFAULT 'khoidong',
       difficulty ENUM('easy', 'medium', 'hard') DEFAULT 'medium',
+      time_limit INT NULL,
       created_by INT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
@@ -294,6 +308,25 @@ async function createBasicTables() {
 // Chạy các migration an toàn cho DB hiện hữu (idempotent)
 async function runMigrations() {
   try {
+    // Migration cho hệ thống Tăng Tốc
+    await ensureColumnExists(
+      'questions',
+      'question_number',
+      "ADD COLUMN question_number INT NULL AFTER id"
+    );
+    
+    await ensureColumnExists(
+      'questions',
+      'image_url',
+      "ADD COLUMN image_url TEXT NULL AFTER answer"
+    );
+    
+    await ensureColumnExists(
+      'questions',
+      'time_limit',
+      "ADD COLUMN time_limit INT NULL AFTER difficulty"
+    );
+
     // Đảm bảo cột accepted_answers tồn tại trong question_reports
     await ensureColumnExists(
       'question_reports',
@@ -403,6 +436,23 @@ async function runMigrations() {
         FOREIGN KEY (log_id) REFERENCES question_deletion_logs(id) ON DELETE CASCADE
       )
     `);
+
+    // Tạo index cho bảng questions (Tăng Tốc)
+    try {
+      await pool.query('CREATE INDEX idx_questions_category ON questions(category)');
+    } catch (e) {
+      // Index đã tồn tại, bỏ qua
+    }
+    try {
+      await pool.query('CREATE INDEX idx_questions_tangtoc ON questions(category, question_number)');
+    } catch (e) {
+      // Index đã tồn tại, bỏ qua
+    }
+    try {
+      await pool.query('CREATE INDEX idx_questions_difficulty ON questions(difficulty)');
+    } catch (e) {
+      // Index đã tồn tại, bỏ qua
+    }
 
     // Tạo index cho bảng logs
     try {
