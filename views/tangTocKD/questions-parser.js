@@ -49,30 +49,20 @@ async function createTangTocQuestion(questionData) {
         const timeLimit = getTimeLimitByQuestionNumber(questionNumber);
 
         const query = `
-            INSERT INTO tangtoc_questions (text, answer, question_number, image_url, time_limit, created_by, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO questions (text, answer, category, difficulty, question_number, image_url, time_limit, created_by, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
         
         const [result] = await pool.query(query, [
             cleanText, 
             answer, 
+            category, 
+            difficulty, 
             questionNumber, 
             imageUrl, 
             timeLimit, 
             createdBy
         ]);
-        
-        const questionId = result.insertId;
-        
-        // Thêm các đáp án chấp nhận nếu có (giống cách khởi động)
-        if (acceptedAnswers && acceptedAnswers.length > 0) {
-            for (const answerText of acceptedAnswers) {
-                await pool.query(
-                    'INSERT INTO tangtoc_answers (question_id, answer) VALUES (?, ?)',
-                    [questionId, answerText]
-                );
-            }
-        }
         
         console.log('Đã tạo câu hỏi Tăng Tốc mới với ID:', result.insertId);
         
@@ -114,8 +104,8 @@ async function getRandomTangTocQuestions() {
         
         for (let questionNumber = 1; questionNumber <= 4; questionNumber++) {
             const query = `
-                SELECT * FROM tangtoc_questions 
-                WHERE question_number = ? 
+                SELECT * FROM questions 
+                WHERE category = 'tangtoc' AND question_number = ? 
                 ORDER BY RAND() 
                 LIMIT 1
             `;
@@ -125,9 +115,9 @@ async function getRandomTangTocQuestions() {
             if (rows.length > 0) {
                 const question = rows[0];
                 
-                // Lấy accepted answers (giống cách khởi động)
+                // Lấy accepted answers
                 const [answerRows] = await pool.query(
-                    'SELECT id, answer FROM tangtoc_answers WHERE question_id = ? ORDER BY created_at', 
+                    'SELECT id, answer FROM answers WHERE question_id = ?', 
                     [question.id]
                 );
                 const acceptedAnswers = answerRows.map(r => ({ id: r.id, answer: r.answer }));

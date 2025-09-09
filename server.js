@@ -17,12 +17,6 @@ console.log('🚀 Imported adminRoutes successfully');
 import adminApiRoutes from './routes/admin-api.js';
 console.log('🚀 Imported adminApiRoutes successfully');
 
-import adminTangTocApiRoutes from './routes/admin-tangtoc-api.js';
-console.log('🚀 Imported adminTangTocApiRoutes successfully');
-
-import tangTocApiRoutes from './routes/tangtoc-api.js';
-console.log('🚀 Imported tangTocApiRoutes successfully');
-
 import tangTocRoutes from './views/tangTocKD/server-routes.js';
 console.log('🚀 Imported tangTocRoutes successfully');
 import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails, createGameSession, finishGameSession } from './db/game-sessions.js';
@@ -750,10 +744,6 @@ app.post('/api/solo-game/finish', async (req, res) => {
 // Admin routes
 app.use('/admin', adminRoutes);
 app.use('/api/admin', adminApiRoutes);
-app.use('/api/admin', adminTangTocApiRoutes);
-
-// TangToc API routes
-app.use('/api', tangTocApiRoutes);
 
 // TangToc routes
 app.use('/', tangTocRoutes);
@@ -819,8 +809,4 @@ app.get('/admin/question-logs', checkAdmin, (req, res) => {
 
 app.get('/admin/tangtoc-questions', checkAdmin, (req, res) => {
   res.sendFile(join(__dirname, 'views', 'tangTocKD', 'admin-tangtoc-questions.html'));
-});
-
-app.get('/admin/tangtoc-reports', checkAdmin, (req, res) => {
-  res.sendFile(join(__dirname, 'views', 'admin', 'tangtoc-reports.html'));
 });

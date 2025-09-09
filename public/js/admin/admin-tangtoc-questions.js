@@ -214,10 +214,11 @@ class TangTocQuestionsAdmin {
             }
 
             // Filter by has image
-            if (this.filters.hasImage === 'yes' && !question.imageUrl) {
+            const hasImage = TangTocQuestionsAdmin.extractMediaUrlFromText(question.text) || question.imageUrl;
+            if (this.filters.hasImage === 'yes' && !hasImage) {
                 return false;
             }
-            if (this.filters.hasImage === 'no' && question.imageUrl) {
+            if (this.filters.hasImage === 'no' && hasImage) {
                 return false;
             }
 
@@ -246,6 +247,20 @@ class TangTocQuestionsAdmin {
             search: ''
         };
         this.applyFilters();
+    }
+
+    // Static method to extract media URL from text (same as solo battle)
+    static extractMediaUrlFromText(text) {
+        if (!text) return null;
+        // Case 1: full pattern with data tail
+        const m = text.match(/@?(https:\/\/[^\s]+?\/revision\/latest\?cb=[^&]+&path-prefix=vi)\s+data:image\/[^^\s]+/);
+        if (m && m[1]) return decodeURIComponent(m[1]);
+        // Case 2: plain https URL (image or mp4) without data tail
+        const m2 = text.match(/@?(https:\/\/[^\s]+?(?:\.png|\.jpe?g|\.webp|\.gif|\.mp4)\/[\w\-\/]+\?[^\s]+|https:\/\/[^\s]+?\.(?:png|jpe?g|webp|gif|mp4)(?:\?[^\s]+)?)/i);
+        if (m2 && m2[1]) return m2[1];
+        // Fallback: any https URL
+        const m3 = text.match(/@?(https:\/\/[^\s]+)/);
+        return m3 && m3[1] ? m3[1] : null;
     }
 
     renderQuestions() {
@@ -283,17 +298,8 @@ class TangTocQuestionsAdmin {
         pageQuestions.forEach((question, index) => {
             const stt = startIndex + index + 1;
             
-            // Extract image URL from question text if it contains https://... data:image/... format
-            let imageUrl = null;
-            if (question.text) {
-                // Match the full URL including /revision/latest?cb=...&path-prefix=vi
-                const imageUrlMatch = question.text.match(/(https:\/\/[^\s]+?\/revision\/latest\?cb=[^&]+&path-prefix=vi)\s+data:image\/[^\s]+/);
-                if (imageUrlMatch && imageUrlMatch[1]) {
-                    // Decode URL to handle special characters
-                    imageUrl = decodeURIComponent(imageUrlMatch[1]);
-                    console.log('Found image URL for question', question.id, ':', imageUrl);
-                }
-            }
+            // Extract image URL using the same method as solo battle
+            const imageUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(question.text) || question.imageUrl;
             
             const imageHtml = imageUrl ? 
                 `<a href="${imageUrl}" class="mw-file-description image" target="_blank">
@@ -325,13 +331,7 @@ class TangTocQuestionsAdmin {
                     <td class="question-image">
                         ${imageHtml}
                     </td>
-                    <td class="question-answer">
-                        <div><strong>Đáp án chính:</strong> ${question.answer}</div>
-                        ${question.accepted_answers && question.accepted_answers.length > 0 ? 
-                            `<div><strong>Đáp án khác:</strong> ${question.accepted_answers.map(a => a.answer).join(', ')}</div>` : 
-                            '<div><em>Không có đáp án khác</em></div>'
-                        }
-                    </td>
+                    <td class="question-answer">${question.answer}</td>
                     <td class="question-time">
                         <span class="time-limit-badge">${question.time_limit}s</span>
                     </td>
@@ -436,20 +436,9 @@ class TangTocQuestionsAdmin {
         this.elements.editQuestionNumber.value = question.question_number;
         this.elements.editQuestionText.value = question.text;
         this.elements.editQuestionAnswer.value = question.answer;
-        
-        // Hiển thị nhiều đáp án nếu có
-        displayAcceptedAnswers(question.accepted_answers || []);
 
-        // Extract image URL from question text if it contains https://... data:image/... format
-        let imageUrl = null;
-        if (question.text) {
-            // Match the full URL including /revision/latest?cb=...&path-prefix=vi
-            const imageUrlMatch = question.text.match(/(https:\/\/[^\s]+?\/revision\/latest\?cb=[^&]+&path-prefix=vi)\s+data:image\/[^\s]+/);
-            if (imageUrlMatch && imageUrlMatch[1]) {
-                // Decode URL to handle special characters
-                imageUrl = decodeURIComponent(imageUrlMatch[1]);
-            }
-        }
+        // Extract image URL using the same method as solo battle
+        const imageUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(question.text) || question.imageUrl;
 
         // Hiển thị media (img) nếu có
         const imagePreview = document.getElementById('edit-image-preview');
@@ -480,9 +469,6 @@ class TangTocQuestionsAdmin {
         const questionNumber = parseInt(this.elements.editQuestionNumber.value);
         const text = this.elements.editQuestionText.value.trim();
         const answer = this.elements.editQuestionAnswer.value.trim();
-        
-        // Lấy nhiều đáp án
-        const acceptedAnswers = getCurrentAcceptedAnswers().map(a => a.answer);
 
         if (!questionNumber || questionNumber < 1 || questionNumber > 4) {
             this.showMessage('error', 'Số câu hỏi phải từ 1 đến 4');
@@ -504,8 +490,7 @@ class TangTocQuestionsAdmin {
                 body: JSON.stringify({
                     question_number: questionNumber,
                     text: text,
-                    answer: answer,
-                    accepted_answers: acceptedAnswers
+                    answer: answer
                 })
             });
 
@@ -534,17 +519,30 @@ class TangTocQuestionsAdmin {
         const imagePreview = document.getElementById('edit-image-preview');
         const noImageDiv = document.getElementById('edit-no-image');
 
-        // Extract image URL from text using regex - match full URL including /revision/latest?cb=...&path-prefix=vi
-        const imageUrlMatch = text.match(/(https:\/\/[^\s]+?\/revision\/latest\?cb=[^&]+&path-prefix=vi)\s+data:image\/[^\s]+/);
+        // Extract image URL using the same method as solo battle
+        const imageUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(text);
         
-        if (imageUrlMatch && imageUrlMatch[1]) {
-            // Decode URL to handle special characters
-            const decodedUrl = decodeURIComponent(imageUrlMatch[1]);
-            imageDisplay.src = decodedUrl;
+        if (imageUrl) {
+            
+            // Create or get the image element
+            let imageDisplay = document.getElementById('edit-image-display');
+            if (!imageDisplay) {
+                imageDisplay = document.createElement('img');
+                imageDisplay.id = 'edit-image-display';
+                imageDisplay.alt = 'Hình ảnh câu hỏi';
+                imageDisplay.style.width = '70%';
+                imageDisplay.style.height = '50vh';
+                imageDisplay.style.objectFit = 'contain';
+                imageDisplay.style.border = '1px solid #e5e7eb';
+                imageDisplay.style.borderRadius = '6px';
+                imagePreview.appendChild(imageDisplay);
+            }
+            
+            imageDisplay.src = imageUrl;
             imageDisplay.setAttribute('decoding', 'async');
             imageDisplay.setAttribute('loading', 'lazy');
-            imageDisplay.setAttribute('width', '300');
-            imageDisplay.setAttribute('height', '169');
+            imageDisplay.setAttribute('crossorigin', 'anonymous');
+            imageDisplay.setAttribute('referrerpolicy', 'no-referrer');
             imagePreview.style.display = 'block';
             noImageDiv.style.display = 'none';
         } else {
@@ -603,155 +601,6 @@ async function deleteQuestion(questionId) {
         console.error('Delete question error:', error);
         window.tangTocAdmin.showMessage('error', 'Có lỗi xảy ra khi xóa câu hỏi');
     }
-}
-
-// Helper function để hiển thị accepted answers
-function displayAcceptedAnswers(acceptedAnswers) {
-    // Tạo container cho nhiều đáp án nếu chưa có
-    let container = document.getElementById('accepted-answers-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'accepted-answers-container';
-        container.innerHTML = `
-            <label>Đáp án khác:</label>
-            <div class="accepted-answers-list" id="accepted-answers-list"></div>
-            <div class="input-group mt-2">
-                <input type="text" id="new-accepted-answer" class="form-control" placeholder="Nhập đáp án khác...">
-                <button class="btn btn-outline-primary" type="button" id="add-accepted-answer-btn">
-                    <i class="fas fa-plus"></i> Thêm
-                </button>
-            </div>
-        `;
-        // Chèn sau trường đáp án chính
-        const answerField = document.getElementById('edit-question-answer');
-        answerField.parentNode.insertBefore(container, answerField.nextSibling);
-        
-        // Thêm event listener cho nút thêm
-        document.getElementById('add-accepted-answer-btn').addEventListener('click', addAcceptedAnswer);
-        document.getElementById('new-accepted-answer').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addAcceptedAnswer();
-            }
-        });
-    }
-    
-    // Hiển thị các đáp án hiện có
-    const answersList = document.getElementById('accepted-answers-list');
-    if (answersList) {
-        answersList.innerHTML = '';
-        acceptedAnswers.forEach((answer, index) => {
-            addAcceptedAnswerToList(answer.answer, answer.id || `temp_${index}`);
-        });
-    }
-}
-
-// Thêm đáp án mới vào danh sách
-async function addAcceptedAnswer() {
-    const input = document.getElementById('new-accepted-answer');
-    const answerText = input.value.trim();
-    
-    if (!answerText) {
-        alert('Vui lòng nhập đáp án!');
-        return;
-    }
-    
-    // Kiểm tra trùng lặp
-    const existingAnswers = Array.from(document.querySelectorAll('.accepted-answer-item')).map(item => 
-        item.querySelector('.answer-text').textContent.trim()
-    );
-    
-    if (existingAnswers.includes(answerText)) {
-        alert('Đáp án này đã tồn tại!');
-        return;
-    }
-    
-    const questionId = document.getElementById('edit-question-id').value;
-    if (!questionId) {
-        alert('Không tìm thấy ID câu hỏi!');
-        return;
-    }
-    
-    try {
-        // Gọi API để thêm đáp án vào database
-        const response = await fetch(`/api/admin/tangtoc/questions/${questionId}/answers`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ answer: answerText })
-        });
-        
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-            throw new Error(data.error || 'Không thể thêm đáp án');
-        }
-        
-        // Thêm vào giao diện với ID thật từ database
-        addAcceptedAnswerToList(answerText, data.answerId || `temp_${Date.now()}`);
-        input.value = '';
-        
-        // Hiển thị thông báo thành công
-        if (window.tangTocAdmin) {
-            window.tangTocAdmin.showMessage('success', 'Đã thêm đáp án thành công');
-        }
-        
-    } catch (error) {
-        console.error('Lỗi khi thêm đáp án:', error);
-        alert('Không thể thêm đáp án: ' + error.message);
-    }
-}
-
-// Thêm đáp án vào danh sách hiển thị
-function addAcceptedAnswerToList(answerText, answerId) {
-    const answersList = document.getElementById('accepted-answers-list');
-    const answerItem = document.createElement('div');
-    answerItem.className = 'accepted-answer-item d-flex justify-content-between align-items-center mb-1 p-2 border rounded';
-    answerItem.setAttribute('data-answer-id', answerId);
-    answerItem.innerHTML = `
-        <span class="answer-text">${answerText}</span>
-        <button class="btn btn-sm btn-outline-danger remove-answer-btn" type="button">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    
-    // Thêm event listener cho nút xóa
-    answerItem.querySelector('.remove-answer-btn').addEventListener('click', async function() {
-        const answerId = answerItem.getAttribute('data-answer-id');
-        
-        // Nếu có ID thật (không phải temp), gọi API để xóa
-        if (answerId && !answerId.startsWith('temp_')) {
-            try {
-                const response = await fetch(`/api/admin/tangtoc/questions/answers/${answerId}`, {
-                    method: 'DELETE'
-                });
-                
-                const data = await response.json();
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || 'Không thể xóa đáp án');
-                }
-                
-                // Hiển thị thông báo thành công
-                if (window.tangTocAdmin) {
-                    window.tangTocAdmin.showMessage('success', 'Đã xóa đáp án thành công');
-                }
-            } catch (error) {
-                console.error('Lỗi khi xóa đáp án:', error);
-                alert('Không thể xóa đáp án: ' + error.message);
-                return; // Không xóa khỏi giao diện nếu lỗi
-            }
-        }
-        
-        answerItem.remove();
-    });
-    
-    answersList.appendChild(answerItem);
-}
-
-// Lấy danh sách đáp án hiện tại
-function getCurrentAcceptedAnswers() {
-    const answerItems = document.querySelectorAll('.accepted-answer-item');
-    return Array.from(answerItems).map(item => ({
-        id: item.getAttribute('data-answer-id'),
-        answer: item.querySelector('.answer-text').textContent.trim()
-    }));
 }
 
 // Initialize admin when page loads

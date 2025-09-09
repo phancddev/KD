@@ -1,6 +1,6 @@
 // Server routes cho chế độ Tăng Tốc
 import express from 'express';
-import { getRandomTangTocQuestions } from './questions-parser.js';
+import { getRandomTangTocQuestions, importTangTocQuestionsFromCSV } from './questions-parser.js';
 import { pool } from '../../db/index.js';
 import multer from 'multer';
 import path from 'path';
@@ -100,19 +100,20 @@ async function parseTangTocWithPython(filePath, originalName) {
     });
 }
 
-// Function để lưu câu hỏi vào database Tăng Tốc riêng
+// Function để lưu câu hỏi vào database
 async function saveQuestionsToDatabase(questions) {
     for (const question of questions) {
         await pool.query(
-            `INSERT INTO tangtoc_questions (question_number, text, answer, image_url, time_limit, created_by) 
-             VALUES (?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO questions (question_number, text, answer, category, image_url, time_limit, difficulty) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
                 question.question_number,
                 question.text,
                 question.answer,
+                question.category,
                 question.image_url,
                 question.time_limit,
-                null // created_by sẽ được set sau
+                'medium'
             ]
         );
     }
@@ -221,12 +222,9 @@ router.post('/api/room-game/tangtoc/finish', async (req, res) => {
 router.get('/api/admin/tangtoc/questions', async (req, res) => {
     try {
         const [rows] = await pool.query(`
-            SELECT 
-                q.*,
-                u.username as created_by_username
-            FROM tangtoc_questions q
-            LEFT JOIN users u ON q.created_by = u.id
-            ORDER BY q.question_number, q.created_at DESC
+            SELECT * FROM questions 
+            WHERE category = 'tangtoc' 
+            ORDER BY question_number, created_at DESC
         `);
         
         res.json(rows);
@@ -239,18 +237,43 @@ router.get('/api/admin/tangtoc/questions', async (req, res) => {
 // Lấy thống kê câu hỏi Tăng Tốc
 router.get('/api/admin/tangtoc/statistics', async (req, res) => {
     try {
-        const [stats] = await pool.query(`
-            SELECT 
-                COUNT(*) as total,
-                COUNT(CASE WHEN image_url IS NOT NULL AND image_url != '' THEN 1 END) as image_count,
-                COUNT(CASE WHEN question_number = 1 THEN 1 END) as question_1,
-                COUNT(CASE WHEN question_number = 2 THEN 1 END) as question_2,
-                COUNT(CASE WHEN question_number = 3 THEN 1 END) as question_3,
-                COUNT(CASE WHEN question_number = 4 THEN 1 END) as question_4
-            FROM tangtoc_questions
+        const [totalRows] = await pool.query(`
+            SELECT COUNT(*) as total FROM questions WHERE category = 'tangtoc'
         `);
         
-        res.json(stats[0]);
+        const [imageRows] = await pool.query(`
+            SELECT COUNT(*) as count FROM questions 
+            WHERE category = 'tangtoc' AND image_url IS NOT NULL AND image_url != ''
+        `);
+        
+        const [question1Rows] = await pool.query(`
+            SELECT COUNT(*) as count FROM questions 
+            WHERE category = 'tangtoc' AND question_number = 1
+        `);
+        
+        const [question2Rows] = await pool.query(`
+            SELECT COUNT(*) as count FROM questions 
+            WHERE category = 'tangtoc' AND question_number = 2
+        `);
+        
+        const [question3Rows] = await pool.query(`
+            SELECT COUNT(*) as count FROM questions 
+            WHERE category = 'tangtoc' AND question_number = 3
+        `);
+        
+        const [question4Rows] = await pool.query(`
+            SELECT COUNT(*) as count FROM questions 
+            WHERE category = 'tangtoc' AND question_number = 4
+        `);
+        
+        res.json({
+            totalQuestions: totalRows[0].total,
+            imageQuestions: imageRows[0].count,
+            question1Count: question1Rows[0].count,
+            question2Count: question2Rows[0].count,
+            question3Count: question3Rows[0].count,
+            question4Count: question4Rows[0].count
+        });
     } catch (error) {
         console.error('Lỗi khi lấy thống kê Tăng Tốc:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -268,7 +291,7 @@ router.post('/api/admin/tangtoc/upload', upload.single('file'), async (req, res)
         
         // Xóa câu hỏi cũ nếu mode là replace
         if (mode === 'replace') {
-            await pool.query('DELETE FROM tangtoc_questions');
+            await pool.query('DELETE FROM questions WHERE category = ?', ['tangtoc']);
         }
         
         // Sử dụng Python parser
@@ -300,7 +323,7 @@ router.post('/api/admin/tangtoc/upload', upload.single('file'), async (req, res)
 router.put('/api/admin/tangtoc/questions/:id', async (req, res) => {
     try {
         const questionId = req.params.id;
-        const { question_number, text, answer, accepted_answers } = req.body;
+        const { question_number, text, answer } = req.body;
         
         // Validate input
         if (!question_number || !text || !answer) {
@@ -319,24 +342,9 @@ router.put('/api/admin/tangtoc/questions/:id', async (req, res) => {
         
         // Update question
         const [result] = await pool.query(
-            'UPDATE tangtoc_questions SET question_number = ?, text = ?, answer = ?, image_url = ?, time_limit = ? WHERE id = ?',
-            [question_number, cleanText, answer, imageUrl, timeLimit, questionId]
+            'UPDATE questions SET question_number = ?, text = ?, answer = ?, image_url = ?, time_limit = ? WHERE id = ? AND category = ?',
+            [question_number, cleanText, answer, imageUrl, timeLimit, questionId, 'tangtoc']
         );
-        
-        if (result.affectedRows > 0) {
-            // Xóa các đáp án cũ (giống cách khởi động)
-            await pool.query('DELETE FROM tangtoc_answers WHERE question_id = ?', [questionId]);
-            
-            // Thêm các đáp án mới
-            if (accepted_answers && accepted_answers.length > 0) {
-                for (const answerText of accepted_answers) {
-                    await pool.query(
-                        'INSERT INTO tangtoc_answers (question_id, answer) VALUES (?, ?)',
-                        [questionId, answerText]
-                    );
-                }
-            }
-        }
         
         if (result.affectedRows > 0) {
             res.json({ success: true, message: 'Cập nhật câu hỏi thành công' });
@@ -354,8 +362,8 @@ router.delete('/api/admin/tangtoc/questions/:id', async (req, res) => {
         const questionId = req.params.id;
         
         const [result] = await pool.query(
-            'DELETE FROM tangtoc_questions WHERE id = ?',
-            [questionId]
+            'DELETE FROM questions WHERE id = ? AND category = ?',
+            [questionId, 'tangtoc']
         );
         
         if (result.affectedRows > 0) {
