@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logs xóa câu hỏi - Admin - KD APP</title>
+    <title>Báo lỗi câu hỏi Tăng Tốc - Admin - KD APP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -31,27 +31,122 @@
         th,td{padding:1rem;text-align:left;border-bottom:1px solid rgba(239,68,68,.1);font-size:.9rem}
         th{font-weight:600;color:#ef4444}
         .badge{display:inline-block;padding:.25rem .5rem;border-radius:.5rem;font-size:.75rem}
-        .badge-restorable{background:rgba(16,185,129,.15);color:#059669;border:1px solid rgba(16,185,129,.3)}
-        .badge-restored{background:rgba(107,114,128,.15);color:#6b7280;border:1px solid rgba(107,114,128,.3)}
+        .badge-open{background:rgba(239,68,68,.15);color:#dc2626;border:1px solid rgba(239,68,68,.3)}
+        .badge-resolved{background:rgba(16,185,129,.15);color:#059669;border:1px solid rgba(16,185,129,.3)}
         .btn{padding:.5rem .9rem;border:none;border-radius:8px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
         .btn-outline{background:transparent;border:1px solid #ef4444;color:#ef4444}
         .btn-outline:hover{background:#ef4444;color:white}
-        .btn-success{background:#10b981;border:1px solid #10b981;color:white}
-        .btn-success:hover{background:#059669;border-color:#059669}
-        .btn-success:disabled{background:#9ca3af;border-color:#9ca3af;cursor:not-allowed}
         .filter-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem}
         .filter-row select,.filter-row input{padding:.5rem;border:1px solid #d1d5db;border-radius:8px;background:white}
         .pagination{display:flex;justify-content:center;gap:.5rem;margin-top:1rem}
         .pagination button{padding:.4rem .7rem;border:1px solid #d1d5db;background:white;border-radius:8px}
-        .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5);backdrop-filter:blur(8px)}
-        .modal-content{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);margin:5% auto;padding:1.5rem;border-radius:16px;width:92%;max-width:800px;position:relative}
-        .close{position:absolute;right:1rem;top:1rem;font-size:1.25rem;color:#6b7280;cursor:pointer}
-        pre{white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem}
-        .question-text{font-weight:600;color:#374151;margin-bottom:.5rem}
-        .question-answer{color:#6b7280;font-style:italic}
-        .log-details{margin-top:1rem;padding:1rem;background:#f3f4f6;border-radius:8px}
-        .log-details p{margin:.25rem 0}
-        .log-details strong{color:#374151}
+        
+        /* Modal Styles - Responsive */
+        .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);overflow-y:auto;padding:1rem}
+        .modal-content{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);margin:2rem auto;padding:1.5rem;border-radius:16px;width:100%;max-width:900px;position:relative;max-height:90vh;overflow-y:auto}
+        .close{position:absolute;right:1rem;top:1rem;font-size:1.5rem;color:#6b7280;cursor:pointer;z-index:10;background:rgba(255,255,255,.9);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+        .close:hover{background:#ef4444;color:white}
+        pre{white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;overflow-x:auto;word-break:break-word}
+        
+        /* Modal Content Responsive */
+        .modal-content h2{margin-bottom:1rem;color:#ef4444;font-size:1.25rem}
+        .modal-content p{margin-bottom:.75rem;line-height:1.6}
+        .modal-content strong{color:#374151}
+        
+        /* Modal Actions Responsive */
+        .modal-actions{display:flex;gap:.75rem;margin-top:1.5rem;flex-wrap:wrap;justify-content:flex-start}
+        .modal-actions .btn{flex:1;min-width:120px;justify-content:center;white-space:nowrap}
+        
+        /* Suggestions Section */
+        .suggestions-section{margin-top:1rem;padding:1rem;background:#f8f9fa;border-radius:8px;border:1px solid #e9ecef}
+        .suggestions-section h3{color:#ef4444;margin-bottom:.75rem;font-size:1rem}
+        .suggestion-item{display:flex;gap:.5rem;align-items:center;margin:.5rem 0;padding:.5rem;background:white;border-radius:6px;border:1px solid #e9ecef;flex-wrap:wrap}
+        .suggestion-item input[type="text"]{flex:1;min-width:200px;padding:.4rem;border:1px solid #d1d5db;border-radius:6px}
+        .suggestion-item .badge{flex-shrink:0}
+        .suggestion-item button{flex-shrink:0}
+        .suggestion-item input[type="checkbox"]{flex-shrink:0}
+        
+        /* Question Image Display */
+        .question-image-container{margin:1rem 0;text-align:center}
+        .question-image{max-width:100%;max-height:300px;border-radius:8px;border:1px solid #e5e7eb;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)}
+        .question-image:hover{transform:scale(1.02);transition:transform 0.2s ease}
+        .no-image{color:#9ca3af;font-style:italic;padding:2rem;background:#f9fafb;border-radius:8px;border:2px dashed #d1d5db}
+        
+        /* Question Number Badge */
+        .question-number-badge{background:#ef4444;color:white;padding:.25rem .5rem;border-radius:4px;font-size:.75rem;font-weight:600;margin-right:.5rem}
+        
+        /* Time Limit Badge */
+        .time-limit-badge{background:#10b981;color:white;padding:.25rem .5rem;border-radius:4px;font-size:.75rem;font-weight:600;margin-left:.5rem}
+        
+        /* Input fields responsive */
+        .suggestions-section input[type="text"]{width:100%;padding:.4rem;border:1px solid #d1d5db;border-radius:6px;margin-bottom:.5rem}
+        .suggestions-section .btn{white-space:nowrap}
+        
+        /* Suggestions input groups */
+        .suggestions-input-group{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.5rem 0}
+        .suggestions-input-group input{flex:1;min-width:200px}
+        .suggestions-input-group .btn{flex-shrink:0}
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .admin-sidebar{width:70px}
+            .admin-sidebar .logo span,.sidebar-nav a span{display:none}
+            .admin-content{margin-left:70px;padding:1rem}
+            .admin-header{padding:1rem;flex-direction:column;gap:1rem;align-items:flex-start}
+            .admin-header h1{font-size:1.5rem}
+            .filter-row{flex-direction:column;gap:.5rem}
+            .filter-row select,.filter-row input{width:100%}
+            .card-body{padding:1rem}
+            .table-responsive{overflow-x:auto}
+            th,td{padding:.75rem .5rem;font-size:.8rem}
+            
+            /* Mobile Modal */
+            .modal{padding:.5rem}
+            .modal-content{margin:1rem auto;padding:1rem;max-height:95vh;border-radius:12px}
+            .modal-content h2{font-size:1.1rem}
+            .modal-actions{flex-direction:column;gap:.5rem}
+            .modal-actions .btn{width:100%;min-width:auto}
+            .suggestion-item{flex-direction:column;align-items:stretch;gap:.5rem}
+            .suggestion-item input[type="text"]{min-width:auto;width:100%}
+            .suggestion-item .badge,.suggestion-item button,.suggestion-item input[type="checkbox"]{align-self:flex-start}
+            
+            /* Mobile suggestions inputs */
+            .suggestions-section input[type="text"]{min-width:auto;width:100%}
+            .suggestions-section .btn{width:100%;justify-content:center}
+            .suggestions-input-group{flex-direction:column;align-items:stretch}
+            .suggestions-input-group input{min-width:auto;width:100%}
+            .suggestions-input-group .btn{width:100%;justify-content:center}
+        }
+        
+        @media (max-width: 480px) {
+            .admin-content{padding:.5rem}
+            .admin-header{padding:.75rem}
+            .admin-header h1{font-size:1.25rem}
+            .card-header{padding:1rem}
+            .card-body{padding:.75rem}
+            .modal-content{padding:.75rem;margin:.5rem auto}
+            .modal-content h2{font-size:1rem}
+            pre{padding:.75rem;font-size:.85rem}
+        }
+        
+        /* Ensure modal is always scrollable */
+        .modal-content::-webkit-scrollbar{width:8px}
+        .modal-content::-webkit-scrollbar-track{background:#f1f1f1;border-radius:4px}
+        .modal-content::-webkit-scrollbar-thumb{background:#c1c1c1;border-radius:4px}
+        .modal-content::-webkit-scrollbar-thumb:hover{background:#a8a8a8}
+        
+        /* Modal scroll behavior */
+        .modal-content{scroll-behavior:smooth}
+        
+        /* Prevent body scroll when modal is open */
+        body.modal-open{overflow:hidden}
+        
+        /* Modal backdrop click area */
+        .modal::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;z-index:-1}
+        
+        /* Focus management for accessibility */
+        .modal-content:focus{outline:none}
+        .modal-content input:focus,.modal-content button:focus{outline:2px solid #ef4444;outline-offset:2px}
     </style>
 </head>
 <body>
@@ -83,10 +178,10 @@
                     <li>
                         <a href="/admin/reports"><i class="fas fa-flag"></i><span>Báo lỗi câu hỏi</span></a>
                     </li>
-                    <li>
+                    <li class="active">
                         <a href="/admin/tangtoc-reports"><i class="fas fa-bolt"></i><span>Báo lỗi Tăng Tốc</span></a>
                     </li>
-                    <li class="active">
+                    <li>
                         <a href="/admin/question-logs"><i class="fas fa-trash-alt"></i><span>Logs xóa câu hỏi</span></a>
                     </li>
                     <li>
@@ -100,7 +195,7 @@
         </div>
         <div class="admin-content">
             <div class="admin-header">
-                <h1><i class="fas fa-trash-alt"></i> Logs xóa câu hỏi</h1>
+                <h1><i class="fas fa-bolt"></i> Báo lỗi câu hỏi Tăng Tốc</h1>
                 <div class="admin-user">
                     <span id="admin-name">Admin</span>
                     <div class="avatar"><span id="avatar-text">A</span></div>
@@ -108,14 +203,14 @@
             </div>
             <div class="admin-card">
                 <div class="card-header">
-                    <h2><i class="fas fa-list"></i> Danh sách logs</h2>
+                    <h2><i class="fas fa-list"></i> Danh sách báo lỗi Tăng Tốc</h2>
                     <div class="filter-row">
                         <select id="filter-status">
                             <option value="">Tất cả trạng thái</option>
-                            <option value="true">Có thể khôi phục</option>
-                            <option value="false">Đã khôi phục</option>
+                            <option value="open">Chưa xử lý</option>
+                            <option value="resolved">Đã xử lý</option>
                         </select>
-                        <input id="filter-q" placeholder="Tìm theo nội dung câu hỏi..." />
+                        <input id="filter-q" placeholder="Tìm theo nội dung/câu hỏi..." />
                         <select id="page-size" title="Hàng/trang">
                             <option value="10">10 hàng/trang</option>
                             <option value="20" selected>20 hàng/trang</option>
@@ -131,35 +226,37 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Thời gian xóa</th>
-                                    <th>Người xóa</th>
+                                    <th>Thời gian</th>
+                                    <th>Người dùng</th>
+                                    <th>Chế độ</th>
+                                    <th>Số câu</th>
                                     <th>Câu hỏi</th>
-                                    <th>Lý do xóa</th>
                                     <th>Trạng thái</th>
                                     <th>Hành động</th>
                                 </tr>
                             </thead>
-                            <tbody id="logs-table"></tbody>
+                            <tbody id="reports-table"></tbody>
                         </table>
                     </div>
-                    <div class="pagination" id="logs-pagination"></div>
+                    <div class="pagination" id="reports-pagination"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="log-detail-modal" class="modal">
+    <div id="report-detail-modal" class="modal">
         <div class="modal-content">
             <span class="close" id="close-detail">&times;</span>
-            <h2>Chi tiết log xóa câu hỏi</h2>
-            <div id="log-detail"></div>
-            <div style="margin-top:1rem;display:flex;gap:.5rem">
-                <button id="restore-question" class="btn btn-success"><i class="fas fa-undo"></i> Khôi phục câu hỏi</button>
-                <button id="permanently-delete" class="btn btn-outline" style="background:#dc2626;color:white;border-color:#dc2626"><i class="fas fa-trash"></i> Xóa vĩnh viễn</button>
+            <h2>Chi tiết báo lỗi Tăng Tốc</h2>
+            <div id="report-detail"></div>
+            <div class="modal-actions">
+                <button id="mark-resolved" class="btn btn-outline"><i class="fas fa-check"></i> Đánh dấu đã xử lý</button>
+                <button id="mark-open" class="btn btn-outline"><i class="fas fa-undo"></i> Chuyển lại mở</button>
+                <button id="delete-question" class="btn btn-outline" style="background:#dc2626;color:white;border-color:#dc2626"><i class="fas fa-trash"></i> ⚠️ Xóa câu hỏi</button>
             </div>
         </div>
     </div>
 
-    <script src="/js/admin/question-logs.js"></script>
+    <script src="/js/admin/tangtoc-reports.js"></script>
 </body>
 </html>

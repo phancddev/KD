@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đấu phòng Tăng Tốc - KD APP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Added floating blur circles background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(220, 38, 127, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(239, 68, 68, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 70%, rgba(185, 28, 28, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(220, 38, 127, 0.05) 0%, transparent 50%);
+            filter: blur(40px);
+            animation: float 20s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Updated header with glass morphism */
+        .app-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(220, 38, 127, 0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(220, 38, 127, 0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #dc2626;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo i {
+            color: #dc2626;
+        }
+
+        .room-info {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .room-badge, .room-code {
+            background: rgba(220, 38, 127, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            border: 1px solid rgba(220, 38, 127, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #dc2626;
+            font-weight: 500;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Updated button styles with red theme */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            color: white;
+            box-shadow: 0 4px 15px rgba(220, 38, 127, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220, 38, 127, 0.4);
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            color: #dc2626;
+            border: 1px solid rgba(220, 38, 127, 0.3);
+        }
+
+        .btn-outline:hover {
+            background: rgba(220, 38, 127, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #b91c1c, #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(185, 28, 28, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(107, 114, 128, 0.8);
+            backdrop-filter: blur(10px);
+            color: white;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-large {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+        }
+
+        /* Updated card styles with glass morphism */
+        .card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(220, 38, 127, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(220, 38, 127, 0.1);
+            margin: 2rem 0;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: rgba(220, 38, 127, 0.05);
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(220, 38, 127, 0.1);
+        }
+
+        .card-header h2 {
+            color: #dc2626;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        .card-footer {
+            background: rgba(220, 38, 127, 0.02);
+            padding: 1.5rem;
+            border-top: 1px solid rgba(220, 38, 127, 0.1);
+            text-align: center;
+        }
+
+        /* Updated waiting animation */
+        .waiting-animation {
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .pulse-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            margin: 0 auto 1rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .waiting-animation p {
+            color: #dc2626;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .participants-container h3 {
+            color: #dc2626;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .participants-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Participant name responsive */
+        .participant-item .participant-name {
+            display: block;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Updated battle room layout */
+        .battle-room {
+            padding: 2rem 0;
+        }
+
+        .battle-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+        }
+
+        .question-container {
+            margin: 0;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            background: rgba(220, 38, 127, 0.05);
+            border-bottom: 1px solid rgba(220, 38, 127, 0.1);
+        }
+
+        .question-counter {
+            font-weight: 600;
+            color: #dc2626;
+        }
+
+        .timer-container {
+            text-align: center;
+        }
+
+        .total-timer {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #dc2626;
+        }
+
+        .timer-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .progress-bar-container {
+            height: 4px;
+            background: rgba(220, 38, 127, 0.1);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #dc2626, #ef4444);
+            transition: width 0.3s ease;
+        }
+
+        .question-content {
+            padding: 2rem;
+        }
+
+        /* Responsive media frame like solo */
+        .media-frame {
+            position: relative;
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto 16px;
+            background: #0b0b0b;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,.2);
+            border: 1px solid rgba(220, 38, 127, 0.15);
+        }
+        .media-frame video,
+        .media-frame img {
+            display: block;
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        @media (max-width: 768px) {
+            .question-content { padding: 1rem; }
+            .media-frame { border-radius: 10px; }
+        }
+
+        .question-text {
+            color: #1f2937;
+            font-size: 1.3rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Styles for image questions */
+        .question-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .answer-input {
+            display: flex;
+            gap: 1rem;
+            padding: 0 2rem 2rem;
+        }
+
+        .form-control {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid rgba(220, 38, 127, 0.2);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 127, 0.1);
+        }
+
+        .answer-result {
+            padding: 0 2rem 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Updated score sidebar */
+        .score-sidebar .card {
+            margin: 0;
+            height: fit-content;
+        }
+
+        .personal-score {
+            text-align: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(220, 38, 127, 0.1);
+        }
+
+        .personal-score h3 {
+            color: #dc2626;
+            margin-bottom: 1rem;
+        }
+
+        .score-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            color: white;
+        }
+
+        .score-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .score-label {
+            font-size: 0.8rem;
+        }
+
+        .room-scores {
+            padding: 1.5rem;
+        }
+
+        .room-scores h4 {
+            color: #dc2626;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Updated result table */
+        .result-table {
+            overflow-x: auto;
+        }
+
+        .result-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .result-table th {
+            background: rgba(220, 38, 127, 0.1);
+            color: #dc2626;
+            padding: 1rem;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .result-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(220, 38, 127, 0.1);
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Battle countdown 5 giây */
+        .battle-countdown {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .battle-countdown-content {
+            text-align: center;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .battle-countdown-number {
+            font-size: 15rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #fca5a5, #ef4444, #dc2626, #b91c1c);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 50px rgba(220, 38, 38, 0.5);
+            animation: gradientShift 2s ease-in-out infinite, pulse 1s ease-in-out infinite, glow 2s ease-in-out infinite;
+            position: relative;
+        }
+
+        .battle-countdown-number::before {
+            content: attr(data-number);
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(135deg, rgba(252, 165, 165, 0.3), rgba(239, 68, 68, 0.3));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: blur(20px);
+            z-index: -1;
+        }
+
+        .battle-countdown-number::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(220, 38, 38, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: ripple 1s ease-out infinite;
+            z-index: -2;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes glow {
+            0%, 100% { 
+                text-shadow: 
+                    0 0 20px rgba(220, 38, 38, 0.5),
+                    0 0 40px rgba(220, 38, 38, 0.3),
+                    0 0 60px rgba(220, 38, 38, 0.2);
+            }
+            50% { 
+                text-shadow: 
+                    0 0 30px rgba(220, 38, 38, 0.8),
+                    0 0 60px rgba(220, 38, 38, 0.5),
+                    0 0 90px rgba(220, 38, 38, 0.3);
+            }
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        /* Loading message khi chuẩn bị trận đấu */
+        .loading-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border-radius: 12px;
+        }
+        
+        .loading-content {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #dc2626;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-content h3 {
+            color: #dc2626;
+            margin-bottom: 0.5rem;
+        }
+        
+        .loading-content p {
+            color: #666;
+            margin: 0;
+        }
+        
+        /* Question review styles */
+        .question-review {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #e9ecef;
+        }
+        
+        .question-review h3 {
+            color: #495057;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        #question-review-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .question-review-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .question-review-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .question-review-item.correct {
+            border-left: 4px solid #28a745;
+            background: #f8fff9;
+        }
+        
+        .question-review-item.incorrect {
+            border-left: 4px solid #dc3545;
+            background: #fff8f8;
+        }
+        
+        .question-review-item.unanswered {
+            border-left: 4px solid #6c757d;
+            background: #f8f9fa;
+            opacity: 0.7;
+        }
+        
+        .question-review-item h4 {
+            color: #495057;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        
+        .question-review-item p {
+            margin: 0.5rem 0;
+            color: #6c757d;
+        }
+        
+        .question-review-item p:first-of-type {
+            font-weight: 500;
+            color: #495057;
+        }
+        .report-btn { border: 1px solid #ef4444; color:#ef4444; background:white; border-radius: 8px; padding: 6px 10px; cursor:pointer; }
+        .report-btn:hover { background: rgba(239,68,68,.08); }
+
+        .countdown-number {
+            font-size: 8rem;
+            font-weight: 700;
+            color: white;
+            animation: countdown-pulse 1s ease-in-out;
+        }
+
+        @keyframes countdown-pulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Added responsive design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .room-info {
+                justify-content: center;
+            }
+
+            .battle-layout {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .score-sidebar {
+                order: -1;
+            }
+
+            .answer-input {
+                flex-direction: column;
+            }
+
+            .result-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .countdown-number {
+                font-size: 4rem;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .d-flex {
+            display: flex;
+        }
+
+        .gap-3 {
+            gap: 1rem;
+        }
+
+        .mb-3 {
+            margin-bottom: 1rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    Đấu phòng Tăng Tốc
+                </div>
+                <div class="room-info d-flex gap-3">
+                    <div class="room-badge">
+                        <i class="fas fa-door-open"></i>
+                        <span id="room-name-display">Loading...</span>
+                    </div>
+                    <div class="room-code">
+                        <i class="fas fa-key"></i>
+                        <span id="room-code-display">Loading...</span>
+                    </div>
+                </div>
+                <div class="user-info">
+                    <div class="avatar">
+                        <span id="avatar-text"></span>
+                    </div>
+                    <span id="username-display"></span>
+                    <a href="/" class="btn btn-small btn-outline">
+                        <i class="fas fa-home"></i> Trang chủ
+                    </a>
+                </div>
+            </div>
+            <div style="margin: 10px 0; padding: 8px 16px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; text-align: center;">
+                <span style="color: #22c55e; font-weight: 500; font-size: 0.9rem;">⚡ Chế độ: Tăng Tốc</span>
+                <!-- <span style="color: #666; font-size: 0.8rem; margin-left: 10px;">4 câu hỏi với thời gian tăng dần</span> -->
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <main>
+            <!-- Phòng chờ -->
+            <div class="card fade-in" id="waiting-room">
+                <div class="card-header">
+                    <h2><i class="fas fa-hourglass-half"></i> Phòng chờ</h2>
+                </div>
+                <div class="card-body">
+                    <div class="waiting-animation">
+                        <div class="pulse-circle"></div>
+                        <p>Đang chờ người tham gia...</p>
+                    </div>
+                    
+                    <div class="participants-container">
+                        <h3 class="mb-3"><i class="fas fa-users"></i> Người tham gia</h3>
+                        <div class="participants-list" id="participants-list">
+                            <!-- Participants will be dynamically generated here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button id="start-battle-btn" class="btn btn-primary btn-large">
+                        <i class="fas fa-play-circle"></i> Bắt đầu thi đấu
+                    </button>
+                    <button id="end-room-btn" class="btn btn-danger btn-large" style="display: none; margin-left: 10px;">
+                        <i class="fas fa-stop-circle"></i> Kết thúc phòng
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Phòng đấu -->
+            <div class="battle-room" id="battle-room" style="display: none;">
+                <!-- Countdown 5 giây khi bắt đầu battle -->
+                <div id="battle-countdown" class="battle-countdown" style="display: none;">
+                    <div class="battle-countdown-content">
+                        <div class="battle-countdown-number" id="battle-countdown-number">5</div>
+                    </div>
+                </div>
+                
+                <div class="battle-layout">
+                    <div class="question-container card">
+                        <div class="question-header">
+                            <div class="question-counter">
+                                <span>Câu hỏi <span id="current-question">1</span>/<span id="total-questions">4</span></span>
+                            </div>
+                            <div class="timer-container">
+                                <div class="total-timer" id="total-timer">10</div>
+                                <span class="timer-label">giây còn lại</span>
+                            </div>
+                            <div class="sound-control">
+                                <button id="sound-toggle" class="btn btn-small" title="Bật/Tắt âm thanh">
+                                    <span id="sound-icon">🔊</span>
+                                </button>
+                            </div>
+                            <button id="end-game-btn" class="btn btn-danger btn-small" style="display: none;">
+                                <i class="fas fa-stop"></i> Kết thúc
+                            </button>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="progress-bar"></div>
+                        </div>
+                        <div class="question-content">
+                            <h3 class="question-text" id="question-text">Nội dung câu hỏi sẽ hiển thị ở đây</h3>
+                            <div class="media-frame" id="media-frame" style="display:none">
+                                <img id="question-image" class="question-image" alt="Câu hỏi hình ảnh" style="display:none">
+                                <!-- video sẽ được inject động bằng JS -->
+                            </div>
+                        </div>
+                        <div class="answer-input">
+                            <input type="text" id="answer-input" class="form-control" placeholder="Nhập câu trả lời của bạn">
+                            <button id="submit-answer" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Trả lời
+                            </button>
+                        </div>
+                        <div id="answer-result" class="answer-result"></div>
+                    </div>
+                    
+                    <div class="score-sidebar">
+                        <div class="card">
+                            <div class="personal-score">
+                                <h3>Điểm của bạn</h3>
+                                <div class="score-circle">
+                                    <span class="score-value" id="user-score">0</span>
+                                    <span class="score-label">điểm</span>
+                                </div>
+                            </div>
+                            
+                            <div class="room-scores">
+                                <h4><i class="fas fa-trophy"></i> Bảng xếp hạng</h4>
+                                <div id="participants-status" class="participants-status">
+                                    <!-- Participants status will be dynamically generated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Phòng kết quả -->
+            <div class="card result-room" id="result-room" style="display: none;">
+                <div class="card-header text-center">
+                    <h2><i class="fas fa-flag-checkered"></i> Kết quả thi đấu</h2>
+                </div>
+                <div class="card-body">
+                    <div class="result-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Thứ hạng</th>
+                                    <th>Người chơi</th>
+                                    <th>Điểm số</th>
+                                    <th>Thời gian</th>
+                                    <th>Số câu</th>
+                                </tr>
+                            </thead>
+                            <tbody id="result-table-body">
+                                <!-- Results will be dynamically generated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Thêm phần xem lại đáp án từng câu -->
+                    <div class="question-review">
+                        <h3><i class="fas fa-list-check"></i> Xem lại các câu hỏi của bạn</h3>
+                        <div id="question-review-list">
+                            <!-- Question review will be dynamically generated here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="result-actions">
+                        <button id="back-to-waiting-btn" class="btn btn-primary">
+                            <i class="fas fa-door-open"></i> Quay về phòng chờ
+                        </button>
+                        <button id="play-again-btn" class="btn btn-outline">
+                            <i class="fas fa-redo"></i> Chơi tiếp trận khác
+                        </button>
+                        <a href="/" class="btn btn-secondary">
+                            <i class="fas fa-home"></i> Trở về trang chủ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <!-- Report modal -->
+    <div id="report-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1200; align-items:center; justify-content:center;">
+        <div style="background:white; width:92%; max-width:560px; border-radius:12px; padding:16px;">
+            <h3>Báo lỗi câu hỏi/đáp án</h3>
+            <p id="report-question-text" style="margin:8px 0; color:#374151"></p>
+            <div style="margin:8px 0;">
+              <label style="font-weight:600; color:#374151; display:block; margin-bottom:6px;">Đáp án đề xuất:</label>
+              <div id="suggestions-wrap"></div>
+              <button id="add-suggestion" class="btn btn-outline" style="margin-top:6px;">+ Thêm đáp án đề xuất</button>
+            </div>
+            <textarea id="report-text" style="width:100%; min-height:120px; border:1px solid #d1d5db; border-radius:8px; padding:10px;" placeholder="Mô tả thêm (ví dụ: vì sao đáp án này đúng...)"></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                <button id="report-cancel" class="btn btn-secondary">Hủy</button>
+                <button id="report-submit" class="btn btn-primary">Gửi báo lỗi</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Countdown overlay -->
+    <div id="countdown-overlay" class="countdown-overlay" style="display: none;">
+        <div class="countdown-number" id="countdown">3</div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <audio id="battle-sound" preload="auto">
+        <source src="/sounds/soudKD.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- Pre-battle sound -->
+    <audio id="pre-battle-sound" preload="auto">
+        <source src="/sounds/pre_KD.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- Âm thanh cho câu trả lời đúng/sai -->
+    <audio id="correct-sound" preload="auto">
+        <source src="/sounds/kd_right.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="wrong-sound" preload="auto">
+        <source src="/sounds/kd_wrong.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script src="/tangTocKD/room-battle-tangtoc.js"></script>
+    <script>
+      (function(){
+        const modal = document.getElementById('report-modal');
+        const questionEl = document.getElementById('report-question-text');
+        const textEl = document.getElementById('report-text');
+        const suggestionsWrap = document.getElementById('suggestions-wrap');
+        const btnAdd = document.getElementById('add-suggestion');
+        const btnCancel = document.getElementById('report-cancel');
+        const btnSubmit = document.getElementById('report-submit');
+        let currentReportPayload = null;
+        function addSuggestionRow(value = ''){
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.gap = '6px';
+          row.style.marginBottom = '6px';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = 'Nhập đáp án đề xuất';
+          input.value = value;
+          input.style.flex = '1';
+          input.style.padding = '8px';
+          input.style.border = '1px solid #d1d5db';
+          input.style.borderRadius = '8px';
+          const del = document.createElement('button');
+          del.textContent = 'Xóa';
+          del.className = 'btn btn-outline';
+          del.addEventListener('click', () => { suggestionsWrap.removeChild(row); });
+          row.appendChild(input);
+          row.appendChild(del);
+          suggestionsWrap.appendChild(row);
+        }
+        window.__openReportModal = function(payload){
+          currentReportPayload = payload;
+          questionEl.textContent = `Câu hỏi: ${payload.questionText}`;
+          textEl.value = '';
+          suggestionsWrap.innerHTML = '';
+          addSuggestionRow('');
+          modal.style.display = 'flex';
+        };
+        btnAdd.addEventListener('click', () => addSuggestionRow(''));
+        btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+        btnSubmit.addEventListener('click', async () => {
+          const reportText = textEl.value.trim();
+          const suggestions = Array.from(suggestionsWrap.querySelectorAll('input')).map(i => i.value.trim()).filter(Boolean);
+          if (!reportText && suggestions.length === 0) { alert('Vui lòng nhập mô tả hoặc thêm ít nhất 1 đáp án đề xuất'); return; }
+          try {
+            const res = await fetch('/api/report-question', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials:'include',
+              body: JSON.stringify({ ...currentReportPayload, reportText, suggestions })
+            });
+            if (!res.ok) throw new Error('Submit failed');
+            alert('Đã gửi báo lỗi. Cảm ơn bạn!');
+            modal.style.display = 'none';
+          } catch(e) { alert('Không thể gửi báo lỗi, thử lại sau.'); }
+        });
+      })();
+    </script>
+</body>
+</html>

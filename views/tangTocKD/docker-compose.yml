@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  tangtoc-parser:
+    build: .
+    container_name: tangtoc-parser
+    volumes:
+      - ./uploads:/app/uploads
+      - ./test-files:/app/test-files
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Override entrypoint for interactive use
+    entrypoint: ["/bin/bash"]
+    stdin_open: true
+    tty: true

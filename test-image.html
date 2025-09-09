@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Image Loading</title>
+</head>
+<body>
+    <h1>Test Image Loading</h1>
+    
+    <h2>Direct Image:</h2>
+    <img src="https://static.wikia.nocookie.net/duong-len-dinh-olympia/images/4/4d/Tuan2thang1quy1Olympia24-TangtocCauhoi1.png/revision/latest?cb=20231022073040&path-prefix=vi" 
+         style="max-width: 200px; max-height: 150px; border: 1px solid #ccc;" 
+         alt="Test Image"
+         onload="console.log('Image loaded successfully')"
+         onerror="console.log('Image failed to load:', this.src)">
+    
+    <h2>JavaScript Generated:</h2>
+    <div id="js-image"></div>
+    
+    <script>
+        const text = 'https://static.wikia.nocookie.net/duong-len-dinh-olympia/images/4/4d/Tuan2thang1quy1Olympia24-TangtocCauhoi1.png/revision/latest?cb=20231022073040&path-prefix=vi data:image/gif;base64,R0lGODlhAQABAIABAAAAAP///yH5BAEAAAEALAAAAAABAAEAQAICTAEAOw%3D%3D';
+        
+        const match = text.match(/(https:\/\/[^\s]+)\s+data:image\/[^\s]+/);
+        if (match) {
+            const imageUrl = match[1];
+            console.log('Extracted URL:', imageUrl);
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.maxWidth = '200px';
+            img.style.maxHeight = '150px';
+            img.style.border = '1px solid #ccc';
+            img.alt = 'JS Generated Image';
+            img.onload = () => console.log('JS Image loaded successfully');
+            img.onerror = () => console.log('JS Image failed to load:', img.src);
+            
+            document.getElementById('js-image').appendChild(img);
+        }
+    </script>
+</body>
+</html>

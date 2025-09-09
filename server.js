@@ -8,6 +8,7 @@ import config from './config.js';
 import { testConnection, initDatabase } from './db/index.js';
 import { createUser, findUserByUsername, authenticateUser, isUserAdmin } from './db/users.js';
 import { initSocketIO, getIO, addOnlineUser, removeOnlineUser } from './socket/index.js';
+import { initTangTocSocket, getTangTocParticipants } from './socket/kdtangtoc.js';
 import { collectDeviceInfo, generateDeviceFingerprint, detectSuspiciousActivity, getIpInfo } from './utils/user-agent-parser.js';
 import { saveLoginLog, updateLogoutLog, saveIpGeolocation } from './db/login-logs.js';
 import adminRoutes from './routes/admin.js';
@@ -15,6 +16,15 @@ console.log('🚀 Imported adminRoutes successfully');
 
 import adminApiRoutes from './routes/admin-api.js';
 console.log('🚀 Imported adminApiRoutes successfully');
+
+import adminTangTocApiRoutes from './routes/admin-tangtoc-api.js';
+console.log('🚀 Imported adminTangTocApiRoutes successfully');
+
+import tangTocApiRoutes from './routes/tangtoc-api.js';
+console.log('🚀 Imported tangTocApiRoutes successfully');
+
+import tangTocRoutes from './views/tangTocKD/server-routes.js';
+console.log('🚀 Imported tangTocRoutes successfully');
 import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails, createGameSession, finishGameSession } from './db/game-sessions.js';
 import { createQuestionReport, addAnswerSuggestion } from './db/reports.js';
 
@@ -28,6 +38,16 @@ const PORT = config.server.port;
 
 // Middleware
 app.use(cookieParser());
+// CORS headers for all routes (allow external images and API consumption)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 // Tin cậy proxy để req.ip đọc từ X-Forwarded-For khi đứng sau Nginx/Proxy
 app.set('trust proxy', true);
 
@@ -67,6 +87,8 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(join(__dirname, 'public')));
+// Serve Tang Tốc client assets
+app.use('/tangTocKD', express.static(join(__dirname, 'views', 'tangTocKD')));
 app.use(session({
   secret: config.session.secret,
   resave: false,
@@ -539,6 +561,32 @@ app.get('/solo-battle', (req, res) => {
   res.sendFile(join(__dirname, 'views', 'solo-battle.html'));
 });
 
+app.get('/tangtoc-solo', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  
+  res.sendFile(join(__dirname, 'views', 'tangTocKD', 'solo-battle-tangtoc.html'));
+});
+
+app.get('/tangtoc-room', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  
+  res.sendFile(join(__dirname, 'views', 'tangTocKD', 'room-battle-tangtoc.html'));
+});
+
+// Participants API cho Tang Tốc room (phục vụ UI tangtoc-room)
+app.get('/api/room/:roomId/participants', (req, res) => {
+  try {
+    const list = getTangTocParticipants(req.params.roomId);
+    res.json(list);
+  } catch (e) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 app.get('/history', (req, res) => {
   if (!req.session.user) {
     return res.redirect('/login');
@@ -702,6 +750,13 @@ app.post('/api/solo-game/finish', async (req, res) => {
 // Admin routes
 app.use('/admin', adminRoutes);
 app.use('/api/admin', adminApiRoutes);
+app.use('/api/admin', adminTangTocApiRoutes);
+
+// TangToc API routes
+app.use('/api', tangTocApiRoutes);
+
+// TangToc routes
+app.use('/', tangTocRoutes);
 
 // Test route để kiểm tra routing (sau khi admin routes được đăng ký)
 app.get('/test', (req, res) => {
@@ -712,7 +767,9 @@ app.get('/test', (req, res) => {
 const server = createServer(app);
 
 // Khởi tạo Socket.IO
-initSocketIO(server);
+const io = initSocketIO(server);
+// Khởi tạo socket riêng cho Tăng Tốc room
+initTangTocSocket(io);
 
 // Khởi động server
 server.listen(PORT, () => {
@@ -758,4 +815,12 @@ app.get('/admin/reports', checkAdmin, (req, res) => {
 
 app.get('/admin/question-logs', checkAdmin, (req, res) => {
   res.sendFile(join(__dirname, 'views', 'admin', 'question-logs.html'));
+});
+
+app.get('/admin/tangtoc-questions', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'tangTocKD', 'admin-tangtoc-questions.html'));
+});
+
+app.get('/admin/tangtoc-reports', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'tangtoc-reports.html'));
 });

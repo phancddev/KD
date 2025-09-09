@@ -85,6 +85,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     const { modal, createRoomBtn, joinRoomBtn, closeBtn, createRoomForm, joinRoomForm, soloBtn } = elements;
+    const createTangTocBtn = document.getElementById('create-tangtoc-room-btn');
+    const joinTangTocBtn = document.getElementById('join-tangtoc-room-btn');
     
     // Lấy thông tin người dùng từ session (không kết nối socket ở đây)
     fetch('/api/user')
@@ -136,6 +138,9 @@ document.addEventListener('DOMContentLoaded', function() {
         joinRoomForm.style.display = 'block';
         ensureSocketConnected().catch(() => {});
     });
+
+    // Tăng Tốc: đã có modal ở home.html; không dùng prompt/alert tại đây
+    // createTangTocBtn / joinTangTocBtn được gắn trong inline script của home.html
     
     // Close modal
     closeBtn.addEventListener('click', function() {

@@ -517,6 +517,32 @@
         </nav>
         
         <main>
+            <!-- Modal Tăng Tốc: tạo/join giống Khởi Động -->
+            <div id="tangtoc-modal" class="modal">
+                <div class="modal-content">
+                    <span id="tangtoc-close" class="close">&times;</span>
+                    <div id="tangtoc-create" style="display:none">
+                        <h3 class="mb-3">Tạo phòng Tăng Tốc</h3>
+                        <div class="form-group">
+                            <label for="tangtoc-room-name">Tên phòng:</label>
+                            <input type="text" id="tangtoc-room-name" class="form-control" placeholder="Nhập tên phòng" required>
+                        </div>
+                        <button id="tangtoc-create-submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-plus-circle"></i> Tạo phòng
+                        </button>
+                    </div>
+                    <div id="tangtoc-join" style="display:none">
+                        <h3 class="mb-3">Tham gia phòng Tăng Tốc</h3>
+                        <div class="form-group">
+                            <label for="tangtoc-room-code">Mã phòng:</label>
+                            <input type="text" id="tangtoc-room-code" class="form-control" placeholder="Nhập mã phòng" required>
+                        </div>
+                        <button id="tangtoc-join-submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-sign-in-alt"></i> Tham gia
+                        </button>
+                    </div>
+                </div>
+            </div>
             <div class="card">
                 <div class="card-header">
                     <h2>Chọn chế độ thi đấu</h2>
@@ -528,7 +554,7 @@
                             <div class="card-icon">
                                 <i class="fas fa-users fa-3x text-primary"></i>
                             </div>
-                            <h3>Đấu phòng</h3>
+                            <h3>Đấu phòng - Khởi Động</h3>
                             <p>Tạo phòng hoặc tham gia phòng đã có sẵn để thi đấu với người khác. Thách thức bạn bè và xem ai là người giỏi nhất!</p>
                             <div class="battle-options">
                                 <button id="create-room-btn" class="btn btn-primary">
@@ -544,11 +570,38 @@
                             <div class="card-icon">
                                 <i class="fas fa-user-graduate fa-3x text-primary"></i>
                             </div>
-                            <h3>Tự đấu</h3>
+                            <h3>Tự đấu - Khởi Động</h3>
                             <p>Luyện tập một mình với bộ câu hỏi có sẵn. Cải thiện kiến thức và kỹ năng của bạn với các câu hỏi đa dạng.</p>
                             <button id="solo-battle-btn" class="btn btn-primary btn-block">
                                 <i class="fas fa-play-circle"></i> Bắt đầu ngay
                             </button>
+                        </div>
+                        
+                        <div class="battle-mode-card">
+                            <div class="card-icon">
+                                <i class="fas fa-bolt fa-3x text-primary"></i>
+                            </div>
+                            <h3>Tăng Tốc Solo</h3>
+                            <p>Thử thách bản thân với 4 câu hỏi có thời gian tăng dần: 10s, 20s, 30s, 40s. Kiểm tra tốc độ phản xạ và kiến thức!</p>
+                            <a href="/tangtoc-solo" class="btn btn-primary btn-block">
+                                <i class="fas fa-play-circle"></i> Bắt đầu Tăng Tốc
+                            </a>
+                        </div>
+                        
+                        <div class="battle-mode-card">
+                            <div class="card-icon">
+                                <i class="fas fa-users fa-3x text-primary"></i>
+                            </div>
+                            <h3>Đấu phòng - Tăng Tốc</h3>
+                            <p>Thi đấu Tăng Tốc với bạn bè! Tạo phòng hoặc tham gia phòng Tăng Tốc để cạnh tranh với thời gian.</p>
+                            <div class="battle-options">
+                                <button id="create-tangtoc-room-btn" class="btn btn-primary">
+                                    <i class="fas fa-plus-circle"></i> Tạo phòng Tăng Tốc
+                                </button>
+                                <button id="join-tangtoc-room-btn" class="btn btn-outline">
+                                    <i class="fas fa-sign-in-alt"></i> Tham gia phòng Tăng Tốc
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -643,5 +696,53 @@
     
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/home.js"></script>
+    <script>
+      (function(){
+        const modal = document.getElementById('tangtoc-modal');
+        const closeBtn = document.getElementById('tangtoc-close');
+        const createPane = document.getElementById('tangtoc-create');
+        const joinPane = document.getElementById('tangtoc-join');
+        const createBtn = document.getElementById('create-tangtoc-room-btn');
+        const joinBtn = document.getElementById('join-tangtoc-room-btn');
+        const createSubmit = document.getElementById('tangtoc-create-submit');
+        const joinSubmit = document.getElementById('tangtoc-join-submit');
+        const nameInput = document.getElementById('tangtoc-room-name');
+        const codeInput = document.getElementById('tangtoc-room-code');
+
+        function openCreate(){
+          if (!modal) return;
+          createPane.style.display='block';
+          joinPane.style.display='none';
+          modal.style.display='block';
+          setTimeout(()=>nameInput && nameInput.focus(), 50);
+        }
+        function openJoin(){
+          if (!modal) return;
+          createPane.style.display='none';
+          joinPane.style.display='block';
+          modal.style.display='block';
+          setTimeout(()=>codeInput && codeInput.focus(), 50);
+        }
+        function close(){ modal.style.display='none'; }
+
+        if (createBtn) createBtn.addEventListener('click', openCreate);
+        if (joinBtn) joinBtn.addEventListener('click', openJoin);
+        if (closeBtn) closeBtn.addEventListener('click', close);
+        window.addEventListener('click', (e)=>{ if (e.target===modal) close(); });
+        if (createSubmit) createSubmit.addEventListener('click', ()=>{
+          const val = (nameInput && nameInput.value.trim()) || '';
+          const username = (document.getElementById('username-display') || {}).textContent || '';
+          const defVal = `Phòng Tăng Tốc - ${username || 'Người chơi'}`;
+          const finalName = val || defVal;
+          try { localStorage.setItem('tangtocRoomName', finalName); } catch(e) {}
+          window.location.href = '/tangtoc-room';
+        });
+        if (joinSubmit) joinSubmit.addEventListener('click', ()=>{
+          const code = (codeInput && codeInput.value.trim().toUpperCase()) || '';
+          if (!code) { alert('Vui lòng nhập mã phòng.'); return; }
+          window.location.href = `/tangtoc-room?code=${encodeURIComponent(code)}`;
+        });
+      })();
+    </script>
 </body>
 </html>

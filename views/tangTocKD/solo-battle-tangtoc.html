@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tăng Tốc Solo - KD APP</title>
+    <link rel="preconnect" href="https://static.wikia.nocookie.net" crossorigin>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Background blur effects */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(220, 38, 127, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(239, 68, 68, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(185, 28, 28, 0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-height: calc(100vh - 40px);
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        h1 {
+            color: #dc2626;
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #username-display {
+            color: #374151;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            color: white;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(107, 114, 128, 0.8);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(75, 85, 99, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.8);
+            color: #374151;
+        }
+
+        .btn-small:hover {
+            background: rgba(255, 255, 255, 0.95);
+            transform: translateY(-1px);
+        }
+
+        .battle-area {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .battle-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+        }
+
+        .question-container {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .question-number {
+            font-weight: 600;
+            color: #374151;
+            font-size: 1.1rem;
+        }
+
+        .timer-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(220, 38, 38, 0.1);
+            padding: 8px 16px;
+            border-radius: 25px;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        .total-timer {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #dc2626;
+        }
+
+        .timer-label {
+            color: #dc2626;
+            font-weight: 500;
+        }
+
+        .question-content h3 {
+            color: #374151;
+            font-size: 1.3rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        /* Styles for image questions */
+        .question-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        /* Media (image/video) shown via iframe */
+        .question-media { 
+            margin: 16px 0 20px 0; 
+            height: 60vh; 
+            display: grid; 
+            place-items: center; 
+            background: #fff; 
+            border: 1px solid #e5e7eb; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            overflow: hidden; 
+        }
+        .question-media img, 
+        .question-media video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .answer-input {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        #answer-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid rgba(220, 38, 38, 0.2);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        #answer-input:focus {
+            outline: none;
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(220, 38, 38, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #dc2626, #ef4444);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .score-sidebar {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            height: fit-content;
+        }
+
+        .personal-score h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .score-display {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #dc2626;
+            background: rgba(220, 38, 38, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        .result-room {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .result-room h2 {
+            color: #dc2626;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+
+        .score-circle {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            box-shadow: 0 8px 32px rgba(220, 38, 38, 0.4);
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        /* Enhanced countdown popup with beautiful red gradient and animations */
+        .countdown-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .countdown-content {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .countdown-number {
+            font-size: 15rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #fca5a5, #ef4444, #dc2626, #b91c1c);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 50px rgba(220, 38, 38, 0.5);
+            animation: gradientShift 2s ease-in-out infinite, pulse 1s ease-in-out infinite, glow 2s ease-in-out infinite;
+            position: relative;
+        }
+
+        .countdown-number::before {
+            content: attr(data-number);
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(135deg, rgba(252, 165, 165, 0.3), rgba(239, 68, 68, 0.3));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: blur(20px);
+            z-index: -1;
+        }
+
+        .countdown-number::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(220, 38, 38, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: ripple 1s ease-out infinite;
+            z-index: -2;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes glow {
+            0%, 100% { 
+                text-shadow: 
+                    0 0 20px rgba(220, 38, 38, 0.5),
+                    0 0 40px rgba(220, 38, 38, 0.3),
+                    0 0 60px rgba(220, 38, 38, 0.2);
+            }
+            50% { 
+                text-shadow: 
+                    0 0 30px rgba(220, 38, 38, 0.8),
+                    0 0 60px rgba(220, 38, 38, 0.5),
+                    0 0 90px rgba(220, 38, 38, 0.3);
+            }
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+                min-height: calc(100vh - 20px);
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .battle-layout {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .question-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+
+            .answer-input {
+                flex-direction: column;
+            }
+
+            .countdown-number {
+                font-size: 8rem;
+            }
+
+            .countdown-number::after {
+                width: 250px;
+                height: 250px;
+            }
+
+            .result-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .countdown-number {
+                font-size: 6rem;
+            }
+
+            .countdown-number::after {
+                width: 200px;
+                height: 200px;
+            }
+        }
+
+        .question-review {
+            margin-top: 30px;
+        }
+
+        .question-review h3 {
+            color: #374151;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        /* Added styles for individual question review cards */
+        #question-review-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .question-review-item {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .question-review-item.correct {
+            border-left: 4px solid #28a745;
+            background: #f8fff9;
+        }
+        
+        .question-review-item.incorrect {
+            border-left: 4px solid #dc3545;
+            background: #fff8f8;
+        }
+        
+        .question-review-item.unanswered {
+            border-left: 4px solid #6c757d;
+            background: #f8f9fa;
+            opacity: 0.7;
+        }
+
+        .question-review-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .question-review-item .question-number-review {
+            font-weight: 700;
+            color: #dc2626;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .question-review-item .question-text-review {
+            color: #374151;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .question-review-item .answer-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .question-review-item .user-answer {
+            background: rgba(220, 38, 38, 0.1);
+            color: #dc2626;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        .question-review-item .correct-answer {
+            background: rgba(34, 197, 94, 0.1);
+            color: #059669;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .question-review-item .answer-status {
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .question-review-item .correct {
+            background: rgba(34, 197, 94, 0.2);
+            color: #059669;
+        }
+
+        .question-review-item .incorrect {
+            background: rgba(220, 38, 38, 0.2);
+            color: #dc2626;
+        }
+
+        /* Added responsive styles for question review cards */
+        @media (max-width: 768px) {
+            .question-review-item .answer-info {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+
+            .question-review-item .user-answer,
+            .question-review-item .correct-answer {
+                text-align: center;
+            }
+        }
+        .report-btn { border: 1px solid #ef4444; color: #ef4444; background: white; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+        .report-btn:hover { background: rgba(239,68,68,0.08); }
+        .report-modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 1200; }
+        .report-modal .content { background: white; width: 92%; max-width: 560px; border-radius: 12px; padding: 16px; }
+        .report-modal textarea { width: 100%; min-height: 120px; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; }
+        .report-modal .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tăng Tốc Solo</h1>
+            <div style="margin: 10px 0; padding: 8px 16px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; text-align: center;">
+                <span style="color: #22c55e; font-weight: 500; font-size: 0.9rem;">⚡ Chế độ: Tăng Tốc</span>
+                <!-- <span style="color: #666; font-size: 0.8rem; margin-left: 10px;">4 câu hỏi với thời gian tăng dần</span> -->
+            </div>
+            <div class="user-info">
+                <span id="username-display"></span>
+                <a href="/" class="btn btn-small">Trở về trang chủ</a>
+            </div>
+        </header>
+        
+        <main>
+            <div class="battle-area">
+                <div class="solo-battle-room" id="solo-battle-room">
+                    <div class="battle-layout">
+                        <div class="question-container">
+                            <div class="question-header">
+                                <span class="question-number">Câu hỏi <span id="current-question">1</span>/<span id="total-questions">4</span></span>
+                                <div class="timer-container">
+                                    <div class="total-timer" id="total-timer">10</div>
+                                    <span class="timer-label">giây còn lại</span>
+                                </div>
+                                <div class="sound-control">
+                                    <button id="sound-toggle" class="btn btn-small" title="Bật/Tắt âm thanh">
+                                        <span id="sound-icon">🔊</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="question-content">
+                                <h3 id="question-text">Nội dung câu hỏi sẽ hiển thị ở đây</h3>
+                                <div id="question-media" class="question-media" style="display: none;"></div>
+                            </div>
+                            <div class="answer-input">
+                                <input type="text" id="answer-input" placeholder="Nhập câu trả lời của bạn">
+                                <button id="submit-answer" class="btn btn-primary">Trả lời</button>
+                            </div>
+                            <div id="answer-result" class="answer-result"></div>
+                            
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="progress-bar"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="score-sidebar">
+                            <div class="personal-score">
+                                <h3>Điểm của bạn</h3>
+                                <div class="score-display">
+                                    <span id="user-score">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="result-room" id="result-room" style="display: none;">
+                    <h2>Kết quả</h2>
+                    <div class="score-display">
+                        <div class="score-circle">
+                            <span id="final-score">0</span>/<span id="max-score">4</span>
+                        </div>
+                        <p>Điểm của bạn</p>
+                    </div>
+                    
+                    <div class="question-review">
+                        <h3>Xem lại các câu hỏi</h3>
+                        <div id="question-review-list">
+                            <!-- Question review will be dynamically generated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="result-actions">
+                        <button id="play-again-btn" class="btn btn-primary">Chơi lại</button>
+                        <a href="/" class="btn btn-secondary">Trở về trang chủ</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Report modal with answer suggestions -->
+    <div id="report-modal" class="report-modal">
+        <div class="content">
+            <h3>Báo lỗi câu hỏi/đáp án</h3>
+            <p id="report-question-text" style="margin: 8px 0; color:#374151"></p>
+            <div style="margin:8px 0;">
+              <label style="font-weight:600; color:#374151; display:block; margin-bottom:6px;">Đáp án đề xuất:</label>
+              <div id="suggestions-wrap"></div>
+              <button id="add-suggestion" class="btn btn-outline" style="margin-top:6px;">+ Thêm đáp án đề xuất</button>
+            </div>
+            <textarea id="report-text" placeholder="Mô tả thêm (ví dụ: vì sao đáp án này đúng...)"></textarea>
+            <div class="actions">
+                <button id="report-cancel" class="btn btn-secondary">Hủy</button>
+                <button id="report-submit" class="btn btn-primary">Gửi báo lỗi</button>
+            </div>
+        </div>
+    </div>
+    
+    <audio id="battle-sound" preload="auto">
+        <source src="/sounds/soudKD.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- Enhanced countdown popup with beautiful animations and effects -->
+    <div id="countdown-popup" class="countdown-popup" style="display: none;">
+        <div class="countdown-content">
+            <div class="countdown-number" id="countdown-number">5</div>
+        </div>
+    </div>
+    
+    <audio id="pre-battle-sound" preload="auto">
+        <source src="/sounds/pre_KD.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- Âm thanh cho câu trả lời đúng/sai -->
+    <audio id="correct-sound" preload="auto">
+        <source src="/sounds/kd_right.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="wrong-sound" preload="auto">
+        <source src="/sounds/kd_wrong.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script src="/js/tangtoc/solo-battle-tangtoc.js"></script>
+    <script>
+      (function(){
+        const modal = document.getElementById('report-modal');
+        const questionEl = document.getElementById('report-question-text');
+        const textEl = document.getElementById('report-text');
+        const suggestionsWrap = document.getElementById('suggestions-wrap');
+        const btnAdd = document.getElementById('add-suggestion');
+        const btnCancel = document.getElementById('report-cancel');
+        const btnSubmit = document.getElementById('report-submit');
+        let currentReportPayload = null;
+        function addSuggestionRow(value = ''){
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.gap = '6px';
+          row.style.marginBottom = '6px';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = 'Nhập đáp án đề xuất';
+          input.value = value;
+          input.style.flex = '1';
+          input.style.padding = '8px';
+          input.style.border = '1px solid #d1d5db';
+          input.style.borderRadius = '8px';
+          const del = document.createElement('button');
+          del.textContent = 'Xóa';
+          del.className = 'btn btn-outline';
+          del.addEventListener('click', () => { suggestionsWrap.removeChild(row); });
+          row.appendChild(input);
+          row.appendChild(del);
+          suggestionsWrap.appendChild(row);
+        }
+        window.__openReportModal = function(payload){
+          currentReportPayload = payload;
+          questionEl.textContent = `Câu hỏi: ${payload.questionText}`;
+          textEl.value = '';
+          suggestionsWrap.innerHTML = '';
+          addSuggestionRow('');
+          modal.style.display = 'flex';
+        };
+        btnAdd.addEventListener('click', () => addSuggestionRow(''));
+        btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+        btnSubmit.addEventListener('click', async () => {
+          const reportText = textEl.value.trim();
+          const suggestions = Array.from(suggestionsWrap.querySelectorAll('input')).map(i => i.value.trim()).filter(Boolean);
+          if (!reportText && suggestions.length === 0) { alert('Vui lòng nhập mô tả hoặc thêm ít nhất 1 đáp án đề xuất'); return; }
+          try {
+            const res = await fetch('/api/report-question', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+              body: JSON.stringify({ ...currentReportPayload, reportText, suggestions })
+            });
+            if (!res.ok) throw new Error('Submit failed');
+            alert('Đã gửi báo lỗi. Cảm ơn bạn!');
+            modal.style.display = 'none';
+          } catch(e) { alert('Không thể gửi báo lỗi, thử lại sau.'); }
+        });
+      })();
+    </script>
+</body>
+</html>

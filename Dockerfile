@@ -22,8 +22,9 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
-# Make Python script executable
+# Make Python scripts executable
 RUN chmod +x scripts/csv_parser.py
+RUN chmod +x scripts/parser-tangtoc.py
 
 # Expose port
 EXPOSE 2701
