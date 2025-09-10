@@ -397,7 +397,8 @@ class TangTocRoomBattle {
                 const video = document.createElement('video');
                 video.setAttribute('data-role','question-video');
                 video.autoplay = true;
-                video.muted = true;
+                // Nếu người dùng bật âm thanh, thử phát với âm thanh; nếu bị chặn sẽ fallback muted
+                video.muted = !this.soundEnabled;
                 video.playsInline = true;
                 video.src = proxied;
                 video.controls = false;
@@ -405,6 +406,13 @@ class TangTocRoomBattle {
                 video.addEventListener('timeupdate', () => { lastTime = video.currentTime; });
                 video.addEventListener('seeking', () => { if (Math.abs(video.currentTime - lastTime) > 0.5) video.currentTime = lastTime; });
                 video.addEventListener('keydown', (e) => { if (["ArrowLeft","ArrowRight","Home","End","PageUp","PageDown"].includes(e.key)) e.preventDefault(); });
+                // Thử phát, nếu bị chặn autoplay khi có âm thanh thì fallback muted
+                try {
+                    const p = video.play();
+                    if (p && typeof p.then === 'function') {
+                        p.catch(() => { try { video.muted = true; video.play(); } catch {} });
+                    }
+                } catch { try { video.muted = true; video.play(); } catch {} }
                 video.addEventListener('error', () => { if (video.src !== mediaUrl) video.src = mediaUrl; }, { once: true });
                 if (this.elements.questionImage) this.elements.questionImage.style.display = 'none';
                 const mount = mediaFrame || container;
@@ -696,9 +704,20 @@ class TangTocRoomBattle {
             this.elements.wrongSound
         ];
         
-        audioElements.forEach(audio => {
-            audio.muted = !this.soundEnabled;
-        });
+        audioElements.forEach(audio => { audio.muted = !this.soundEnabled; });
+        // Áp dụng cho video câu hỏi hiện tại (nếu có)
+        try {
+            const container = this.elements.questionText && this.elements.questionText.parentElement;
+            const mediaFrame = document.getElementById('media-frame');
+            const video = (container && container.querySelector('video[data-role="question-video"]')) || (mediaFrame && mediaFrame.querySelector('video[data-role="question-video"]'));
+            if (video) {
+                video.muted = !this.soundEnabled;
+                if (this.soundEnabled) {
+                    const p = video.play && video.play();
+                    if (p && typeof p.then === 'function') p.catch(()=>{});
+                }
+            }
+        } catch {}
     }
 }
 

@@ -338,23 +338,31 @@ class TangTocQuestionsAdmin {
         pageQuestions.forEach((question, index) => {
             const stt = startIndex + index + 1;
             
-            // Extract image URL using the same method as solo battle
-            const imageUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(question.text) || question.imageUrl;
-            
-            const imageHtml = imageUrl ? 
-                `<a href="${imageUrl}" class="mw-file-description image" target="_blank">
-                    <img src="${imageUrl}" 
-                         class="question-image mw-file-element"
-                         alt="Hình ảnh câu hỏi"
-                         loading="lazy"
-                         referrerpolicy="no-referrer"
-                         crossorigin="anonymous"
-                         style="max-width: 120px; max-height: 90px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 6px;"/>
-                </a>` : 
-                '<span style="color: #9ca3af;">Không có</span>';
-            
-            if (imageUrl) {
-                console.log('Generated image HTML for question', question.id, ':', imageHtml);
+            // Extract media URL using the same method as solo battle
+            const mediaUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(question.text) || question.imageUrl;
+
+            let mediaHtml = '<span style="color: #9ca3af;">Không có</span>';
+            if (mediaUrl) {
+                if (/\.mp4/i.test(mediaUrl)) {
+                    const proxied = `/api/tangtoc/media-proxy?url=${encodeURIComponent(mediaUrl)}`;
+                    mediaHtml = `
+                        <video src="${proxied}"
+                               style="max-width: 160px; max-height: 120px; border: 1px solid #e5e7eb; border-radius: 6px; background: #000;"
+                               playsinline
+                               controls
+                               crossorigin="anonymous"></video>`;
+                } else {
+                    mediaHtml = `
+                        <a href="${mediaUrl}" class="mw-file-description image" target="_blank">
+                            <img src="${mediaUrl}"
+                                 class="question-image mw-file-element"
+                                 alt="Hình ảnh câu hỏi"
+                                 loading="lazy"
+                                 referrerpolicy="no-referrer"
+                                 crossorigin="anonymous"
+                                 style="max-width: 120px; max-height: 90px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 6px;"/>
+                        </a>`;
+                }
             }
             
             html += `
@@ -369,7 +377,7 @@ class TangTocQuestionsAdmin {
                         ${question.text.length > 100 ? question.text.substring(0, 100) + '...' : question.text}
                     </td>
                     <td class="question-image">
-                        ${imageHtml}
+                        ${mediaHtml}
                     </td>
                     <td class="question-answer">
                         ${question.answer}
@@ -486,22 +494,34 @@ class TangTocQuestionsAdmin {
         // Render accepted answers
         this.renderAcceptedAnswers(question.acceptedAnswers || []);
 
-        // Extract image URL using the same method as solo battle
-        const imageUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(question.text) || question.imageUrl;
+        // Extract media URL using the same method as solo battle
+        const mediaUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(question.text) || question.imageUrl;
 
-        // Hiển thị media (img) nếu có
+        // Hiển thị media (img/video) nếu có
         const imagePreview = document.getElementById('edit-image-preview');
         const noImageDiv = document.getElementById('edit-no-image');
 
-        if (imageUrl) {
-            const imgHtml = `
-                <img id="edit-image-display"
-                     src="${imageUrl}"
-                     alt="Hình ảnh câu hỏi"
-                     style="width: 70%; height: 50vh; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 6px;"
-                     crossorigin="anonymous"
-                     referrerpolicy="no-referrer" />`;
-            imagePreview.innerHTML = imgHtml;
+        if (mediaUrl) {
+            if (/\.mp4/i.test(mediaUrl)) {
+                const proxied = `/api/tangtoc/media-proxy?url=${encodeURIComponent(mediaUrl)}`;
+                const videoHtml = `
+                    <video id="edit-video-display"
+                           src="${proxied}"
+                           style="width: 70%; height: 50vh; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 6px; background: #000;"
+                           playsinline
+                           controls
+                           crossorigin="anonymous"></video>`;
+                imagePreview.innerHTML = videoHtml;
+            } else {
+                const imgHtml = `
+                    <img id="edit-image-display"
+                         src="${mediaUrl}"
+                         alt="Hình ảnh câu hỏi"
+                         style="width: 70%; height: 50vh; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 6px;"
+                         crossorigin="anonymous"
+                         referrerpolicy="no-referrer" />`;
+                imagePreview.innerHTML = imgHtml;
+            }
             imagePreview.style.display = 'block';
             noImageDiv.style.display = 'none';
         } else {
@@ -665,15 +685,28 @@ class TangTocQuestionsAdmin {
         const imagePreview = document.getElementById('edit-image-preview');
         const noImageDiv = document.getElementById('edit-no-image');
 
-        // Extract image URL using the same method as solo battle
-        const imageUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(text);
-        
-        if (imageUrl) {
-            
-            // Create or get the image element
-            let imageDisplay = document.getElementById('edit-image-display');
-            if (!imageDisplay) {
-                imageDisplay = document.createElement('img');
+        // Extract media URL using the same method as solo battle
+        const mediaUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(text);
+
+        if (mediaUrl) {
+            imagePreview.innerHTML = '';
+            if (/\.mp4/i.test(mediaUrl)) {
+                const proxied = `/api/tangtoc/media-proxy?url=${encodeURIComponent(mediaUrl)}`;
+                const video = document.createElement('video');
+                video.id = 'edit-video-display';
+                video.style.width = '70%';
+                video.style.height = '50vh';
+                video.style.objectFit = 'contain';
+                video.style.border = '1px solid #e5e7eb';
+                video.style.borderRadius = '6px';
+                video.style.background = '#000';
+                video.setAttribute('playsinline', '');
+                video.setAttribute('controls', '');
+                video.setAttribute('crossorigin', 'anonymous');
+                video.src = proxied;
+                imagePreview.appendChild(video);
+            } else {
+                const imageDisplay = document.createElement('img');
                 imageDisplay.id = 'edit-image-display';
                 imageDisplay.alt = 'Hình ảnh câu hỏi';
                 imageDisplay.style.width = '70%';
@@ -681,17 +714,17 @@ class TangTocQuestionsAdmin {
                 imageDisplay.style.objectFit = 'contain';
                 imageDisplay.style.border = '1px solid #e5e7eb';
                 imageDisplay.style.borderRadius = '6px';
+                imageDisplay.setAttribute('decoding', 'async');
+                imageDisplay.setAttribute('loading', 'lazy');
+                imageDisplay.setAttribute('crossorigin', 'anonymous');
+                imageDisplay.setAttribute('referrerpolicy', 'no-referrer');
+                imageDisplay.src = mediaUrl;
                 imagePreview.appendChild(imageDisplay);
             }
-            
-            imageDisplay.src = imageUrl;
-            imageDisplay.setAttribute('decoding', 'async');
-            imageDisplay.setAttribute('loading', 'lazy');
-            imageDisplay.setAttribute('crossorigin', 'anonymous');
-            imageDisplay.setAttribute('referrerpolicy', 'no-referrer');
             imagePreview.style.display = 'block';
             noImageDiv.style.display = 'none';
         } else {
+            imagePreview.innerHTML = '';
             imagePreview.style.display = 'none';
             noImageDiv.style.display = 'block';
         }

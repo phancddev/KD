@@ -863,8 +863,9 @@ app.get('/api/tangtoc-test', (req, res) => {
 // TangToc routes (đăng ký trước để bắt /api/tangtoc/... trước khi vào router /api chung)
 app.use('/', tangTocRoutes);
 
-// TangToc reporting routes (chỉ mount dưới /api/admin để tránh chặn /api công khai)
-// app.use('/api', tangtocAdminApiRoutes);
+// TangToc reporting routes
+// Mount dưới /api để expose public route POST /tangtoc-report-question
+app.use('/api', tangtocAdminApiRoutes);
 
 // Admin routes
 app.use('/admin', adminRoutes);

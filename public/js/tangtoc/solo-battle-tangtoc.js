@@ -176,7 +176,8 @@ class TangTocSoloBattle {
                 const video = document.createElement('video');
                 // Autoplay + không cho tua (ẩn controls và chặn seek)
                 video.autoplay = true;
-                video.muted = true; // cần muted để autoplay ổn định
+                // Nếu người dùng bật âm thanh, thử phát không muted; nếu bị chặn sẽ fallback
+                video.muted = !this.soundEnabled;
                 video.playsInline = true;
                 video.src = proxied;
                 // Ẩn controls để không cho người chơi tua
@@ -187,6 +188,13 @@ class TangTocSoloBattle {
                 video.addEventListener('seeking', () => { if (Math.abs(video.currentTime - lastTime) > 0.5) video.currentTime = lastTime; });
                 // Ngăn dùng phím tắt tua nhanh
                 video.addEventListener('keydown', (e) => { if (['ArrowLeft','ArrowRight','Home','End','PageUp','PageDown'].includes(e.key)) e.preventDefault(); });
+                // Thử phát, nếu browser chặn autoplay khi có âm thanh thì fallback muted
+                try { 
+                    const p = video.play(); 
+                    if (p && typeof p.then === 'function') {
+                        p.catch(() => { try { video.muted = true; video.play(); } catch {} });
+                    }
+                } catch { try { video.muted = true; video.play(); } catch {} }
                 // Fallback sang URL gốc nếu proxy gặp sự cố
                 video.addEventListener('error', () => { if (video.src !== q.mediaUrl) video.src = q.mediaUrl; }, { once: true });
                 this.elements.questionMedia.appendChild(video);
@@ -233,7 +241,22 @@ class TangTocSoloBattle {
     showResults(){ this.elements.soloBattleRoom.style.display='none'; this.elements.resultRoom.style.display='block'; this.elements.finalScore.textContent=this.score; this.showQuestionReview(); }
     showQuestionReview(){ this.elements.questionReviewList.innerHTML=''; this.userAnswers.forEach((a,i)=>{ const el=document.createElement('div'); el.className=`question-review-item ${a.isCorrect?'correct':'incorrect'}`; const status=a.isTimeUp?'Hết thời gian':(a.isCorrect?'Đúng':'Sai'); el.innerHTML=`<span class="question-number-review">Câu ${i+1}</span><div class="question-text-review">${a.questionText}${a.questionImageUrl?`<br><img src="${a.questionImageUrl}" style="max-width:200px;margin-top:10px;border-radius:8px;" alt="Hình ảnh câu hỏi">`:''}</div><div class="answer-info"><span class="user-answer">Bạn: ${a.userAnswer||'Chưa trả lời'}</span><span class="correct-answer">Đúng: ${a.correctAnswer}</span><span class="answer-status ${a.isCorrect?'correct':'incorrect'}">${status}</span><button class="report-btn" onclick="window.__openReportModal({mode:'solo',questionId:${a.questionId},questionText:'${a.questionText.replace(/'/g,"\\'")}',correctAnswer:'${a.correctAnswer.replace(/'/g,"\\'")}',userAnswer:'${(a.userAnswer||'').replace(/'/g,"\\'")}',sessionId:null,roomId:null})">Báo lỗi</button></div>`; this.elements.questionReviewList.appendChild(el); }); }
     restartGame(){ this.elements.resultRoom.style.display='none'; this.elements.soloBattleRoom.style.display='block'; this.startGame(); }
-    toggleSound(){ this.soundEnabled=!this.soundEnabled; this.elements.soundIcon.textContent=this.soundEnabled?'🔊':'🔇'; [this.elements.battleSound,this.elements.preBattleSound,this.elements.correctSound,this.elements.wrongSound].forEach(a=>a.muted=!this.soundEnabled); }
+    toggleSound(){
+        this.soundEnabled=!this.soundEnabled;
+        this.elements.soundIcon.textContent=this.soundEnabled?'🔊':'🔇';
+        [this.elements.battleSound,this.elements.preBattleSound,this.elements.correctSound,this.elements.wrongSound].forEach(a=>a.muted=!this.soundEnabled);
+        // Áp dụng cho video câu hỏi hiện tại (nếu có)
+        try {
+            const video = this.elements.questionMedia && this.elements.questionMedia.querySelector('video');
+            if (video) {
+                video.muted = !this.soundEnabled;
+                if (this.soundEnabled) {
+                    const p = video.play && video.play();
+                    if (p && typeof p.then==='function') p.catch(()=>{});
+                }
+            }
+        } catch {}
+    }
 }
 document.addEventListener('DOMContentLoaded',()=>{ new TangTocSoloBattle(); });
 

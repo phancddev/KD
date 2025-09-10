@@ -16,6 +16,24 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentReports = [];
   let currentSelectedReportId = null;
 
+  // Helpers to extract media URL and clean text (reuse logic from solo tangtoc)
+  function extractMediaUrlFromText(text) {
+    if (!text) return null;
+    const m = text.match(/@?(https:\/\/[^\s]+?\/revision\/latest\?cb=[^&]+&path-prefix=vi)\s+data:image\/[^ ^\s]+/);
+    if (m && m[1]) return decodeURIComponent(m[1]);
+    const m2 = text.match(/@?(https:\/\/[^\s]+?(?:\.png|\.jpe?g|\.webp|\.gif|\.mp4)\/[\w\-\/]+\?[^\s]+|https:\/\/[^\s]+?\.(?:png|jpe?g|webp|gif|mp4)(?:\?[^\s]+)?)/i);
+    if (m2 && m2[1]) return m2[1];
+    const m3 = text.match(/@?(https:\/\/[^\s]+)/);
+    return m3 && m3[1] ? m3[1] : null;
+  }
+  function cleanQuestionText(text) {
+    if (!text) return text;
+    return text
+      .replace(/@?https:\/\/[^\s]+\s+data:image\/[^ ^\s]+/g, '')
+      .replace(/@?https:\/\/[^\s]+/g, '')
+      .trim();
+  }
+
   async function loadReports(page = 1) {
     const params = new URLSearchParams();
     params.set('page', page.toString());
@@ -162,6 +180,10 @@ document.addEventListener('DOMContentLoaded', () => {
        report.question_number == 2 ? 20 : 
        report.question_number == 3 ? 30 : 
        report.question_number == 4 ? 40 : 'N/A') : 'N/A';
+
+    // Compute media from text or fallback to existing image field
+    const mediaUrl = extractMediaUrlFromText(report.question_text) || report.question_image_url || null;
+    const cleanedQuestionText = cleanQuestionText(report.question_text || '');
     
     detailContainer.innerHTML = `
       <div class="report-details">
@@ -180,14 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="question-number">Câu ${report.question_number || 'N/A'}</span>
           <span class="time-limit">${timeLimit}s</span>
         </div>
-        <div class="question-text">${escapeHtml(report.question_text || '')}</div>
+        <div class="question-text">${escapeHtml(cleanedQuestionText || '')}</div>
+        <div id="report-detail-media" style="margin-top:10px;width:100%;display:flex;justify-content:center;align-items:center;overflow:hidden"></div>
         <div class="question-answer">Đáp án: ${escapeHtml(report.correct_answer || '')}</div>
-        ${report.question_image_url ? `
-          <div style="margin-top:1rem;">
-            <strong>Hình ảnh:</strong><br>
-            <img src="${escapeHtml(report.question_image_url)}" alt="Hình ảnh câu hỏi" class="question-image" style="max-width:300px;max-height:200px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;">
-          </div>
-        ` : ''}
         ${report.user_answer ? `<p><strong>Đáp án người chơi:</strong> ${escapeHtml(report.user_answer)}</p>` : ''}
       </div>
       
@@ -205,6 +222,48 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       ` : ''}
     `;
+    
+    // Render media similar to solo tangtoc, constrained to modal
+    const mediaContainer = document.getElementById('report-detail-media');
+    if (mediaContainer) {
+      mediaContainer.innerHTML = '';
+      if (mediaUrl) {
+        if (/\.mp4/i.test(mediaUrl)) {
+          const proxied = `/api/tangtoc/media-proxy?url=${encodeURIComponent(mediaUrl)}`;
+          const video = document.createElement('video');
+          video.autoplay = false;
+          video.controls = true;
+          video.playsInline = true;
+          video.muted = false;
+          video.volume = 1.0;
+          video.src = proxied;
+          // Fit within modal
+          video.style.width = '100%';
+          video.style.maxWidth = '100%';
+          video.style.maxHeight = '50vh';
+          video.style.objectFit = 'contain';
+          video.style.borderRadius = '8px';
+          video.style.border = '1px solid #e5e7eb';
+          video.addEventListener('error', () => { if (video.src !== mediaUrl) video.src = mediaUrl; }, { once: true });
+          mediaContainer.appendChild(video);
+        } else {
+          const img = document.createElement('img');
+          img.src = mediaUrl;
+          img.alt = 'Hình ảnh câu hỏi';
+          img.referrerPolicy = 'no-referrer';
+          img.setAttribute('crossorigin', 'anonymous');
+          // Fit within modal
+          img.style.width = '100%';
+          img.style.height = 'auto';
+          img.style.maxWidth = '100%';
+          img.style.maxHeight = '50vh';
+          img.style.objectFit = 'contain';
+          img.style.borderRadius = '8px';
+          img.style.border = '1px solid #e5e7eb';
+          mediaContainer.appendChild(img);
+        }
+      }
+    }
     
     modal.style.display = 'block';
     
@@ -289,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-
+  
 
   // Global functions for suggestion actions
   window.approveSuggestion = async (suggestionId) => {
