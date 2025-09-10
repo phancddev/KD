@@ -875,6 +875,18 @@
                     <a href="/admin/questions">
                         <i class="fas fa-question-circle"></i> Câu hỏi thường
                     </a>
+                    <a href="/admin/reports">
+                        <i class="fas fa-flag"></i> Báo lỗi câu hỏi
+                    </a>
+                    <a href="/admin/tangtoc-reports">
+                        <i class="fas fa-bolt"></i> Báo lỗi câu hỏi Tăng Tốc
+                    </a>
+                    <a href="/admin/question-logs">
+                        <i class="fas fa-trash-alt"></i> Logs xóa câu hỏi
+                    </a>
+                    <a href="/admin/tangtoc-question-logs">
+                        <i class="fas fa-trash-alt"></i> Logs xóa câu hỏi Tăng Tốc
+                    </a>
                     <a href="/">
                         <i class="fas fa-home"></i> Trang chủ
                     </a>
@@ -1036,6 +1048,17 @@
                 <div class="form-group">
                     <label for="edit-question-answer">Đáp án:</label>
                     <input type="text" id="edit-question-answer" name="answer" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Các đáp án chấp nhận khác:</label>
+                    <div id="accepted-answers-container">
+                        <div id="accepted-answers-list" class="accepted-answers-list" style="margin-bottom:8px"></div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="text" id="new-accepted-answer" placeholder="Nhập đáp án bổ sung">
+                            <button type="button" id="add-accepted-answer" class="btn btn-primary">Thêm đáp án</button>
+                        </div>
+                        <small>Đáp án hiển thị vẫn là ô "Đáp án" ở trên. Các đáp án bổ sung chỉ dùng để hệ thống chấm đúng.</small>
+                    </div>
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary">Lưu thay đổi</button>

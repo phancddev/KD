@@ -92,7 +92,7 @@ class TangTocSoloBattle {
     }
 
     async loadTangTocQuestions() {
-        const res = await fetch('/api/tangtoc/questions', { credentials: 'include' });
+        const res = await fetch('/public/tangtoc/questions');
         if (!res.ok) throw new Error('fetch-questions-failed');
         this.questions = await res.json();
         this.questions = this.questions.map(q => {

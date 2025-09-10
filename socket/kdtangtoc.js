@@ -91,16 +91,22 @@ async function startQuestion(io, room, index) {
       const correctList = [];
       for (const p of room.participants) {
         const rec = map.get(p.socketId);
-        if (rec && rec.isCorrect) {
-          correctList.push({ socketId: p.socketId, userId: p.userId, timeMs: rec.timeMs });
+        if (rec) {
+          // Check đáp án với tất cả đáp án chính + phụ khi hết thời gian
+          const isCorrect = isAnswerCorrect(rec.answer, question);
+          // Cập nhật lại isCorrect trong record
+          rec.isCorrect = isCorrect;
+          if (isCorrect) {
+            correctList.push({ socketId: p.socketId, userId: p.userId, timeMs: rec.timeMs });
+          }
         }
       }
       correctList.sort((a,b)=>a.timeMs-b.timeMs);
-      // Chấm điểm: 1st=40, 2nd=30, 3rd=30, 4th+=10
+      // Chấm điểm: 1st=40, 2nd=30, 3rd=20, 4th+=10
       const pointsForRank = (rank) => {
         if (rank === 1) return 40;
         if (rank === 2) return 30;
-        if (rank === 3) return 30;
+        if (rank === 3) return 20;
         return 10;
       };
       const awarded = new Set();
@@ -127,7 +133,23 @@ async function startQuestion(io, room, index) {
         .map(p=>({ userId: p.userId, username: (p.fullName&&String(p.fullName).trim())||p.username, score: p.score||0, timeSpent: p.timeSpent||0 }))
         .sort((a,b)=> (b.score-a.score) || (a.timeSpent-b.timeSpent));
       io.to(room.code).emit('rankingUpdate', { questionIndex: index, ranking });
-      // Gửi kết quả cá nhân để client play sound đúng/sai
+      // Lưu câu trả lời vào DB cho tất cả thí sinh
+      for (const p of room.participants) {
+        const rec = map.get(p.socketId);
+        if (rec && p.sessionId) {
+          try {
+            saveUserAnswer(
+              p.sessionId,
+              question.id,
+              String(rec.answer ?? ''),
+              !!(rec && rec.isCorrect),
+              Math.max(0, rec.timeMs || 0)
+            ).catch(() => {});
+          } catch {}
+        }
+      }
+
+      // Gửi kết quả cá nhân để client play sound đúng/sai (đồng bộ tất cả thí sinh)
       for (const p of room.participants) {
         const rec = map.get(p.socketId);
         const isCorrect = !!(rec && rec.isCorrect);
@@ -136,7 +158,8 @@ async function startQuestion(io, room, index) {
           questionIndex: index, 
           isCorrect, 
           userAnswer,
-          correctAnswer: question.answer
+          correctAnswer: question.answer,
+          acceptedAnswers: question.acceptedAnswers || []
         });
       }
     } catch {}
@@ -272,7 +295,7 @@ export function initTangTocSocket(io) {
       }
     });
 
-    // Client submits answer result per question
+    // Client submits answer result per question (chỉ là preview)
     socket.on('submitAnswer', ({ roomId, questionIndex, answer, timeLeft } = {}) => {
       const room = tangTocRooms.get(roomId);
       if (!room) return;
@@ -281,30 +304,16 @@ export function initTangTocSocket(io) {
 
       const q = room.questions[questionIndex];
       if (!q || room.currentQuestionIndex !== questionIndex) return;
+      
       // Tính thời gian nộp theo ms từ lúc bắt đầu câu hỏi
       const now = Date.now();
       const timeMs = Math.max(0, now - (room.currentQuestionStart || now));
-      // Kiểm tra đúng/sai phía server
-      const correct = isAnswerCorrect(answer, q);
-      // Lưu bài nộp cuối cùng cho người này
+      
+      // Chỉ lưu đáp án, chưa check đúng/sai (sẽ check khi hết thời gian)
       if (!room.submissions) room.submissions = {};
       if (!room.submissions[questionIndex]) room.submissions[questionIndex] = new Map();
       // luôn ghi đè bằng lần nộp mới nhất
-      room.submissions[questionIndex].set(socket.id, { answer, isCorrect: correct, timeMs });
-
-      // Lưu câu trả lời vào DB nếu có session (ghi đè được câu sau cùng vẫn ok)
-      try {
-        if (participant.sessionId && q) {
-          // Tránh await để không lỗi top-level await trong môi trường build cũ
-          saveUserAnswer(
-            participant.sessionId,
-            q.id,
-            String(answer ?? ''),
-            !!correct,
-            Math.max(0, Number(timeLeft) || 0)
-          ).catch(() => {});
-        }
-      } catch {}
+      room.submissions[questionIndex].set(socket.id, { answer, timeMs });
 
       // Notify others for UI update
       io.to(room.code).emit('participantAnswer', {

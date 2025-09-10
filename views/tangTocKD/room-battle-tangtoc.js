@@ -159,6 +159,7 @@ class TangTocRoomBattle {
                 this.showAnswerResult('correct', 'Chính xác!');
             } else {
                 this.elements.wrongSound.play().catch(()=>{});
+                // Chỉ hiển thị đáp án chính, đáp án phụ chỉ dùng để so sánh
                 this.showAnswerResult('incorrect', `Sai! Đáp án đúng: ${data.correctAnswer || 'N/A'}`);
             }
             // Cập nhật lại bản ghi câu hỏi cho phần xem lại

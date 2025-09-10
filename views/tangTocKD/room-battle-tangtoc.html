@@ -1039,14 +1039,21 @@
           const suggestions = Array.from(suggestionsWrap.querySelectorAll('input')).map(i => i.value.trim()).filter(Boolean);
           if (!reportText && suggestions.length === 0) { alert('Vui lòng nhập mô tả hoặc thêm ít nhất 1 đáp án đề xuất'); return; }
           try {
-            const res = await fetch('/api/report-question', {
+            console.log('Sending report:', { ...currentReportPayload, reportText, suggestions });
+            const res = await fetch('/api/tangtoc-report-question', {
               method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials:'include',
               body: JSON.stringify({ ...currentReportPayload, reportText, suggestions })
             });
-            if (!res.ok) throw new Error('Submit failed');
+            console.log('Response status:', res.status);
+            const responseData = await res.json();
+            console.log('Response data:', responseData);
+            if (!res.ok) throw new Error('Submit failed: ' + (responseData.error || 'Unknown error'));
             alert('Đã gửi báo lỗi. Cảm ơn bạn!');
             modal.style.display = 'none';
-          } catch(e) { alert('Không thể gửi báo lỗi, thử lại sau.'); }
+          } catch(e) { 
+            console.error('Error submitting report:', e);
+            alert('Không thể gửi báo lỗi, thử lại sau: ' + e.message); 
+          }
         });
       })();
     </script>

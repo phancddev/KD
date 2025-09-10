@@ -97,10 +97,15 @@ async function getRandomQuestions(count = 12, category = 'khoidong') {
     let query = 'SELECT * FROM questions';
     const params = [];
     
-    // Mặc định chỉ lấy câu hỏi "khoidong" để giới hạn game hiện tại
+    // Lọc theo category (hỗ trợ legacy khi Khoi Dong lưu trống hoặc NULL)
     if (category) {
-      query += ' WHERE category = ?';
-      params.push(category);
+      if (category === 'khoidong') {
+        query += ' WHERE (category = ? OR category IS NULL OR category = "")';
+        params.push('khoidong');
+      } else {
+        query += ' WHERE category = ?';
+        params.push(category);
+      }
     }
     
     query += ' ORDER BY RAND() LIMIT ?';

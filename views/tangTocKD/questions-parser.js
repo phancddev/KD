@@ -115,9 +115,9 @@ async function getRandomTangTocQuestions() {
             if (rows.length > 0) {
                 const question = rows[0];
                 
-                // Lấy accepted answers
+                // Lấy accepted answers từ bảng tangtoc_answers
                 const [answerRows] = await pool.query(
-                    'SELECT id, answer FROM answers WHERE question_id = ?', 
+                    'SELECT id, answer FROM tangtoc_answers WHERE question_id = ?', 
                     [question.id]
                 );
                 const acceptedAnswers = answerRows.map(r => ({ id: r.id, answer: r.answer }));

@@ -494,4 +494,32 @@ router.post('/test/import', upload.single('csvFile'), async (req, res) => {
     }
 });
 
+// TangToc Reports page
+router.get('/tangtoc-reports', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    
+    const isAdmin = await isUserAdmin(req.session.user.id);
+    if (!isAdmin) {
+        return res.redirect('/');
+    }
+    
+    res.sendFile(path.join(__dirname, '../views/admin/tangtoc-reports.html'));
+});
+
+// TangToc Question Logs page
+router.get('/tangtoc-question-logs', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    
+    const isAdmin = await isUserAdmin(req.session.user.id);
+    if (!isAdmin) {
+        return res.redirect('/');
+    }
+    
+    res.sendFile(path.join(__dirname, '../views/admin/tangtoc-question-logs.html'));
+});
+
 export default router;

@@ -39,7 +39,10 @@ class TangTocQuestionsAdmin {
             editQuestionId: document.getElementById('edit-question-id'),
             editQuestionNumber: document.getElementById('edit-question-number'),
             editQuestionText: document.getElementById('edit-question-text'),
-            editQuestionAnswer: document.getElementById('edit-question-answer')
+            editQuestionAnswer: document.getElementById('edit-question-answer'),
+            acceptedAnswersList: document.getElementById('accepted-answers-list'),
+            newAcceptedAnswer: document.getElementById('new-accepted-answer'),
+            addAcceptedAnswer: document.getElementById('add-accepted-answer')
         };
     }
 
@@ -89,6 +92,20 @@ class TangTocQuestionsAdmin {
         // Update image preview when text changes
         this.elements.editQuestionText.addEventListener('input', (e) => {
             this.updateImagePreview(e.target.value);
+        });
+
+        // Add accepted answer
+        this.elements.addAcceptedAnswer.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.addAcceptedAnswer();
+        });
+
+        // Add accepted answer on Enter key
+        this.elements.newAcceptedAnswer.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.addAcceptedAnswer();
+            }
         });
     }
 
@@ -167,6 +184,10 @@ class TangTocQuestionsAdmin {
             if (response.ok) {
                 this.questions = await response.json();
                 console.log('Loaded questions:', this.questions.length);
+                
+                // Load accepted answers for each question
+                await this.loadAcceptedAnswers();
+                
                 this.applyFilters();
             } else {
                 console.error('Failed to load questions, status:', response.status);
@@ -175,6 +196,25 @@ class TangTocQuestionsAdmin {
         } catch (error) {
             console.error('Load questions error:', error);
             this.showMessage('error', 'Có lỗi xảy ra khi tải câu hỏi');
+        }
+    }
+
+    async loadAcceptedAnswers() {
+        try {
+            for (let question of this.questions) {
+                const response = await fetch(`/api/admin/tangtoc/questions/${question.id}/answers`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const answers = await response.json();
+                    question.acceptedAnswers = answers || [];
+                } else {
+                    question.acceptedAnswers = [];
+                }
+            }
+        } catch (error) {
+            console.error('Error loading accepted answers:', error);
         }
     }
 
@@ -331,7 +371,13 @@ class TangTocQuestionsAdmin {
                     <td class="question-image">
                         ${imageHtml}
                     </td>
-                    <td class="question-answer">${question.answer}</td>
+                    <td class="question-answer">
+                        ${question.answer}
+                        ${question.acceptedAnswers && question.acceptedAnswers.length > 0 ? 
+                            `<br><small style="color: #6b7280;">(+${question.acceptedAnswers.length} đáp án phụ)</small>` : 
+                            ''
+                        }
+                    </td>
                     <td class="question-time">
                         <span class="time-limit-badge">${question.time_limit}s</span>
                     </td>
@@ -437,6 +483,9 @@ class TangTocQuestionsAdmin {
         this.elements.editQuestionText.value = question.text;
         this.elements.editQuestionAnswer.value = question.answer;
 
+        // Render accepted answers
+        this.renderAcceptedAnswers(question.acceptedAnswers || []);
+
         // Extract image URL using the same method as solo battle
         const imageUrl = TangTocQuestionsAdmin.extractMediaUrlFromText(question.text) || question.imageUrl;
 
@@ -513,6 +562,103 @@ class TangTocQuestionsAdmin {
     closeEditModal() {
         this.elements.editModal.style.display = 'none';
         this.elements.editForm.reset();
+        this.clearAcceptedAnswers();
+    }
+
+    // Accepted answers management
+    addAcceptedAnswer() {
+        const answer = this.elements.newAcceptedAnswer.value.trim();
+        if (!answer) return;
+
+        const questionId = this.elements.editQuestionId.value;
+        if (!questionId) return;
+
+        // Add to server
+        this.addAcceptedAnswerToServer(questionId, answer);
+        
+        // Clear input
+        this.elements.newAcceptedAnswer.value = '';
+    }
+
+    async addAcceptedAnswerToServer(questionId, answer) {
+        try {
+            const response = await fetch(`/api/admin/tangtoc/questions/${questionId}/answers`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ answer })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                // Reload question data and refresh modal
+                await this.loadQuestions();
+                this.editQuestion(questionId);
+            } else {
+                alert('Lỗi khi thêm đáp án: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error adding accepted answer:', error);
+            alert('Lỗi khi thêm đáp án');
+        }
+    }
+
+    async removeAcceptedAnswer(answerId) {
+        try {
+            const response = await fetch(`/api/admin/tangtoc/answers/${answerId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                // Reload question data and refresh modal
+                const questionId = this.elements.editQuestionId.value;
+                await this.loadQuestions();
+                this.editQuestion(questionId);
+            } else {
+                alert('Lỗi khi xóa đáp án: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error removing accepted answer:', error);
+            alert('Lỗi khi xóa đáp án');
+        }
+    }
+
+    renderAcceptedAnswers(acceptedAnswers) {
+        if (!this.elements.acceptedAnswersList) return;
+        
+        this.elements.acceptedAnswersList.innerHTML = '';
+        
+        if (!acceptedAnswers || acceptedAnswers.length === 0) {
+            this.elements.acceptedAnswersList.innerHTML = '<div style="color: #9ca3af; font-style: italic; padding: 0.5rem;">Chưa có đáp án bổ sung</div>';
+            return;
+        }
+
+        acceptedAnswers.forEach((answer, index) => {
+            const answerText = typeof answer === 'string' ? answer : (answer.answer || '');
+            const answerId = typeof answer === 'object' && answer.id ? answer.id : null;
+            
+            const answerDiv = document.createElement('div');
+            answerDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px;';
+            
+            answerDiv.innerHTML = `
+                <span>${answerText}</span>
+                <button type="button" class="btn btn-danger btn-sm" onclick="window.tangTocAdmin.removeAcceptedAnswer(${answerId || 'null'})" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                    <i class="fas fa-trash"></i> Xóa
+                </button>
+            `;
+            
+            this.elements.acceptedAnswersList.appendChild(answerDiv);
+        });
+    }
+
+    clearAcceptedAnswers() {
+        if (this.elements.acceptedAnswersList) {
+            this.elements.acceptedAnswersList.innerHTML = '';
+        }
     }
 
     updateImagePreview(text) {

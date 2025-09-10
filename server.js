@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { createServer } from 'http';
 import config from './config.js';
-import { testConnection, initDatabase } from './db/index.js';
+import { testConnection, initDatabase, pool } from './db/index.js';
 import { createUser, findUserByUsername, authenticateUser, isUserAdmin } from './db/users.js';
 import { initSocketIO, getIO, addOnlineUser, removeOnlineUser } from './socket/index.js';
 import { initTangTocSocket, getTangTocParticipants } from './socket/kdtangtoc.js';
@@ -17,9 +17,15 @@ console.log('🚀 Imported adminRoutes successfully');
 import adminApiRoutes from './routes/admin-api.js';
 console.log('🚀 Imported adminApiRoutes successfully');
 
+import tangtocAdminApiRoutes from './routes/tangtoc-admin-api.js';
+console.log('🚀 Imported tangtocAdminApiRoutes successfully');
+
+
 import tangTocRoutes from './views/tangTocKD/server-routes.js';
 console.log('🚀 Imported tangTocRoutes successfully');
+import { getRandomTangTocQuestions } from './views/tangTocKD/questions-parser.js';
 import { getUserGameHistoryByMonth, getPlayerRankingByMonth, getUserGameStats, getGameSessionDetails, createGameSession, finishGameSession } from './db/game-sessions.js';
+import { getRandomQuestions } from './db/questions.js';
 import { createQuestionReport, addAnswerSuggestion } from './db/reports.js';
 
 console.log('🚀 Tất cả imports hoàn tất');
@@ -30,10 +36,48 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = config.server.port;
 
+// Public: TangToc questions (no session required) - register VERY early
+app.get('/api/tangtoc/questions', async (req, res) => {
+  try {
+    const questions = await getRandomTangTocQuestions();
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.json(questions);
+  } catch (error) {
+    console.error('Lỗi khi lấy câu hỏi Tăng Tốc (public early):', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Fully public endpoint (non-admin, no session) outside of /api to avoid interference
+app.get('/public/tangtoc/questions', async (req, res) => {
+  try {
+    const questions = await getRandomTangTocQuestions();
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.json(questions);
+  } catch (error) {
+    console.error('Lỗi khi lấy câu hỏi Tăng Tốc (public /public):', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Test route for debugging
+app.get('/api/tangtoc-test', (req, res) => {
+  console.log('🔍 TangToc test route called!');
+  res.json({ message: 'TangToc Reports API is working!' });
+});
+
+app.get('/test-simple', (req, res) => {
+  console.log('🔍 Simple test route called!');
+  res.json({ message: 'Simple test works!' });
+});
+
 // Middleware
 app.use(cookieParser());
 // CORS headers for all routes (allow external images and API consumption)
 app.use((req, res, next) => {
+  if (req.url.includes('tangtoc-report-question')) {
+    console.log('🔍 TangToc report request detected:', req.method, req.url);
+  }
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -119,6 +163,58 @@ app.get('/api/features/registration-status', (req, res) => {
       ? 'Chức năng đăng ký đang hoạt động' 
       : 'Chức năng đăng ký đã bị tắt'
   });
+});
+
+// Public API: lấy câu hỏi ngẫu nhiên cho người chơi (không giới hạn admin)
+app.get('/api/questions/random', async (req, res) => {
+  try {
+    const count = parseInt(req.query.count) || 12;
+    const category = req.query.category || 'khoidong';
+    let questions = await getRandomQuestions(count, category);
+    // Fallback nếu không có câu hỏi cho category được yêu cầu
+    if (!Array.isArray(questions) || questions.length === 0) {
+      // Thử với 'general' (nếu DB cũ còn dùng)
+      try {
+        const general = await getRandomQuestions(count, 'general');
+        if (Array.isArray(general) && general.length > 0) {
+          return res.json(general);
+        }
+      } catch {}
+      // Thử không filter category
+      try {
+        const any = await getRandomQuestions(count, null);
+        if (Array.isArray(any) && any.length > 0) {
+          return res.json(any);
+        }
+      } catch {}
+    }
+    res.json(questions);
+  } catch (error) {
+    console.error('Lỗi khi lấy câu hỏi ngẫu nhiên (public):', error);
+    res.status(500).json({ success: false, error: 'Không thể lấy câu hỏi ngẫu nhiên' });
+  }
+});
+
+// Public API: Tăng Tốc - lấy câu hỏi (ưu tiên định nghĩa sớm để tránh bị router /api khác chặn)
+app.get('/api/tangtoc/questions', async (req, res) => {
+  try {
+    const questions = await getRandomTangTocQuestions();
+    return res.json(questions);
+  } catch (error) {
+    console.error('Lỗi khi lấy câu hỏi Tăng Tốc (public):', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Public non-/api path as fallback to avoid any /api middlewares interfering
+app.get('/tangtoc/questions', async (req, res) => {
+  try {
+    const questions = await getRandomTangTocQuestions();
+    return res.json(questions);
+  } catch (error) {
+    console.error('Lỗi khi lấy câu hỏi Tăng Tốc (public non-api):', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // Routes
@@ -252,6 +348,7 @@ app.post('/login', async (req, res) => {
 
 // API: người dùng gửi báo lỗi câu hỏi/đáp án
 app.post('/api/report-question', async (req, res) => {
+  console.log('🔍 Old report-question route called:', req.url);
   if (!req.session.user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -741,12 +838,22 @@ app.post('/api/solo-game/finish', async (req, res) => {
   }
 });
 
+// TangToc reporting routes (public) - must be before tangTocRoutes
+app.get('/api/tangtoc-test', (req, res) => {
+  console.log('🔍 TangToc test route called!');
+  res.json({ message: 'TangToc Reports API is working!' });
+});
+
+// TangToc routes (đăng ký trước để bắt /api/tangtoc/... trước khi vào router /api chung)
+app.use('/', tangTocRoutes);
+
+// TangToc reporting routes (chỉ mount dưới /api/admin để tránh chặn /api công khai)
+// app.use('/api', tangtocAdminApiRoutes);
+
 // Admin routes
 app.use('/admin', adminRoutes);
 app.use('/api/admin', adminApiRoutes);
-
-// TangToc routes
-app.use('/', tangTocRoutes);
+app.use('/api/admin', tangtocAdminApiRoutes);
 
 // Test route để kiểm tra routing (sau khi admin routes được đăng ký)
 app.get('/test', (req, res) => {
