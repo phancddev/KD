@@ -386,6 +386,24 @@ async function runMigrations() {
       )
     `);
 
+    // Đảm bảo bảng tangtoc_answers tồn tại
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tangtoc_answers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        question_id INT NOT NULL,
+        answer TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+      )
+    `);
+    // Indexes cho tangtoc_answers
+    try {
+      await pool.query('CREATE INDEX idx_tangtoc_answers_question_id ON tangtoc_answers(question_id)');
+    } catch (e) {}
+    try {
+      await pool.query('CREATE UNIQUE INDEX ux_tangtoc_answers_qid_answer ON tangtoc_answers(question_id, answer(255))');
+    } catch (e) {}
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS answer_suggestion_logs (
         id INT AUTO_INCREMENT PRIMARY KEY,
