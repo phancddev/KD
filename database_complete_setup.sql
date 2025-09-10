@@ -63,6 +63,10 @@ CREATE TABLE IF NOT EXISTS tangtoc_answers (
   FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
+-- Index cho tangtoc_answers
+CREATE INDEX idx_tangtoc_answers_question_id ON tangtoc_answers(question_id);
+CREATE UNIQUE INDEX ux_tangtoc_answers_qid_answer ON tangtoc_answers(question_id, answer(255));
+
 -- =============================================
 -- BẢNG ROOMS
 -- =============================================

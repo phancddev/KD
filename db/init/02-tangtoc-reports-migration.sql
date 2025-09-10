@@ -20,6 +20,19 @@ CREATE TABLE IF NOT EXISTS tangtoc_answers (
   FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
+-- Tạo index tối ưu và ràng buộc tránh trùng (nếu chưa có)
+-- Index theo question_id
+SET @sql = 'CREATE INDEX idx_tangtoc_answers_question_id ON tangtoc_answers(question_id)';
+SET @sql = IF((SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+  WHERE TABLE_SCHEMA='nqd_database' AND TABLE_NAME='tangtoc_answers' AND INDEX_NAME='idx_tangtoc_answers_question_id') = 0, @sql, 'SELECT "Index idx_tangtoc_answers_question_id already exists"');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Unique để tránh trùng đáp án cho cùng 1 câu hỏi (case-insensitive dùng text; ở đây unique ở mức text nguyên bản)
+SET @sql = 'CREATE UNIQUE INDEX ux_tangtoc_answers_qid_answer ON tangtoc_answers(question_id, answer(255))';
+SET @sql = IF((SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+  WHERE TABLE_SCHEMA='nqd_database' AND TABLE_NAME='tangtoc_answers' AND INDEX_NAME='ux_tangtoc_answers_qid_answer') = 0, @sql, 'SELECT "Index ux_tangtoc_answers_qid_answer already exists"');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- Tạo bảng báo lỗi câu hỏi Tăng Tốc riêng biệt
 CREATE TABLE IF NOT EXISTS tangtoc_question_reports (
   id INT AUTO_INCREMENT PRIMARY KEY,
