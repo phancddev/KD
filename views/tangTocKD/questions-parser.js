@@ -99,6 +99,7 @@ function getTimeLimitByQuestionNumber(questionNumber) {
 // Lấy câu hỏi Tăng Tốc ngẫu nhiên theo logic đặc biệt
 async function getRandomTangTocQuestions() {
     try {
+        console.log('🔍 [TangToc] getRandomTangTocQuestions start');
         // Lấy 4 câu hỏi Tăng Tốc, mỗi số câu 1 câu
         const questions = [];
         
@@ -110,16 +111,20 @@ async function getRandomTangTocQuestions() {
                 LIMIT 1
             `;
             
+            console.log('🔍 [TangToc] querying questions for number =', questionNumber);
             const [rows] = await pool.query(query, [questionNumber]);
+            console.log('🔍 [TangToc] found rows =', rows.length);
             
             if (rows.length > 0) {
                 const question = rows[0];
                 
                 // Lấy accepted answers từ bảng tangtoc_answers
+                console.log('🔍 [TangToc] fetching accepted answers for question id =', question.id);
                 const [answerRows] = await pool.query(
                     'SELECT id, answer FROM tangtoc_answers WHERE question_id = ?', 
                     [question.id]
                 );
+                console.log('🔍 [TangToc] accepted answers count =', answerRows.length);
                 const acceptedAnswers = answerRows.map(r => ({ id: r.id, answer: r.answer }));
                 
                 questions.push({
@@ -138,10 +143,13 @@ async function getRandomTangTocQuestions() {
         
         // Sắp xếp theo số câu
         questions.sort((a, b) => a.questionNumber - b.questionNumber);
+        console.log('✅ [TangToc] total questions to return =', questions.length);
         
         return questions;
     } catch (error) {
-        console.error('Lỗi khi lấy câu hỏi Tăng Tốc ngẫu nhiên:', error);
+        console.error('❌ [TangToc] Lỗi khi lấy câu hỏi Tăng Tốc ngẫu nhiên:', error);
+        console.error('   code:', error?.code, 'errno:', error?.errno, 'sqlState:', error?.sqlState, 'sqlMessage:', error?.sqlMessage);
+        console.error('   sql:', error?.sql);
         throw error;
     }
 }

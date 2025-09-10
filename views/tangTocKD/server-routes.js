@@ -122,10 +122,14 @@ async function saveQuestionsToDatabase(questions) {
 // API lấy câu hỏi Tăng Tốc ngẫu nhiên
 router.get('/api/tangtoc/questions', async (req, res) => {
     try {
+        console.log('🔍 [ROUTER] /api/tangtoc/questions called');
         const questions = await getRandomTangTocQuestions();
+        console.log('✅ [ROUTER] /api/tangtoc/questions count =', Array.isArray(questions) ? questions.length : 'N/A');
         res.json(questions);
     } catch (error) {
-        console.error('Lỗi khi lấy câu hỏi Tăng Tốc:', error);
+        console.error('❌ [ROUTER] Lỗi khi lấy câu hỏi Tăng Tốc:', error);
+        console.error('   code:', error?.code, 'errno:', error?.errno, 'sqlState:', error?.sqlState, 'sqlMessage:', error?.sqlMessage);
+        console.error('   sql:', error?.sql);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -221,15 +225,18 @@ router.post('/api/room-game/tangtoc/finish', async (req, res) => {
 // Lấy danh sách câu hỏi Tăng Tốc cho admin
 router.get('/api/admin/tangtoc/questions', async (req, res) => {
     try {
+        console.log('🔍 [ADMIN] /api/admin/tangtoc/questions called');
         const [rows] = await pool.query(`
             SELECT * FROM questions 
             WHERE category = 'tangtoc' 
             ORDER BY question_number, created_at DESC
         `);
-        
+        console.log('✅ [ADMIN] tangtoc questions count =', rows.length);
         res.json(rows);
     } catch (error) {
-        console.error('Lỗi khi lấy câu hỏi Tăng Tốc:', error);
+        console.error('❌ [ADMIN] Lỗi khi lấy câu hỏi Tăng Tốc:', error);
+        console.error('   code:', error?.code, 'errno:', error?.errno, 'sqlState:', error?.sqlState, 'sqlMessage:', error?.sqlMessage);
+        console.error('   sql:', error?.sql);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });

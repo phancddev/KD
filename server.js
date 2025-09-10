@@ -39,11 +39,15 @@ const PORT = config.server.port;
 // Public: TangToc questions (no session required) - register VERY early
 app.get('/api/tangtoc/questions', async (req, res) => {
   try {
+    console.log('🔍 [PUBLIC-API-EARLY] /api/tangtoc/questions called');
     const questions = await getRandomTangTocQuestions();
+    console.log('✅ [PUBLIC-API-EARLY] fetched tangtoc questions count =', Array.isArray(questions) ? questions.length : 'N/A');
     res.setHeader('Access-Control-Allow-Origin', '*');
     return res.json(questions);
   } catch (error) {
-    console.error('Lỗi khi lấy câu hỏi Tăng Tốc (public early):', error);
+    console.error('❌ Lỗi khi lấy câu hỏi Tăng Tốc (public early):', error);
+    console.error('   code:', error?.code, 'errno:', error?.errno, 'sqlState:', error?.sqlState, 'sqlMessage:', error?.sqlMessage);
+    console.error('   sql:', error?.sql);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -51,11 +55,15 @@ app.get('/api/tangtoc/questions', async (req, res) => {
 // Fully public endpoint (non-admin, no session) outside of /api to avoid interference
 app.get('/public/tangtoc/questions', async (req, res) => {
   try {
+    console.log('🔍 [PUBLIC] /public/tangtoc/questions called');
     const questions = await getRandomTangTocQuestions();
+    console.log('✅ [PUBLIC] fetched tangtoc questions count =', Array.isArray(questions) ? questions.length : 'N/A');
     res.setHeader('Access-Control-Allow-Origin', '*');
     return res.json(questions);
   } catch (error) {
-    console.error('Lỗi khi lấy câu hỏi Tăng Tốc (public /public):', error);
+    console.error('❌ Lỗi khi lấy câu hỏi Tăng Tốc (public /public):', error);
+    console.error('   code:', error?.code, 'errno:', error?.errno, 'sqlState:', error?.sqlState, 'sqlMessage:', error?.sqlMessage);
+    console.error('   sql:', error?.sql);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -198,10 +206,14 @@ app.get('/api/questions/random', async (req, res) => {
 // Public API: Tăng Tốc - lấy câu hỏi (ưu tiên định nghĩa sớm để tránh bị router /api khác chặn)
 app.get('/api/tangtoc/questions', async (req, res) => {
   try {
+    console.log('🔍 [PUBLIC-API] /api/tangtoc/questions called');
     const questions = await getRandomTangTocQuestions();
+    console.log('✅ [PUBLIC-API] fetched tangtoc questions count =', Array.isArray(questions) ? questions.length : 'N/A');
     return res.json(questions);
   } catch (error) {
-    console.error('Lỗi khi lấy câu hỏi Tăng Tốc (public):', error);
+    console.error('❌ Lỗi khi lấy câu hỏi Tăng Tốc (public):', error);
+    console.error('   code:', error?.code, 'errno:', error?.errno, 'sqlState:', error?.sqlState, 'sqlMessage:', error?.sqlMessage);
+    console.error('   sql:', error?.sql);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -209,10 +221,14 @@ app.get('/api/tangtoc/questions', async (req, res) => {
 // Public non-/api path as fallback to avoid any /api middlewares interfering
 app.get('/tangtoc/questions', async (req, res) => {
   try {
+    console.log('🔍 [PUBLIC-NOAPI] /tangtoc/questions called');
     const questions = await getRandomTangTocQuestions();
+    console.log('✅ [PUBLIC-NOAPI] fetched tangtoc questions count =', Array.isArray(questions) ? questions.length : 'N/A');
     return res.json(questions);
   } catch (error) {
-    console.error('Lỗi khi lấy câu hỏi Tăng Tốc (public non-api):', error);
+    console.error('❌ Lỗi khi lấy câu hỏi Tăng Tốc (public non-api):', error);
+    console.error('   code:', error?.code, 'errno:', error?.errno, 'sqlState:', error?.sqlState, 'sqlMessage:', error?.sqlMessage);
+    console.error('   sql:', error?.sql);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
