@@ -1,6 +1,25 @@
 -- Migration để thêm bảng báo lỗi câu hỏi riêng cho Tăng Tốc
 USE nqd_database;
 
+-- Bổ sung cột image_url cho bảng tangtoc_question_reports nếu thiếu (đồng bộ với code)
+SET @sql = 'ALTER TABLE tangtoc_question_reports ADD COLUMN image_url TEXT NULL AFTER question_text';
+SET @sql = IF((SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_SCHEMA = 'nqd_database' 
+    AND TABLE_NAME = 'tangtoc_question_reports' 
+    AND COLUMN_NAME = 'image_url') = 0, @sql, 'SELECT "Column image_url already exists"');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Tạo bảng lưu đáp án bổ sung riêng cho câu hỏi Tăng Tốc (nếu chưa có)
+CREATE TABLE IF NOT EXISTS tangtoc_answers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question_id INT NOT NULL,
+  answer TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+
 -- Tạo bảng báo lỗi câu hỏi Tăng Tốc riêng biệt
 CREATE TABLE IF NOT EXISTS tangtoc_question_reports (
   id INT AUTO_INCREMENT PRIMARY KEY,
