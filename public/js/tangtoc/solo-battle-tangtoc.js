@@ -83,18 +83,35 @@ class TangTocSoloBattle {
 
     async startGame() {
         try {
+            console.log('[SoloTangToc] startGame() begin');
             this.showCountdown();
             await this.loadTangTocQuestions();
+            console.log('[SoloTangToc] questions loaded:', this.questions);
             setTimeout(() => { this.hideCountdown(); this.startBattle(); }, 5000);
-        } catch {
+        } catch (e) {
+            console.error('[SoloTangToc] startGame() error:', e);
             alert('Không thể tải câu hỏi. Vui lòng thử lại.');
         }
     }
 
     async loadTangTocQuestions() {
+        console.log('[SoloTangToc] fetching /public/tangtoc/questions ...');
         const res = await fetch('/public/tangtoc/questions');
-        if (!res.ok) throw new Error('fetch-questions-failed');
-        this.questions = await res.json();
+        console.log('[SoloTangToc] response status:', res.status);
+        if (!res.ok) {
+            let text = '';
+            try { text = await res.text(); } catch {}
+            console.error('[SoloTangToc] response not ok. body:', text);
+            throw new Error('fetch-questions-failed');
+        }
+        const text = await res.text();
+        console.log('[SoloTangToc] raw body length:', text.length);
+        try {
+            this.questions = JSON.parse(text);
+        } catch (e) {
+            console.error('[SoloTangToc] JSON parse failed:', e, 'body:', text);
+            throw e;
+        }
         this.questions = this.questions.map(q => {
             const isQ4 = Number(q.questionNumber) === 4;
             const computedTime = isQ4 ? 60 : (q.timeLimit || (q.questionNumber === 1 ? 10 : q.questionNumber === 2 ? 20 : 30));
@@ -105,11 +122,16 @@ class TangTocSoloBattle {
                 cleanText: TangTocSoloBattle.cleanQuestionText(q.text)
             };
         });
+        console.log('[SoloTangToc] normalized questions:', this.questions);
         if (this.questions.length === 0) throw new Error('no-questions');
 
         // Preload media (images/videos) so the first render is instant
         this.preloadedMedia = new Map();
-        await Promise.all(this.questions.map(q => this.preloadMedia(q.mediaUrl)));
+        try {
+            await Promise.all(this.questions.map(q => this.preloadMedia(q.mediaUrl)));
+        } catch (e) {
+            console.warn('[SoloTangToc] preloadMedia warning:', e);
+        }
     }
 
     async preloadMedia(url){
