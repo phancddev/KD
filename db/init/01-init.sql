@@ -231,6 +231,20 @@ CREATE TABLE IF NOT EXISTS deleted_question_answers (
   FOREIGN KEY (log_id) REFERENCES question_deletion_logs(id) ON DELETE CASCADE
 );
 
+-- Bảng đáp án phụ riêng cho câu hỏi Tăng Tốc (đảm bảo tồn tại khi khởi tạo)
+CREATE TABLE IF NOT EXISTS tangtoc_answers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question_id INT NOT NULL,
+  answer TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+
+-- Index tối ưu cho tangtoc_answers (idempotent)
+CREATE INDEX IF NOT EXISTS idx_tangtoc_answers_question_id ON tangtoc_answers(question_id);
+-- Unique để hạn chế trùng đáp án theo câu hỏi (giới hạn 255 ký tự cho key)
+CREATE UNIQUE INDEX IF NOT EXISTS ux_tangtoc_answers_qid_answer ON tangtoc_answers(question_id, answer(255));
+
 -- Tạo index để tối ưu hiệu suất cho bảng logs
 CREATE INDEX idx_question_deletion_logs_deleted_at ON question_deletion_logs(deleted_at);
 CREATE INDEX idx_question_deletion_logs_deleted_by ON question_deletion_logs(deleted_by);

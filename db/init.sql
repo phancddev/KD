@@ -100,3 +100,15 @@ INSERT IGNORE INTO questions (text, answer, category, difficulty) VALUES
 ('Đâu là một framework JavaScript phổ biến?', 'React', 'web', 'medium'),
 ('Hệ điều hành Android được phát triển dựa trên nhân (kernel) nào?', 'Linux', 'mobile', 'medium'),
 ('Đâu là một công cụ quản lý phiên bản mã nguồn?', 'Git', 'development', 'easy'); 
+
+-- Bảng đáp án phụ riêng cho câu hỏi Tăng Tốc (đảm bảo tồn tại khi khởi tạo cũ)
+CREATE TABLE IF NOT EXISTS tangtoc_answers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question_id INT NOT NULL,
+  answer TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+-- Indexes cho tangtoc_answers
+CREATE INDEX IF NOT EXISTS idx_tangtoc_answers_question_id ON tangtoc_answers(question_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_tangtoc_answers_qid_answer ON tangtoc_answers(question_id, answer(255));
