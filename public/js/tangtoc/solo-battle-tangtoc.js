@@ -237,7 +237,34 @@ class TangTocSoloBattle {
     showAnswerResult(type,msg){ this.elements.answerResult.innerHTML = `<div class="answer-result-${type}" style="padding:10px;border-radius:8px;text-align:center;font-weight:600;margin-top:10px;${type==='correct'?'background:rgba(34,197,94,.1);color:#059669;border:1px solid rgba(34,197,94,.3);':''}${type==='incorrect'?'background:rgba(220,38,38,.1);color:#dc2626;border:1px solid rgba(220,38,38,.3);':''}${type==='timeup'?'background:rgba(107,114,128,.1);color:#6b7280;border:1px solid rgba(107,114,128,.3);':''}${type==='empty'?'background:rgba(107,114,128,.1);color:#6b7280;border:1px solid rgba(107,114,128,.3);':''}">${msg}</div>`; }
     updateProgressBar(){ const p=((this.currentQuestionIndex+1)/this.questions.length)*100; this.elements.progressBar.style.width=`${p}%`; }
     async endGame(){ this.isGameActive=false; clearInterval(this.timer); await this.saveGameResult(); this.showResults(); }
-    async saveGameResult(){ try{ const r=await fetch('/api/solo-game/finish',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({score:this.score,correctAnswers:this.score,totalQuestions:this.questions.length,mode:'tangtoc'})}); if(!r.ok) throw 0; await r.json(); }catch{} }
+    async saveGameResult(){
+        try{
+            // Chuẩn bị dữ liệu answers để gửi
+            const answers = this.userAnswers.map(a => ({
+                questionId: a.questionId,
+                userAnswer: a.userAnswer || 'none',
+                isCorrect: a.isCorrect || false,
+                answerTime: 0 // Có thể tính toán thời gian trả lời nếu cần
+            }));
+
+            const r=await fetch('/api/solo-game/finish',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                credentials:'include',
+                body:JSON.stringify({
+                    score:this.score,
+                    correctAnswers:this.score,
+                    totalQuestions:this.questions.length,
+                    mode:'tangtoc',
+                    answers: answers
+                })
+            });
+            if(!r.ok) throw 0;
+            await r.json();
+        }catch(e){
+            console.error('Lỗi khi lưu kết quả:', e);
+        }
+    }
     showResults(){ this.elements.soloBattleRoom.style.display='none'; this.elements.resultRoom.style.display='block'; this.elements.finalScore.textContent=this.score; this.showQuestionReview(); }
     showQuestionReview(){ this.elements.questionReviewList.innerHTML=''; this.userAnswers.forEach((a,i)=>{ const el=document.createElement('div'); el.className=`question-review-item ${a.isCorrect?'correct':'incorrect'}`; const status=a.isTimeUp?'Hết thời gian':(a.isCorrect?'Đúng':'Sai'); el.innerHTML=`<span class="question-number-review">Câu ${i+1}</span><div class="question-text-review">${a.questionText}${a.questionImageUrl?`<br><img src="${a.questionImageUrl}" style="max-width:200px;margin-top:10px;border-radius:8px;" alt="Hình ảnh câu hỏi">`:''}</div><div class="answer-info"><span class="user-answer">Bạn: ${a.userAnswer||'Chưa trả lời'}</span><span class="correct-answer">Đúng: ${a.correctAnswer}</span><span class="answer-status ${a.isCorrect?'correct':'incorrect'}">${status}</span><button class="report-btn" onclick="window.__openReportModal({mode:'solo',questionId:${a.questionId},questionText:'${a.questionText.replace(/'/g,"\\'")}',correctAnswer:'${a.correctAnswer.replace(/'/g,"\\'")}',userAnswer:'${(a.userAnswer||'').replace(/'/g,"\\'")}',sessionId:null,roomId:null})">Báo lỗi</button></div>`; this.elements.questionReviewList.appendChild(el); }); }
     restartGame(){ this.elements.resultRoom.style.display='none'; this.elements.soloBattleRoom.style.display='block'; this.startGame(); }

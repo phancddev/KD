@@ -1,13 +1,16 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Lấy thông tin người dùng
     fetchUserInfo();
-    
+
     // Khởi tạo bộ chọn năm
     initYearSelector();
-    
+
+    // Khởi tạo bộ chọn tháng với tháng hiện tại
+    initMonthSelector();
+
     // Khởi tạo phân trang
     initPagination();
-    
+
     // Lấy dữ liệu lịch sử trận đấu
     fetchHistory();
     
@@ -128,11 +131,20 @@ async function fetchUserInfo() {
     }
 }
 
+// Khởi tạo bộ chọn tháng với tháng hiện tại
+function initMonthSelector() {
+    const monthSelect = document.getElementById('month-select');
+    const currentMonth = new Date().getMonth() + 1; // getMonth() trả về 0-11, cần +1
+
+    // Đặt giá trị mặc định là tháng hiện tại
+    monthSelect.value = currentMonth.toString();
+}
+
 // Khởi tạo bộ chọn năm
 function initYearSelector() {
     const yearSelect = document.getElementById('year-select');
     const currentYear = new Date().getFullYear();
-    
+
     // Thêm các năm từ năm hiện tại trở về 5 năm trước
     for (let year = currentYear; year >= currentYear - 5; year--) {
         const option = document.createElement('option');
@@ -344,41 +356,127 @@ function formatDate(dateString) {
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-// Báo lỗi câu hỏi (global function)
-window.reportQuestion = async function(questionId, questionText, correctAnswer, userAnswer, gameMode) {
-    const reportText = prompt('Vui lòng mô tả lỗi bạn tìm thấy:');
+// Report Modal Logic
+(function() {
+    const modal = document.getElementById('report-modal');
+    const questionEl = document.getElementById('report-question-text');
+    const textEl = document.getElementById('report-text');
+    const suggestionsWrap = document.getElementById('suggestions-wrap');
+    const btnAdd = document.getElementById('add-suggestion');
+    const btnCancel = document.getElementById('report-cancel');
+    const btnSubmit = document.getElementById('report-submit');
+    let currentReportPayload = null;
 
-    if (!reportText || reportText.trim() === '') {
-        return;
-    }
+    function addSuggestionRow(value = '') {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '6px';
+        row.style.marginBottom = '6px';
 
-    try {
-        // Xác định endpoint dựa trên game mode
-        const endpoint = gameMode === 'tangtoc' ? '/api/tangtoc-report-question' : '/api/report-question';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Nhập đáp án đề xuất';
+        input.value = value;
+        input.style.flex = '1';
+        input.style.padding = '8px';
+        input.style.border = '1px solid #d1d5db';
+        input.style.borderRadius = '8px';
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-                questionId: questionId,
-                questionText: questionText,
-                correctAnswer: correctAnswer,
-                userAnswer: userAnswer || '',
-                reportText: reportText.trim(),
-                mode: 'solo'
-            })
+        const del = document.createElement('button');
+        del.textContent = 'Xóa';
+        del.className = 'btn btn-outline';
+        del.addEventListener('click', () => {
+            suggestionsWrap.removeChild(row);
         });
 
-        if (!response.ok) {
-            throw new Error('Không thể gửi báo cáo');
+        row.appendChild(input);
+        row.appendChild(del);
+        suggestionsWrap.appendChild(row);
+    }
+
+    // Open modal function
+    window.reportQuestion = function(questionId, questionText, correctAnswer, userAnswer, gameMode) {
+        currentReportPayload = {
+            questionId: questionId,
+            questionText: questionText,
+            correctAnswer: correctAnswer,
+            userAnswer: userAnswer || '',
+            gameMode: gameMode,
+            mode: 'solo'
+        };
+
+        questionEl.textContent = `Câu hỏi: ${questionText}`;
+        textEl.value = '';
+        suggestionsWrap.innerHTML = '';
+        addSuggestionRow('');
+        modal.style.display = 'flex';
+    };
+
+    // Add suggestion button
+    btnAdd.addEventListener('click', () => addSuggestionRow(''));
+
+    // Cancel button
+    btnCancel.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+    // Submit button
+    btnSubmit.addEventListener('click', async () => {
+        const reportText = textEl.value.trim();
+        const suggestions = Array.from(suggestionsWrap.querySelectorAll('input'))
+            .map(i => i.value.trim())
+            .filter(Boolean);
+
+        if (!reportText && suggestions.length === 0) {
+            alert('Vui lòng nhập mô tả hoặc thêm ít nhất 1 đáp án đề xuất');
+            return;
         }
 
-        alert('Cảm ơn bạn đã báo cáo! Chúng tôi sẽ xem xét và xử lý sớm nhất.');
-    } catch (error) {
-        console.error('Lỗi khi báo cáo câu hỏi:', error);
-        alert('Có lỗi xảy ra khi gửi báo cáo. Vui lòng thử lại sau.');
-    }
-}
+        try {
+            // Xác định endpoint dựa trên game mode
+            const endpoint = currentReportPayload.gameMode === 'tangtoc'
+                ? '/api/tangtoc-report-question'
+                : '/api/report-question';
+
+            console.log('Sending report:', { ...currentReportPayload, reportText, suggestions });
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    questionId: currentReportPayload.questionId,
+                    questionText: currentReportPayload.questionText,
+                    correctAnswer: currentReportPayload.correctAnswer,
+                    userAnswer: currentReportPayload.userAnswer,
+                    reportText: reportText,
+                    suggestions: suggestions,
+                    mode: currentReportPayload.mode
+                })
+            });
+
+            console.log('Response status:', response.status);
+            const responseData = await response.json();
+            console.log('Response data:', responseData);
+
+            if (!response.ok) {
+                throw new Error('Submit failed: ' + (responseData.error || 'Unknown error'));
+            }
+
+            alert('Đã gửi báo lỗi. Cảm ơn bạn!');
+            modal.style.display = 'none';
+        } catch (error) {
+            console.error('Error submitting report:', error);
+            alert('Không thể gửi báo lỗi, thử lại sau: ' + error.message);
+        }
+    });
+})();

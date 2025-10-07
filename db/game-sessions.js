@@ -97,23 +97,40 @@ async function getGameSessionDetails(sessionId) {
        WHERE gs.id = ?`,
       [sessionId]
     );
-    
+
     if (sessionRows.length === 0) {
       return null;
     }
-    
+
     const session = sessionRows[0];
-    
+    const gameMode = session.game_mode || 'khoidong';
+
     // Lấy chi tiết các câu trả lời
-    const [answerRows] = await pool.query(
-      `SELECT ua.*, q.text as question_text, q.answer
-       FROM user_answers ua
-       JOIN questions q ON ua.question_id = q.id
-       WHERE ua.session_id = ?
-       ORDER BY ua.answered_at`,
-      [sessionId]
-    );
-    
+    // Nếu là Tăng Tốc, JOIN với tangtoc_questions, nếu không thì JOIN với questions
+    let answerRows;
+    if (gameMode === 'tangtoc') {
+      [answerRows] = await pool.query(
+        `SELECT ua.*,
+                COALESCE(tq.text, q.text) as question_text,
+                COALESCE(tq.answer, q.answer) as answer
+         FROM user_answers ua
+         LEFT JOIN tangtoc_questions tq ON ua.question_id = tq.id
+         LEFT JOIN questions q ON ua.question_id = q.id
+         WHERE ua.session_id = ?
+         ORDER BY ua.answered_at`,
+        [sessionId]
+      );
+    } else {
+      [answerRows] = await pool.query(
+        `SELECT ua.*, q.text as question_text, q.answer
+         FROM user_answers ua
+         JOIN questions q ON ua.question_id = q.id
+         WHERE ua.session_id = ?
+         ORDER BY ua.answered_at`,
+        [sessionId]
+      );
+    }
+
     const answers = answerRows.map(row => {
       return {
         questionId: row.question_id,
@@ -125,13 +142,13 @@ async function getGameSessionDetails(sessionId) {
         answeredAt: row.answered_at
       };
     });
-    
+
     return {
       id: session.id,
       userId: session.user_id,
       username: session.username,
       isSolo: session.is_solo === 1,
-      gameMode: session.game_mode || 'khoidong',
+      gameMode: gameMode,
       roomId: session.room_id,
       roomName: session.room_name,
       roomCode: session.room_code,

@@ -613,6 +613,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Lưu kết quả trận đấu solo vào server
     async function saveSoloGameResult(score, correctAnswers) {
         try {
+            // Chuẩn bị dữ liệu answers để gửi
+            const answers = userAnswers.map(a => ({
+                questionId: a.questionId,
+                userAnswer: a.userAnswer || 'none',
+                isCorrect: a.isCorrect || false,
+                answerTime: 0 // Có thể tính toán thời gian trả lời nếu cần
+            }));
+
             const response = await fetch('/api/solo-game/finish', {
                 method: 'POST',
                 headers: {
@@ -622,14 +630,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     userId: userId,
                     score: score,
                     correctAnswers: correctAnswers,
-                    totalQuestions: questions.length
+                    totalQuestions: questions.length,
+                    mode: 'khoidong',
+                    answers: answers
                 })
             });
-            
+
             if (!response.ok) {
                 throw new Error('Không thể lưu kết quả trận đấu');
             }
-            
+
             const data = await response.json();
             if (data && data.sessionId) {
                 soloSessionId = data.sessionId;

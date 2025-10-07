@@ -915,7 +915,7 @@ app.post('/api/solo-game/finish', async (req, res) => {
   }
 
   try {
-    const { score, correctAnswers, totalQuestions, mode } = req.body;
+    const { score, correctAnswers, totalQuestions, mode, answers } = req.body;
 
     if (score === undefined || correctAnswers === undefined || totalQuestions === undefined) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -927,6 +927,25 @@ app.post('/api/solo-game/finish', async (req, res) => {
     // Tạo phiên chơi solo và lưu kết quả
     const gameSession = await createGameSession(req.session.user.id, null, true, totalQuestions, gameMode);
     await finishGameSession(gameSession.id, score, correctAnswers);
+
+    // Lưu các câu trả lời nếu có
+    if (answers && Array.isArray(answers)) {
+      const { saveUserAnswer } = await import('./db/game-sessions.js');
+      for (const answer of answers) {
+        try {
+          await saveUserAnswer(
+            gameSession.id,
+            answer.questionId,
+            answer.userAnswer || 'none',
+            answer.isCorrect || false,
+            answer.answerTime || 0
+          );
+        } catch (error) {
+          console.error('Lỗi khi lưu câu trả lời:', error);
+          // Tiếp tục lưu các câu khác
+        }
+      }
+    }
 
     res.json({ success: true, sessionId: gameSession.id });
   } catch (error) {

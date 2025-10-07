@@ -212,7 +212,25 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- Report modal with answer suggestions -->
+    <div id="report-modal" class="report-modal">
+        <div class="content">
+            <h3>Báo lỗi câu hỏi/đáp án</h3>
+            <p id="report-question-text" style="margin: 8px 0; color:#374151"></p>
+            <div style="margin:8px 0;">
+              <label style="font-weight:600; color:#374151; display:block; margin-bottom:6px;">Đáp án đề xuất:</label>
+              <div id="suggestions-wrap"></div>
+              <button id="add-suggestion" class="btn btn-outline" style="margin-top:6px;">+ Thêm đáp án đề xuất</button>
+            </div>
+            <textarea id="report-text" placeholder="Mô tả thêm (ví dụ: vì sao đáp án này đúng...)"></textarea>
+            <div class="actions">
+                <button id="report-cancel" class="btn btn-secondary">Hủy</button>
+                <button id="report-submit" class="btn btn-primary">Gửi báo lỗi</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/history.js"></script>
 
     <!-- Heartbeat mechanism để duy trì trạng thái online -->
