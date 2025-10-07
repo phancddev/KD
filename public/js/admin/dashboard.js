@@ -10,29 +10,38 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Lấy danh sách người dùng đang online
     fetchOnlineUsers();
-    
+
+    // Lấy danh sách người dùng online gần đây
+    fetchRecentOnlineUsers();
+
     // Lấy danh sách trận đấu đang diễn ra
     fetchActiveGames();
-    
+
     // Lấy hoạt động gần đây
     fetchRecentActivities();
-    
+
     // Xử lý sự kiện làm mới danh sách người dùng online
     document.getElementById('refresh-online').addEventListener('click', function() {
         fetchOnlineUsers();
     });
-    
+
+    // Xử lý sự kiện làm mới danh sách người dùng online gần đây
+    document.getElementById('refresh-recent-online').addEventListener('click', function() {
+        fetchRecentOnlineUsers();
+    });
+
     // Xử lý sự kiện làm mới danh sách trận đấu đang diễn ra
     document.getElementById('refresh-games').addEventListener('click', function() {
         fetchActiveGames();
     });
-    
+
     // Lắng nghe sự kiện từ Socket.IO
     setupSocketListeners(socket);
-    
+
     // Cập nhật dữ liệu mỗi 30 giây
     setInterval(function() {
         fetchOnlineUsers();
+        fetchRecentOnlineUsers();
         fetchActiveGames();
     }, 30000);
 });
@@ -74,15 +83,16 @@ async function fetchDashboardStats() {
         if (!response.ok) {
             throw new Error('Không thể lấy thống kê tổng quan');
         }
-        
+
         const stats = await response.json();
-        
+
         // Cập nhật thống kê
         document.getElementById('total-users').textContent = stats.totalUsers;
         document.getElementById('online-users').textContent = stats.onlineUsers;
         document.getElementById('today-games').textContent = stats.todayGames;
-        document.getElementById('total-questions').textContent = stats.totalQuestions;
-        
+        document.getElementById('khoidong-questions').textContent = stats.khoiDongQuestions || 0;
+        document.getElementById('tangtoc-questions').textContent = stats.tangTocQuestions || 0;
+
         // Thêm hiệu ứng đếm số
         animateNumbers();
     } catch (error) {
@@ -175,6 +185,79 @@ async function fetchOnlineUsers() {
         });
     } catch (error) {
         console.error('Lỗi khi lấy danh sách người dùng đang online:', error);
+    }
+}
+
+// Lấy danh sách người dùng đã offline gần đây (trong 10 tiếng)
+// CHỈ hiển thị những người đã offline, không hiển thị người đang online
+async function fetchRecentOnlineUsers() {
+    try {
+        const response = await fetch('/api/admin/recent-online-users');
+        if (!response.ok) {
+            throw new Error('Không thể lấy danh sách người dùng online gần đây');
+        }
+
+        const users = await response.json();
+        const tableBody = document.getElementById('recent-online-users-table');
+        const noDataDiv = document.getElementById('no-recent-online-users');
+
+        // Xóa dữ liệu cũ
+        tableBody.innerHTML = '';
+
+        if (users.length === 0) {
+            noDataDiv.style.display = 'block';
+            return;
+        }
+
+        noDataDiv.style.display = 'none';
+
+        // Thêm dữ liệu mới
+        users.forEach(user => {
+            const row = document.createElement('tr');
+
+            // ID
+            const idCell = document.createElement('td');
+            idCell.textContent = user.id;
+            row.appendChild(idCell);
+
+            // Họ tên
+            const nameCell = document.createElement('td');
+            nameCell.textContent = user.fullName || 'N/A';
+            row.appendChild(nameCell);
+
+            // Username
+            const usernameCell = document.createElement('td');
+            usernameCell.textContent = user.username;
+            row.appendChild(usernameCell);
+
+            // Thiết bị
+            const deviceCell = document.createElement('td');
+            const deviceInfo = [];
+            if (user.deviceType) deviceInfo.push(user.deviceType);
+            if (user.browser) deviceInfo.push(user.browser);
+            if (user.os) deviceInfo.push(user.os);
+            deviceCell.textContent = deviceInfo.join(' / ') || 'N/A';
+            row.appendChild(deviceCell);
+
+            // Thời gian đăng nhập
+            const loginTimeCell = document.createElement('td');
+            loginTimeCell.textContent = formatTimeAgo(user.loginTime);
+            row.appendChild(loginTimeCell);
+
+            // Thời gian offline (logout time hoặc last activity)
+            const offlineTimeCell = document.createElement('td');
+            if (user.logoutTime) {
+                offlineTimeCell.textContent = formatTimeAgo(user.logoutTime);
+            } else {
+                // Nếu không có logout time, tính từ login time + session duration
+                offlineTimeCell.textContent = 'N/A';
+            }
+            row.appendChild(offlineTimeCell);
+
+            tableBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Lỗi khi lấy danh sách người dùng online gần đây:', error);
     }
 }
 
@@ -326,22 +409,26 @@ function setupSocketListeners(socket) {
         
         // Làm mới danh sách người dùng online
         fetchOnlineUsers();
+        // Làm mới danh sách người dùng online gần đây
+        fetchRecentOnlineUsers();
     });
-    
+
     // Sự kiện khi có người dùng đăng xuất
     socket.on('user_logout', function(data) {
         // Cập nhật số người dùng online
         document.getElementById('online-users').textContent = data.onlineUsers;
-        
+
         // Thêm hoạt động mới
         addNewActivity({
             username: data.username,
             action: 'đã đăng xuất khỏi hệ thống',
             timestamp: new Date()
         });
-        
+
         // Làm mới danh sách người dùng online
         fetchOnlineUsers();
+        // Làm mới danh sách người dùng online gần đây
+        fetchRecentOnlineUsers();
     });
     
     // Sự kiện khi có trận đấu mới bắt đầu

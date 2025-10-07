@@ -75,22 +75,33 @@ router.get('/stats', checkAdmin, async (req, res) => {
     // Lấy tổng số người dùng
     const users = await getAllUsers();
     const totalUsers = users.length;
-    
+
     // Lấy số người dùng đang online (giả lập)
     const onlineUsers = global.onlineUsers ? global.onlineUsers.size : 0;
-    
+
     // Lấy số trận đấu hôm nay (giả lập)
     const todayGames = global.todayGames || 0;
-    
+
     // Lấy tổng số câu hỏi
     const questions = await getAllQuestions();
     const totalQuestions = questions.length;
-    
+
+    // Đếm số câu hỏi theo loại
+    const khoiDongQuestions = questions.filter(q =>
+      q.category === 'khoidong' || q.category === null || q.category === ''
+    ).length;
+
+    const tangTocQuestions = questions.filter(q =>
+      q.category === 'tangtoc'
+    ).length;
+
     res.json({
       totalUsers,
       onlineUsers,
       todayGames,
-      totalQuestions
+      totalQuestions,
+      khoiDongQuestions,
+      tangTocQuestions
     });
   } catch (error) {
     console.error('Lỗi khi lấy thống kê tổng quan:', error);
@@ -228,13 +239,13 @@ router.get('/online-users', checkAdmin, async (req, res) => {
     if (!global.onlineUsers) {
       return res.json([]);
     }
-    
+
     // Lấy thông tin chi tiết của mỗi người dùng online
     const onlineUsersArray = [];
-    
+
     for (const [userId, userSession] of global.onlineUsers.entries()) {
       const user = await findUserById(userId);
-      
+
       if (user) {
         onlineUsersArray.push({
           id: user.id,
@@ -244,6 +255,7 @@ router.get('/online-users', checkAdmin, async (req, res) => {
           isAdmin: user.is_admin === 1,
           ip: userSession.ip || 'Unknown',
           loginTime: userSession.loginTime,
+          lastActivity: userSession.lastActivity,
           inGame: userSession.inGame || false,
           gameId: userSession.gameId
         });
@@ -253,6 +265,66 @@ router.get('/online-users', checkAdmin, async (req, res) => {
     res.json(onlineUsersArray);
   } catch (error) {
     console.error('Lỗi khi lấy danh sách người dùng đang online:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Lấy danh sách người dùng online gần đây (trong vòng 10 tiếng)
+// CHỈ hiển thị những người đã OFFLINE, không hiển thị người đang online
+router.get('/recent-online-users', checkAdmin, async (req, res) => {
+  try {
+    // Lấy danh sách người dùng đã login trong 10 tiếng gần đây
+    const [rows] = await pool.query(
+      `SELECT
+        l.user_id,
+        l.username,
+        u.full_name,
+        u.email,
+        u.is_admin,
+        l.ip_address,
+        l.login_at,
+        l.logout_at,
+        l.session_duration,
+        l.device_type,
+        l.browser_name,
+        l.os_name
+       FROM login_logs l
+       LEFT JOIN users u ON l.user_id = u.id
+       WHERE l.login_status = 'success'
+         AND l.login_at >= DATE_SUB(NOW(), INTERVAL 10 HOUR)
+       GROUP BY l.user_id
+       ORDER BY l.login_at DESC
+       LIMIT 100`,
+      []
+    );
+
+    // Lọc bỏ những người đang online (vì họ đã hiển thị ở bảng "Đang online")
+    const recentOnlineUsers = rows
+      .filter(row => {
+        // Chỉ lấy những người KHÔNG đang online
+        const isCurrentlyOnline = global.onlineUsers ? global.onlineUsers.has(row.user_id) : false;
+        return !isCurrentlyOnline;
+      })
+      .map(row => {
+        return {
+          id: row.user_id,
+          username: row.username,
+          fullName: row.full_name,
+          email: row.email,
+          isAdmin: row.is_admin === 1,
+          ip: row.ip_address,
+          loginTime: row.login_at,
+          logoutTime: row.logout_at,
+          sessionDuration: row.session_duration,
+          deviceType: row.device_type,
+          browser: row.browser_name,
+          os: row.os_name
+        };
+      });
+
+    res.json(recentOnlineUsers);
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách người dùng online gần đây:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });

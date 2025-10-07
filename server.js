@@ -7,7 +7,7 @@ import { createServer } from 'http';
 import config from './config.js';
 import { testConnection, initDatabase, pool } from './db/index.js';
 import { createUser, findUserByUsername, authenticateUser, isUserAdmin } from './db/users.js';
-import { initSocketIO, getIO, addOnlineUser, removeOnlineUser } from './socket/index.js';
+import { initSocketIO, getIO, addOnlineUser, removeOnlineUser, updateUserActivity } from './socket/index.js';
 import { initTangTocSocket, getTangTocParticipants } from './socket/kdtangtoc.js';
 import { collectDeviceInfo, generateDeviceFingerprint, detectSuspiciousActivity, getIpInfo } from './utils/user-agent-parser.js';
 import { saveLoginLog, updateLogoutLog, saveIpGeolocation } from './db/login-logs.js';
@@ -875,6 +875,16 @@ app.use('/api/admin', tangtocAdminApiRoutes);
 // Test route để kiểm tra routing (sau khi admin routes được đăng ký)
 app.get('/test', (req, res) => {
   res.json({ message: 'Server routing is working!' });
+});
+
+// Heartbeat endpoint để cập nhật trạng thái online của người dùng
+app.post('/api/heartbeat', (req, res) => {
+  if (req.session.user && req.session.user.id) {
+    updateUserActivity(req.session.user.id);
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
 });
 
 // Khởi tạo HTTP server

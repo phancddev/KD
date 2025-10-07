@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - KD APP</title>
-    <!-- <link rel="stylesheet" href="admin-panel.css"> -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -564,8 +564,18 @@
                         <i class="fas fa-question-circle"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>Tổng câu hỏi</h3>
-                        <div class="stat-value" id="total-questions">0</div>
+                        <h3>Câu hỏi Khởi Động</h3>
+                        <div class="stat-value" id="khoidong-questions">0</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon questions" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Câu hỏi Tăng Tốc</h3>
+                        <div class="stat-value" id="tangtoc-questions">0</div>
                     </div>
                 </div>
             </div>
@@ -599,6 +609,38 @@
                     </div>
                     <div id="no-online-users" class="no-data" style="display: none;">
                         <p>Không có người dùng nào đang online.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Online Users -->
+            <div class="admin-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-history"></i> Người dùng đã offline gần đây (10 tiếng)</h2>
+                    <div class="refresh-btn" id="refresh-recent-online">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Họ tên</th>
+                                    <th>Username</th>
+                                    <th>Thiết bị</th>
+                                    <th>Thời gian đăng nhập</th>
+                                    <th>Thời gian offline</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-online-users-table">
+                                <!-- Recent online users will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-recent-online-users" class="no-data" style="display: none;">
+                        <p>Không có người dùng nào offline trong 10 tiếng gần đây.</p>
                     </div>
                 </div>
             </div>

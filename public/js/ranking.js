@@ -22,9 +22,15 @@ async function fetchUserInfo() {
         if (!response.ok) {
             throw new Error('Không thể lấy thông tin người dùng');
         }
-        
+
         const user = await response.json();
         document.getElementById('username-display').textContent = user.username;
+
+        // Update avatar text with first letter of username
+        const avatarText = document.getElementById('avatar-text');
+        if (avatarText && user.username) {
+            avatarText.textContent = user.username.charAt(0).toUpperCase();
+        }
     } catch (error) {
         console.error('Lỗi khi lấy thông tin người dùng:', error);
     }

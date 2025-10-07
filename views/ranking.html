@@ -3,26 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bảng xếp hạng - Hệ thống Thi đấu Kiến thức</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <title>Bảng xếp hạng - KD APP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/ranking.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Bảng xếp hạng</h1>
-            <div class="user-info">
-                <span id="username-display"></span>
-                <a href="/" class="btn btn-small">Trang chủ</a>
-                <a href="/logout" class="btn btn-small">Đăng xuất</a>
+        <!-- Header with glass morphism -->
+        <div class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    <span>KD APP</span>
+                </div>
+                <div class="user-info">
+                    <span id="username-display" class="username"></span>
+                    <div class="avatar">
+                        <span id="avatar-text">U</span>
+                    </div>
+                </div>
             </div>
-        </header>
-        
+        </div>
+
+        <!-- Navigation -->
         <nav class="main-nav">
             <ul>
-                <li><a href="/">Trang chủ</a></li>
-                <li><a href="/history">Lịch sử</a></li>
-                <li class="active"><a href="/ranking">Xếp hạng</a></li>
+                <li><a href="/"><i class="fas fa-home"></i> <span>Trang chủ</span></a></li>
+                <li><a href="/history"><i class="fas fa-history"></i> <span>Lịch sử</span></a></li>
+                <li class="active"><a href="/ranking"><i class="fas fa-trophy"></i> <span>Xếp hạng</span></a></li>
+                <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> <span>Đăng xuất</span></a></li>
             </ul>
         </nav>
         
@@ -115,5 +125,8 @@
     </div>
     
     <script src="/js/ranking.js"></script>
+
+    <!-- Heartbeat mechanism để duy trì trạng thái online -->
+    <script src="/js/heartbeat.js"></script>
 </body>
 </html>

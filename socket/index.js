@@ -15,34 +15,39 @@ const userSessions = new Map();
 
 export function initSocketIO(server) {
   io = new Server(server);
-  
+
   // Khởi tạo biến toàn cục để theo dõi người dùng online
   if (!global.onlineUsers) {
     global.onlineUsers = new Map();
   }
-  
+
   // Khởi tạo biến toàn cục để theo dõi trận đấu đang diễn ra
   if (!global.activeGames) {
     global.activeGames = new Map();
   }
-  
+
   // Khởi tạo biến toàn cục để lưu trữ hoạt động gần đây
   if (!global.recentActivities) {
     global.recentActivities = [];
   }
-  
+
   // Khởi tạo biến toàn cục để lưu trữ lịch sử đăng nhập
   if (!global.loginHistory) {
     global.loginHistory = [];
   }
-  
+
   // Khởi tạo biến toàn cục để đếm số trận đấu hôm nay
   if (!global.todayGames) {
     global.todayGames = 0;
   }
-  
+
   // Lưu trữ đối tượng io để sử dụng ở nơi khác
   global.io = io;
+
+  // Khởi tạo interval để kiểm tra người dùng offline mỗi 1 phút
+  setInterval(() => {
+    checkAndRemoveInactiveUsers();
+  }, 60 * 1000); // 1 phút
   
   io.on('connection', (socket) => {
     console.log('Người dùng kết nối:', socket.id);
@@ -758,20 +763,21 @@ export function addOnlineUser(userId, username, ip) {
   if (!global.onlineUsers) {
     global.onlineUsers = new Map();
   }
-  
+
   global.onlineUsers.set(userId, {
     userId,
     username,
     ip,
     loginTime: new Date(),
+    lastActivity: new Date(),
     inGame: false
   });
-  
+
   // Thêm vào lịch sử đăng nhập
   if (!global.loginHistory) {
     global.loginHistory = [];
   }
-  
+
   global.loginHistory.push({
     userId,
     username,
@@ -779,14 +785,14 @@ export function addOnlineUser(userId, username, ip) {
     timestamp: new Date(),
     status: 'success'
   });
-  
+
   // Thêm hoạt động mới
   addActivity({
     username,
     action: 'đã đăng nhập vào hệ thống',
     timestamp: new Date()
   });
-  
+
   // Gửi sự kiện thông báo cho admin
   if (global.io) {
     global.io.emit('user_login', {
@@ -802,21 +808,21 @@ export function removeOnlineUser(userId) {
   if (!global.onlineUsers) {
     return;
   }
-  
+
   // Lấy thông tin người dùng trước khi xóa
   const userSession = global.onlineUsers.get(userId);
-  
+
   if (userSession) {
     // Xóa người dùng khỏi danh sách
     global.onlineUsers.delete(userId);
-    
+
     // Thêm hoạt động mới
     addActivity({
       username: userSession.username,
       action: 'đã đăng xuất khỏi hệ thống',
       timestamp: new Date()
     });
-    
+
     // Gửi sự kiện thông báo cho admin
     if (global.io) {
       global.io.emit('user_logout', {
@@ -824,6 +830,37 @@ export function removeOnlineUser(userId) {
         username: userSession.username,
         onlineUsers: global.onlineUsers.size
       });
+    }
+  }
+}
+
+// Cập nhật thời gian hoạt động cuối cùng của người dùng
+export function updateUserActivity(userId) {
+  if (!global.onlineUsers) {
+    return;
+  }
+
+  const userSession = global.onlineUsers.get(userId);
+  if (userSession) {
+    userSession.lastActivity = new Date();
+  }
+}
+
+// Kiểm tra và xóa người dùng offline (không hoạt động trong 5 phút)
+export function checkAndRemoveInactiveUsers() {
+  if (!global.onlineUsers) {
+    return;
+  }
+
+  const now = new Date();
+  const INACTIVE_TIMEOUT = 5 * 60 * 1000; // 5 phút
+
+  for (const [userId, userSession] of global.onlineUsers.entries()) {
+    const timeSinceLastActivity = now - userSession.lastActivity;
+
+    if (timeSinceLastActivity > INACTIVE_TIMEOUT) {
+      console.log(`⏰ Người dùng ${userSession.username} (ID: ${userId}) không hoạt động trong ${Math.floor(timeSinceLastActivity / 1000)}s, đánh dấu offline`);
+      removeOnlineUser(userId);
     }
   }
 }
