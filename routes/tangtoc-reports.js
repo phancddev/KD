@@ -42,8 +42,8 @@ router.post('/tangtoc-report-question', async (req, res) => {
     
     // Insert report
     const insertReportQuery = `
-      INSERT INTO tangtoc_question_reports 
-      (user_id, session_id, room_id, mode, question_id, question_text, question_image_url, correct_answer, user_answer, report_text, accepted_answers, status)
+      INSERT INTO tangtoc_question_reports
+      (user_id, session_id, room_id, mode, question_id, question_text, image_url, correct_answer, user_answer, report_text, accepted_answers, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')
     `;
     

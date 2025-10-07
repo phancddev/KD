@@ -138,22 +138,10 @@ router.post('/tangtoc-report-question', async (req, res) => {
   }
 });
 
-// Áp dụng middleware admin CHỈ cho các nhóm route quản trị, tránh chặn toàn bộ /api
-router.use('/tangtoc-reports', checkAdmin);
-router.use('/tangtoc-reports/:id', checkAdmin);
-router.use('/tangtoc-reports/:id/approve', checkAdmin);
-router.use('/tangtoc-reports/:id/reject', checkAdmin);
-router.use('/tangtoc-suggestions', checkAdmin);
-router.use('/tangtoc-suggestions/:id', checkAdmin);
-router.use('/tangtoc-question-logs', checkAdmin);
-router.use('/tangtoc-question-logs/:id', checkAdmin);
-router.use('/tangtoc-question-logs/:id/restore', checkAdmin);
-router.use('/tangtoc-question-logs/:id/permanently-delete', checkAdmin);
-
-// ===== TANGTOC QUESTION REPORTS ROUTES =====
+// ===== TANGTOC QUESTION REPORTS ROUTES (ADMIN ONLY) =====
 
 // Get all tangtoc question reports with pagination
-router.get('/tangtoc-reports', async (req, res) => {
+router.get('/tangtoc-reports', checkAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 20, status = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -207,7 +195,7 @@ router.get('/tangtoc-reports', async (req, res) => {
 });
 
 // Get single tangtoc question report with suggestions
-router.get('/tangtoc-reports/:id', async (req, res) => {
+router.get('/tangtoc-reports/:id', checkAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -247,7 +235,7 @@ router.get('/tangtoc-reports/:id', async (req, res) => {
 });
 
 // Approve tangtoc report and add question to database
-router.post('/tangtoc-reports/:id/approve', async (req, res) => {
+router.post('/tangtoc-reports/:id/approve', checkAdmin, async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
@@ -323,7 +311,7 @@ router.post('/tangtoc-reports/:id/approve', async (req, res) => {
 });
 
 // Reject tangtoc report
-router.post('/tangtoc-reports/:id/reject', async (req, res) => {
+router.post('/tangtoc-reports/:id/reject', checkAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -339,10 +327,10 @@ router.post('/tangtoc-reports/:id/reject', async (req, res) => {
   }
 });
 
-// ===== TANGTOC ANSWER SUGGESTIONS ROUTES =====
+// ===== TANGTOC ANSWER SUGGESTIONS ROUTES (ADMIN ONLY) =====
 
 // Approve tangtoc answer suggestion
-router.post('/tangtoc-suggestions/:id/approve', async (req, res) => {
+router.post('/tangtoc-suggestions/:id/approve', checkAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -360,7 +348,7 @@ router.post('/tangtoc-suggestions/:id/approve', async (req, res) => {
 });
 
 // Reject tangtoc answer suggestion
-router.post('/tangtoc-suggestions/:id/reject', async (req, res) => {
+router.post('/tangtoc-suggestions/:id/reject', checkAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -377,10 +365,10 @@ router.post('/tangtoc-suggestions/:id/reject', async (req, res) => {
   }
 });
 
-// ===== TANGTOC QUESTION ACCEPTED ANSWERS ROUTES =====
+// ===== TANGTOC QUESTION ACCEPTED ANSWERS ROUTES (ADMIN ONLY) =====
 
 // Get accepted answers for a tangtoc question
-router.get('/tangtoc/questions/:id/answers', async (req, res) => {
+router.get('/tangtoc/questions/:id/answers', checkAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -397,7 +385,7 @@ router.get('/tangtoc/questions/:id/answers', async (req, res) => {
 });
 
 // Add accepted answer for a tangtoc question
-router.post('/tangtoc/questions/:id/answers', async (req, res) => {
+router.post('/tangtoc/questions/:id/answers', checkAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { answer } = req.body;
@@ -430,7 +418,7 @@ router.post('/tangtoc/questions/:id/answers', async (req, res) => {
 });
 
 // Delete accepted answer for a tangtoc question
-router.delete('/tangtoc/questions/:questionId/answers/:answerId', async (req, res) => {
+router.delete('/tangtoc/questions/:questionId/answers/:answerId', checkAdmin, async (req, res) => {
   try {
     const { questionId, answerId } = req.params;
     
@@ -461,10 +449,10 @@ router.delete('/tangtoc/questions/:questionId/answers/:answerId', async (req, re
   }
 });
 
-// ===== TANGTOC QUESTION DELETION LOGS ROUTES =====
+// ===== TANGTOC QUESTION DELETION LOGS ROUTES (ADMIN ONLY) =====
 
 // Get all tangtoc question deletion logs with pagination
-router.get('/tangtoc-question-logs', async (req, res) => {
+router.get('/tangtoc-question-logs', checkAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 20, canRestore = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -532,7 +520,7 @@ router.get('/tangtoc-question-logs', async (req, res) => {
 });
 
 // Get single tangtoc question deletion log
-router.get('/tangtoc-question-logs/:id', async (req, res) => {
+router.get('/tangtoc-question-logs/:id', checkAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -572,7 +560,7 @@ router.get('/tangtoc-question-logs/:id', async (req, res) => {
 });
 
 // Restore tangtoc question from log
-router.post('/tangtoc-question-logs/:id/restore', async (req, res) => {
+router.post('/tangtoc-question-logs/:id/restore', checkAdmin, async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
@@ -652,7 +640,7 @@ router.post('/tangtoc-question-logs/:id/restore', async (req, res) => {
 });
 
 // Permanently delete tangtoc question log
-router.post('/tangtoc-question-logs/:id/permanently-delete', async (req, res) => {
+router.post('/tangtoc-question-logs/:id/permanently-delete', checkAdmin, async (req, res) => {
   const connection = await pool.getConnection();
   
   try {

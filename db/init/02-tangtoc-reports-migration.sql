@@ -1,12 +1,12 @@
 -- Migration để thêm bảng báo lỗi câu hỏi riêng cho Tăng Tốc
 USE nqd_database;
 
--- Bổ sung cột image_url cho bảng tangtoc_question_reports nếu thiếu (đồng bộ với code)
-SET @sql = 'ALTER TABLE tangtoc_question_reports ADD COLUMN image_url TEXT NULL AFTER question_text';
-SET @sql = IF((SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = 'nqd_database' 
-    AND TABLE_NAME = 'tangtoc_question_reports' 
-    AND COLUMN_NAME = 'image_url') = 0, @sql, 'SELECT "Column image_url already exists"');
+-- Migration an toàn: Đổi tên cột question_image_url thành image_url nếu tồn tại (cho hệ thống cũ)
+SET @sql = 'ALTER TABLE tangtoc_question_reports CHANGE COLUMN question_image_url image_url TEXT NULL';
+SET @sql = IF((SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = 'nqd_database'
+    AND TABLE_NAME = 'tangtoc_question_reports'
+    AND COLUMN_NAME = 'question_image_url') > 0, @sql, 'SELECT "Column question_image_url does not exist, skip rename"');
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS tangtoc_question_reports (
   mode ENUM('solo','room') NOT NULL,
   question_id INT NULL,
   question_text TEXT NOT NULL,
-  question_image_url TEXT NULL,
+  image_url TEXT NULL,
   correct_answer TEXT NOT NULL,
   user_answer TEXT NULL,
   report_text TEXT NOT NULL,
