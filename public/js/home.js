@@ -240,14 +240,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function showAdminPanel() {
         const adminPanel = document.getElementById('admin-panel');
         const adminUploadLink = document.getElementById('admin-upload-link');
-        
+
         if (adminPanel) {
             adminPanel.style.display = 'block';
             console.log('✅ Đã hiển thị admin panel');
         } else {
             console.warn('⚠️ Không tìm thấy admin panel');
         }
-        
+
         if (adminUploadLink) {
             adminUploadLink.style.display = 'block';
             console.log('✅ Đã hiển thị admin upload link');
@@ -255,4 +255,48 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('⚠️ Không tìm thấy admin upload link');
         }
     }
+
+    // Load user statistics
+    async function loadUserStats() {
+        try {
+            const response = await fetch('/api/user/stats', {
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load stats');
+            }
+
+            const stats = await response.json();
+            console.log('📊 User stats loaded:', stats);
+
+            // Update tổng quan
+            document.getElementById('total-games').textContent = stats.totalGames || 0;
+            document.getElementById('total-score').textContent = stats.totalScore || 0;
+            document.getElementById('correct-answers').textContent = `${stats.totalCorrectAnswers || 0}/${stats.totalQuestions || 0}`;
+            document.getElementById('highest-score').textContent = stats.highestScore || 0;
+
+            // Update theo chế độ
+            if (stats.byMode) {
+                document.getElementById('khoidong-solo-games').textContent = stats.byMode.khoidongSolo || 0;
+                document.getElementById('khoidong-room-games').textContent = stats.byMode.khoidongRoom || 0;
+                document.getElementById('tangtoc-solo-games').textContent = stats.byMode.tangtocSolo || 0;
+                document.getElementById('tangtoc-room-games').textContent = stats.byMode.tangtocRoom || 0;
+            }
+        } catch (error) {
+            console.error('❌ Error loading user stats:', error);
+            // Set default values
+            document.getElementById('total-games').textContent = '0';
+            document.getElementById('total-score').textContent = '0';
+            document.getElementById('correct-answers').textContent = '0/0';
+            document.getElementById('highest-score').textContent = '0';
+            document.getElementById('khoidong-solo-games').textContent = '0';
+            document.getElementById('khoidong-room-games').textContent = '0';
+            document.getElementById('tangtoc-solo-games').textContent = '0';
+            document.getElementById('tangtoc-room-games').textContent = '0';
+        }
+    }
+
+    // Load stats on page load
+    loadUserStats();
 });

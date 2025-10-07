@@ -389,11 +389,13 @@
         .modal-content {
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(20px);
-            margin: 5% auto;
+            margin: 2% auto;
             padding: 2rem;
             border-radius: 16px;
             width: 90%;
             max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
@@ -401,6 +403,25 @@
 
         .large-modal {
             max-width: 900px;
+        }
+
+        /* Custom scrollbar for modal */
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: rgba(239, 68, 68, 0.05);
+            border-radius: 4px;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb {
+            background: rgba(239, 68, 68, 0.3);
+            border-radius: 4px;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(239, 68, 68, 0.5);
         }
 
         .close {
@@ -663,6 +684,7 @@
                                     <th>ID</th>
                                     <th>Người chơi</th>
                                     <th>Loại trận</th>
+                                    <th>Chế độ</th>
                                     <th>Điểm số</th>
                                     <th>Câu đúng</th>
                                     <th>Thời gian</th>
@@ -705,6 +727,10 @@
                 <div class="game-info-item">
                     <span class="info-label">Loại trận:</span>
                     <span class="info-value" id="modal-type"></span>
+                </div>
+                <div class="game-info-item">
+                    <span class="info-label">Chế độ:</span>
+                    <span class="info-value" id="modal-game-mode"></span>
                 </div>
                 <div class="game-info-item">
                     <span class="info-label">Điểm số:</span>

@@ -282,7 +282,7 @@ export function initTangTocSocket(io) {
               if (!p.sessionId) {
                 try {
                   // room.id ở đây là in-memory, không tồn tại trong DB -> để null để tránh lỗi FK
-                  const session = await createGameSession(p.userId, null, false, room.questions.length);
+                  const session = await createGameSession(p.userId, null, false, room.questions.length, 'tangtoc');
                   p.sessionId = session.id;
                 } catch {}
               }

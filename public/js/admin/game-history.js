@@ -130,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (noData) noData.style.display = 'none';
     const rows = currentGames.map(g => {
       const typeText = g.isSolo ? 'Tự đấu' : 'Đấu phòng';
+      const gameModeText = g.gameMode === 'tangtoc' ? '<span class="badge badge-warning">Tăng Tốc</span>' : '<span class="badge badge-info">Khởi Động</span>';
       const statusText = g.finishedAt ? '<span class="badge badge-success">Đã kết thúc</span>' : '<span class="badge badge-warning">Đang diễn ra</span>';
       const player = `${g.fullName || g.username} (#${g.userId})`;
       const timeText = `${formatDate(g.startedAt)}${g.finishedAt ? ' - ' + formatDate(g.finishedAt) : ''}`;
@@ -140,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${g.id}</td>
           <td>${player}</td>
           <td>${typeText}</td>
+          <td>${gameModeText}</td>
           <td>${scoreText}</td>
           <td>${correctText}</td>
           <td>${timeText}</td>
@@ -177,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('modal-game-id').textContent = d.id;
       document.getElementById('modal-player').textContent = `${d.username} (#${d.userId})`;
       document.getElementById('modal-type').textContent = d.isSolo ? 'Tự đấu' : 'Đấu phòng';
+      document.getElementById('modal-game-mode').textContent = d.gameMode === 'tangtoc' ? 'Tăng Tốc' : 'Khởi Động';
       document.getElementById('modal-score').textContent = d.score ?? 0;
       document.getElementById('modal-correct').textContent = `${(d.answers || []).filter(a => a.isCorrect).length}/${d.totalQuestions ?? (d.answers || []).length}`;
       document.getElementById('modal-start-time').textContent = formatDate(d.startedAt);

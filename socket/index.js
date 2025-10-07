@@ -269,7 +269,7 @@ export function initSocketIO(server) {
         // Tạo thứ tự câu hỏi khác nhau cho mỗi người tham gia
         for (const participant of room.participants) {
           console.log('👤 Setup participant:', participant.username);
-          const session = await createGameSession(participant.id, room.id, false, questions.length);
+          const session = await createGameSession(participant.id, room.id, false, questions.length, 'khoidong');
           participant.sessionId = session.id;
           
           // Tạo thứ tự câu hỏi ngẫu nhiên cho participant này

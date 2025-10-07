@@ -179,10 +179,41 @@ async function fetchHistory() {
 
 // Hiển thị thống kê người dùng
 function displayUserStats(stats) {
-    document.getElementById('total-games').textContent = stats.totalGames;
-    document.getElementById('total-score').textContent = stats.totalScore;
-    document.getElementById('correct-answers').textContent = `${stats.totalCorrectAnswers}/${stats.totalQuestions}`;
-    document.getElementById('highest-score').textContent = stats.highestScore;
+    if (!stats) {
+        console.warn('No stats data received');
+        stats = {
+            totalGames: 0,
+            totalScore: 0,
+            totalCorrectAnswers: 0,
+            totalQuestions: 0,
+            highestScore: 0,
+            byMode: {
+                khoidongSolo: 0,
+                khoidongRoom: 0,
+                tangtocSolo: 0,
+                tangtocRoom: 0
+            }
+        };
+    }
+
+    // Update tổng quan
+    document.getElementById('total-games').textContent = stats.totalGames || 0;
+    document.getElementById('total-score').textContent = stats.totalScore || 0;
+    document.getElementById('correct-answers').textContent = `${stats.totalCorrectAnswers || 0}/${stats.totalQuestions || 0}`;
+    document.getElementById('highest-score').textContent = stats.highestScore || 0;
+
+    // Update theo chế độ
+    if (stats.byMode) {
+        document.getElementById('khoidong-solo-games').textContent = stats.byMode.khoidongSolo || 0;
+        document.getElementById('khoidong-room-games').textContent = stats.byMode.khoidongRoom || 0;
+        document.getElementById('tangtoc-solo-games').textContent = stats.byMode.tangtocSolo || 0;
+        document.getElementById('tangtoc-room-games').textContent = stats.byMode.tangtocRoom || 0;
+    } else {
+        document.getElementById('khoidong-solo-games').textContent = '0';
+        document.getElementById('khoidong-room-games').textContent = '0';
+        document.getElementById('tangtoc-solo-games').textContent = '0';
+        document.getElementById('tangtoc-room-games').textContent = '0';
+    }
 }
 
 // Hiển thị lịch sử trận đấu với phân trang
@@ -210,31 +241,29 @@ function displayHistory(history) {
     // Thêm dữ liệu mới
     currentPageData.forEach(game => {
         const row = document.createElement('tr');
-        
+
         // Thời gian
         const timeCell = document.createElement('td');
         timeCell.textContent = formatDate(game.startedAt);
         row.appendChild(timeCell);
-        
-        // Chế độ
+
+        // Chế độ - hiển thị cả loại trận và game mode
         const modeCell = document.createElement('td');
-        if (game.isSolo) {
-            modeCell.textContent = 'Tự đấu';
-        } else {
-            modeCell.textContent = `Đấu phòng (${game.roomName || 'Không tên'})`;
-        }
+        const gameType = game.isSolo ? 'Tự đấu' : `Đấu phòng (${game.roomName || 'Không tên'})`;
+        const gameMode = game.gameMode === 'tangtoc' ? '🚀 Tăng Tốc' : '🎯 Khởi Động';
+        modeCell.innerHTML = `${gameType}<br><small style="color: #666;">${gameMode}</small>`;
         row.appendChild(modeCell);
-        
+
         // Điểm số
         const scoreCell = document.createElement('td');
         scoreCell.textContent = game.score;
         row.appendChild(scoreCell);
-        
+
         // Câu đúng
         const correctCell = document.createElement('td');
         correctCell.textContent = `${game.correctAnswers}/${game.totalQuestions}`;
         row.appendChild(correctCell);
-        
+
         // Chi tiết
         const detailsCell = document.createElement('td');
         const detailsButton = document.createElement('button');
@@ -243,7 +272,7 @@ function displayHistory(history) {
         detailsButton.addEventListener('click', () => showGameDetails(game.id));
         detailsCell.appendChild(detailsButton);
         row.appendChild(detailsCell);
-        
+
         tableBody.appendChild(row);
     });
     
@@ -254,44 +283,58 @@ function displayHistory(history) {
 // Hiển thị chi tiết trận đấu
 async function showGameDetails(gameId) {
     try {
-        const response = await fetch(`/api/history/${gameId}`);
+        const response = await fetch(`/api/game/${gameId}`);
         if (!response.ok) {
             throw new Error('Không thể lấy chi tiết trận đấu');
         }
-        
+
         const details = await response.json();
-        
+
         // Cập nhật thông tin modal
         document.getElementById('modal-time').textContent = formatDate(details.startedAt);
-        document.getElementById('modal-mode').textContent = details.isSolo ? 'Tự đấu' : `Đấu phòng (${details.roomName || 'Không tên'})`;
+        const gameType = details.isSolo ? 'Tự đấu' : `Đấu phòng (${details.roomName || 'Không tên'})`;
+        const gameMode = details.gameMode === 'tangtoc' ? '🚀 Tăng Tốc' : '🎯 Khởi Động';
+        document.getElementById('modal-mode').innerHTML = `${gameType} - ${gameMode}`;
         document.getElementById('modal-score').textContent = details.score;
-        document.getElementById('modal-correct').textContent = `${details.correctAnswers}/${details.answers.length}`;
-        
-        // Hiển thị danh sách câu hỏi
+        const correctCount = (details.answers || []).filter(a => a.isCorrect).length;
+        document.getElementById('modal-correct').textContent = `${correctCount}/${details.answers.length}`;
+
+        // Hiển thị danh sách câu hỏi dạng bảng
         const questionList = document.getElementById('question-review-list');
         questionList.innerHTML = '';
-        
-        details.answers.forEach((answer, index) => {
-            const questionItem = document.createElement('div');
-            questionItem.className = `question-review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
-            
-            const questionTitle = document.createElement('h4');
-            questionTitle.textContent = `Câu ${index + 1}: ${answer.questionText}`;
-            questionItem.appendChild(questionTitle);
-            
-            const answerInfo = document.createElement('p');
-            answerInfo.innerHTML = `<strong>Đáp án đúng:</strong> ${answer.correctAnswer}<br>
-                                   <strong>Đáp án của bạn:</strong> ${answer.userAnswer}<br>
-                                   <strong>Kết quả:</strong> ${answer.isCorrect ? 'Đúng' : 'Sai'}`;
-            questionItem.appendChild(answerInfo);
-            
-            questionList.appendChild(questionItem);
-        });
-        
+
+        if (details.answers && details.answers.length > 0) {
+            const rows = details.answers.map((answer, index) => {
+                const resultBadge = answer.isCorrect
+                    ? '<span class="badge badge-success">✅ Đúng</span>'
+                    : '<span class="badge badge-danger">❌ Sai</span>';
+
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${answer.questionText || ''}</td>
+                        <td>${answer.correctAnswer || ''}</td>
+                        <td>${answer.userAnswer || '<em style="color: #9ca3af;">Không trả lời</em>'}</td>
+                        <td>${resultBadge}</td>
+                        <td>
+                            <button class="btn-report-small" onclick="reportQuestion(${answer.questionId}, '${(answer.questionText || '').replace(/'/g, "\\'")}', '${(answer.correctAnswer || '').replace(/'/g, "\\'")}', '${(answer.userAnswer || '').replace(/'/g, "\\'")}', '${details.gameMode}')">
+                                <i class="fas fa-flag"></i> Báo lỗi
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            questionList.innerHTML = rows;
+        } else {
+            questionList.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 2rem;">Không có dữ liệu câu hỏi.</td></tr>';
+        }
+
         // Hiển thị modal
         document.getElementById('game-details-modal').style.display = 'block';
     } catch (error) {
         console.error('Lỗi khi lấy chi tiết trận đấu:', error);
+        alert('Không thể tải chi tiết trận đấu. Vui lòng thử lại.');
     }
 }
 
@@ -299,4 +342,43 @@ async function showGameDetails(gameId) {
 function formatDate(dateString) {
     const date = new Date(dateString);
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+// Báo lỗi câu hỏi (global function)
+window.reportQuestion = async function(questionId, questionText, correctAnswer, userAnswer, gameMode) {
+    const reportText = prompt('Vui lòng mô tả lỗi bạn tìm thấy:');
+
+    if (!reportText || reportText.trim() === '') {
+        return;
+    }
+
+    try {
+        // Xác định endpoint dựa trên game mode
+        const endpoint = gameMode === 'tangtoc' ? '/api/tangtoc-report-question' : '/api/report-question';
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                questionId: questionId,
+                questionText: questionText,
+                correctAnswer: correctAnswer,
+                userAnswer: userAnswer || '',
+                reportText: reportText.trim(),
+                mode: 'solo'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Không thể gửi báo cáo');
+        }
+
+        alert('Cảm ơn bạn đã báo cáo! Chúng tôi sẽ xem xét và xử lý sớm nhất.');
+    } catch (error) {
+        console.error('Lỗi khi báo cáo câu hỏi:', error);
+        alert('Có lỗi xảy ra khi gửi báo cáo. Vui lòng thử lại sau.');
+    }
 }

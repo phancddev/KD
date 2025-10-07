@@ -734,23 +734,101 @@ app.get('/api/user', async (req, res) => {
   }
 });
 
+// API thống kê người dùng (cho trang home)
+app.get('/api/user/stats', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const stats = await getUserGameStats(req.session.user.id);
+    console.log(`📊 User ${req.session.user.id} stats:`, stats);
+    res.json(stats);
+  } catch (error) {
+    console.error('Lỗi khi lấy thống kê người dùng:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // API lịch sử trận đấu của người dùng
 app.get('/api/user/history', async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  
+
   try {
     const { month, year } = req.query;
-    
+
     let history;
     if (month && year) {
       history = await getUserGameHistoryByMonth(req.session.user.id, parseInt(month), parseInt(year));
     } else {
       history = await getUserGameHistory(req.session.user.id);
     }
-    
+
     res.json(history);
+  } catch (error) {
+    console.error('Lỗi khi lấy lịch sử trận đấu:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// API lịch sử trận đấu với thống kê (cho trang history.html)
+app.get('/api/history', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { month, year } = req.query;
+    console.log(`📊 User ${req.session.user.id} requesting history - month: ${month}, year: ${year}`);
+
+    let history;
+    let stats;
+
+    if (month && year) {
+      history = await getUserGameHistoryByMonth(req.session.user.id, parseInt(year), parseInt(month));
+      console.log(`📊 Found ${history.length} games for month ${month}/${year}`);
+
+      // Calculate stats for the month
+      const byMode = {
+        khoidongSolo: 0,
+        khoidongRoom: 0,
+        tangtocSolo: 0,
+        tangtocRoom: 0
+      };
+
+      history.forEach(game => {
+        const mode = game.gameMode || 'khoidong';
+        const isSolo = game.isSolo;
+
+        if (mode === 'khoidong' && isSolo) {
+          byMode.khoidongSolo++;
+        } else if (mode === 'khoidong' && !isSolo) {
+          byMode.khoidongRoom++;
+        } else if (mode === 'tangtoc' && isSolo) {
+          byMode.tangtocSolo++;
+        } else if (mode === 'tangtoc' && !isSolo) {
+          byMode.tangtocRoom++;
+        }
+      });
+
+      stats = {
+        totalGames: history.length,
+        totalScore: history.reduce((sum, game) => sum + (game.score || 0), 0),
+        totalCorrectAnswers: history.reduce((sum, game) => sum + (game.correctAnswers || 0), 0),
+        totalQuestions: history.reduce((sum, game) => sum + (game.totalQuestions || 0), 0),
+        highestScore: history.length > 0 ? Math.max(...history.map(g => g.score || 0)) : 0,
+        byMode
+      };
+    } else {
+      history = await getUserGameHistory(req.session.user.id);
+      stats = await getUserGameStats(req.session.user.id);
+      console.log(`📊 Found ${history.length} total games`);
+    }
+
+    console.log(`📊 Stats:`, stats);
+    res.json({ history, stats });
   } catch (error) {
     console.error('Lỗi khi lấy lịch sử trận đấu:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -835,18 +913,21 @@ app.post('/api/solo-game/finish', async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  
+
   try {
-    const { score, correctAnswers, totalQuestions } = req.body;
-    
+    const { score, correctAnswers, totalQuestions, mode } = req.body;
+
     if (score === undefined || correctAnswers === undefined || totalQuestions === undefined) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
+    // Determine game mode: 'tangtoc' or default to 'khoidong'
+    const gameMode = mode === 'tangtoc' ? 'tangtoc' : 'khoidong';
+
     // Tạo phiên chơi solo và lưu kết quả
-    const gameSession = await createGameSession(req.session.user.id, null, true, totalQuestions);
+    const gameSession = await createGameSession(req.session.user.id, null, true, totalQuestions, gameMode);
     await finishGameSession(gameSession.id, score, correctAnswers);
-    
+
     res.json({ success: true, sessionId: gameSession.id });
   } catch (error) {
     console.error('Lỗi khi lưu kết quả trận đấu solo:', error);

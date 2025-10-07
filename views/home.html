@@ -612,6 +612,8 @@
                     <h3>Thống kê của bạn</h3>
                 </div>
                 <div class="card-body">
+                    <!-- Thống kê tổng -->
+                    <h4 style="margin-bottom: 1rem; color: #dc2626;">📊 Tổng quan</h4>
                     <div class="user-stats">
                         <div class="stat-card">
                             <div class="stat-title">Tổng số trận</div>
@@ -628,6 +630,31 @@
                         <div class="stat-card">
                             <div class="stat-title">Điểm cao nhất</div>
                             <div class="stat-value" id="highest-score">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Thống kê theo chế độ -->
+                    <h4 style="margin: 2rem 0 1rem; color: #dc2626;">🎯 Theo chế độ chơi</h4>
+                    <div class="user-stats">
+                        <div class="stat-card">
+                            <div class="stat-title">🎯 Khởi Động - Tự đấu</div>
+                            <div class="stat-value" id="khoidong-solo-games" style="font-size: 1.2rem;">--</div>
+                            <small style="color: #6b7280;">trận</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">🎯 Khởi Động - Phòng</div>
+                            <div class="stat-value" id="khoidong-room-games" style="font-size: 1.2rem;">--</div>
+                            <small style="color: #6b7280;">trận</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">🚀 Tăng Tốc - Tự đấu</div>
+                            <div class="stat-value" id="tangtoc-solo-games" style="font-size: 1.2rem;">--</div>
+                            <small style="color: #6b7280;">trận</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">🚀 Tăng Tốc - Phòng</div>
+                            <div class="stat-value" id="tangtoc-room-games" style="font-size: 1.2rem;">--</div>
+                            <small style="color: #6b7280;">trận</small>
                         </div>
                     </div>
                 </div>

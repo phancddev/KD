@@ -66,6 +66,8 @@
                     </div>
                 </div>
                 
+                <!-- Thống kê tổng -->
+                <h3 style="margin-bottom: 1rem; color: #dc2626;">📊 Tổng quan</h3>
                 <div class="user-stats">
                     <div class="stat-card">
                         <div class="stat-title">Tổng số trận</div>
@@ -82,6 +84,31 @@
                     <div class="stat-card">
                         <div class="stat-title">Điểm cao nhất</div>
                         <div class="stat-value" id="highest-score">0</div>
+                    </div>
+                </div>
+
+                <!-- Thống kê theo chế độ -->
+                <h3 style="margin: 2rem 0 1rem; color: #dc2626;">🎯 Theo chế độ chơi</h3>
+                <div class="user-stats">
+                    <div class="stat-card">
+                        <div class="stat-title">🎯 Khởi Động - Tự đấu</div>
+                        <div class="stat-value" id="khoidong-solo-games" style="font-size: 1.2rem;">0</div>
+                        <small style="color: #6b7280;">trận</small>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🎯 Khởi Động - Phòng</div>
+                        <div class="stat-value" id="khoidong-room-games" style="font-size: 1.2rem;">0</div>
+                        <small style="color: #6b7280;">trận</small>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🚀 Tăng Tốc - Tự đấu</div>
+                        <div class="stat-value" id="tangtoc-solo-games" style="font-size: 1.2rem;">0</div>
+                        <small style="color: #6b7280;">trận</small>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🚀 Tăng Tốc - Phòng</div>
+                        <div class="stat-value" id="tangtoc-room-games" style="font-size: 1.2rem;">0</div>
+                        <small style="color: #6b7280;">trận</small>
                     </div>
                 </div>
                 
@@ -165,8 +192,22 @@
             </div>
             <div class="question-review">
                 <h3>Xem lại câu hỏi</h3>
-                <div id="question-review-list">
-                    <!-- Question review will be dynamically generated -->
+                <div style="overflow-x: auto;">
+                    <table class="answer-details-table">
+                        <thead>
+                            <tr>
+                                <th>STT</th>
+                                <th>Câu hỏi</th>
+                                <th>Đáp án đúng</th>
+                                <th>Câu trả lời</th>
+                                <th>Kết quả</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="question-review-list">
+                            <!-- Question review will be dynamically generated -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

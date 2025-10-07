@@ -942,12 +942,21 @@ router.get('/game-history', checkAdmin, async (req, res) => {
 router.get('/game-history/:gameId', checkAdmin, async (req, res) => {
   try {
     const gameId = parseInt(req.params.gameId);
+    console.log(`📊 Admin requesting game details for gameId: ${gameId}`);
     const gameDetails = await getGameSessionDetails(gameId);
-    
+
     if (!gameDetails) {
+      console.log(`❌ Game ${gameId} not found`);
       return res.status(404).json({ error: 'Game not found' });
     }
-    
+
+    console.log(`✅ Game ${gameId} details:`, {
+      id: gameDetails.id,
+      userId: gameDetails.userId,
+      username: gameDetails.username,
+      gameMode: gameDetails.gameMode,
+      answersCount: gameDetails.answers?.length || 0
+    });
     res.json(gameDetails);
   } catch (error) {
     console.error('Lỗi khi lấy chi tiết trận đấu:', error);

@@ -1,19 +1,20 @@
 import { pool } from './index.js';
 
 // Tạo phiên chơi mới
-async function createGameSession(userId, roomId = null, isSolo = false, totalQuestions = 12) {
+async function createGameSession(userId, roomId = null, isSolo = false, totalQuestions = 12, gameMode = 'khoidong') {
   try {
     const [result] = await pool.query(
-      'INSERT INTO game_sessions (user_id, room_id, is_solo, total_questions) VALUES (?, ?, ?, ?)',
-      [userId, roomId, isSolo, totalQuestions]
+      'INSERT INTO game_sessions (user_id, room_id, is_solo, total_questions, game_mode) VALUES (?, ?, ?, ?, ?)',
+      [userId, roomId, isSolo, totalQuestions, gameMode]
     );
-    
+
     return {
       id: result.insertId,
       userId,
       roomId,
       isSolo,
       totalQuestions,
+      gameMode,
       score: 0,
       startedAt: new Date()
     };
@@ -65,11 +66,13 @@ async function getUserGameHistory(userId, limit = 10) {
        LIMIT ?`,
       [userId, limit]
     );
-    
+
     return rows.map(row => ({
       id: row.id,
       isSolo: row.is_solo === 1,
+      gameMode: row.game_mode || 'khoidong',
       score: row.score,
+      correctAnswers: row.correct_answers,
       totalQuestions: row.total_questions,
       roomName: row.room_name,
       roomCode: row.room_code,
@@ -128,6 +131,7 @@ async function getGameSessionDetails(sessionId) {
       userId: session.user_id,
       username: session.username,
       isSolo: session.is_solo === 1,
+      gameMode: session.game_mode || 'khoidong',
       roomId: session.room_id,
       roomName: session.room_name,
       roomCode: session.room_code,
@@ -164,6 +168,7 @@ async function getUserGameHistoryByMonth(userId, year, month) {
     return rows.map(row => ({
       id: row.id,
       isSolo: row.is_solo === 1,
+      gameMode: row.game_mode || 'khoidong',
       score: row.score,
       correctAnswers: row.correct_answers,
       totalQuestions: row.total_questions,
@@ -251,8 +256,9 @@ async function getPlayerRankingByMonth(year, month, limit = 100) {
 // Lấy thống kê trận đấu của người dùng
 async function getUserGameStats(userId) {
   try {
+    // Thống kê tổng
     const [rows] = await pool.query(
-      `SELECT 
+      `SELECT
          COUNT(id) as total_games,
          SUM(score) as total_score,
          SUM(correct_answers) as total_correct_answers,
@@ -263,7 +269,45 @@ async function getUserGameStats(userId) {
        WHERE user_id = ? AND finished_at IS NOT NULL`,
       [userId]
     );
-    
+
+    // Thống kê theo chế độ
+    const [byModeRows] = await pool.query(
+      `SELECT
+         game_mode,
+         is_solo,
+         COUNT(id) as games_count,
+         SUM(score) as total_score,
+         SUM(correct_answers) as total_correct,
+         SUM(total_questions) as total_questions
+       FROM game_sessions
+       WHERE user_id = ? AND finished_at IS NOT NULL
+       GROUP BY game_mode, is_solo`,
+      [userId]
+    );
+
+    // Tổ chức dữ liệu theo chế độ
+    const byMode = {
+      khoidongSolo: 0,
+      khoidongRoom: 0,
+      tangtocSolo: 0,
+      tangtocRoom: 0
+    };
+
+    byModeRows.forEach(row => {
+      const mode = row.game_mode || 'khoidong';
+      const isSolo = row.is_solo === 1;
+
+      if (mode === 'khoidong' && isSolo) {
+        byMode.khoidongSolo = row.games_count || 0;
+      } else if (mode === 'khoidong' && !isSolo) {
+        byMode.khoidongRoom = row.games_count || 0;
+      } else if (mode === 'tangtoc' && isSolo) {
+        byMode.tangtocSolo = row.games_count || 0;
+      } else if (mode === 'tangtoc' && !isSolo) {
+        byMode.tangtocRoom = row.games_count || 0;
+      }
+    });
+
     if (rows.length === 0) {
       return {
         totalGames: 0,
@@ -271,17 +315,19 @@ async function getUserGameStats(userId) {
         totalCorrectAnswers: 0,
         totalQuestions: 0,
         avgScore: 0,
-        highestScore: 0
+        highestScore: 0,
+        byMode
       };
     }
-    
+
     return {
       totalGames: rows[0].total_games || 0,
       totalScore: rows[0].total_score || 0,
       totalCorrectAnswers: rows[0].total_correct_answers || 0,
       totalQuestions: rows[0].total_questions || 0,
       avgScore: rows[0].avg_score || 0,
-      highestScore: rows[0].highest_score || 0
+      highestScore: rows[0].highest_score || 0,
+      byMode
     };
   } catch (error) {
     console.error('Lỗi khi lấy thống kê trận đấu của người dùng:', error);
@@ -326,12 +372,13 @@ async function getGameHistory({ userId = null, isSolo = null, from = null, to = 
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     
     const [rows] = await pool.query(
-      `SELECT 
+      `SELECT
          gs.id,
          gs.user_id,
          u.username,
          u.full_name,
          gs.is_solo,
+         gs.game_mode,
          gs.score,
          gs.correct_answers,
          gs.total_questions,
@@ -348,13 +395,14 @@ async function getGameHistory({ userId = null, isSolo = null, from = null, to = 
        LIMIT ? OFFSET ?`,
       [...params, Number(limit), Number(offset)]
     );
-    
+
     return rows.map(row => ({
       id: row.id,
       userId: row.user_id,
       username: row.username,
       fullName: row.full_name,
       isSolo: row.is_solo === 1,
+      gameMode: row.game_mode || 'khoidong',
       score: row.score,
       correctAnswers: row.correct_answers,
       totalQuestions: row.total_questions,
