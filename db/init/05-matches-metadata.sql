@@ -1,11 +1,40 @@
--- Migration: Tạo bảng matches để lưu metadata mapping
--- Version: 2.0.0
+-- Migration: Tạo bảng data_nodes và matches (CHỈ metadata)
+-- Version: 2.1.0
 -- Date: 2025-10-08
--- Description: Bảng này chỉ lưu metadata (match nào nằm trên node nào), KHÔNG lưu questions
+-- Description:
+--   - Bảng data_nodes: Quản lý các Data Node servers
+--   - Bảng matches: CHỈ lưu metadata mapping (match_id → data_node_id)
+--   - KHÔNG tạo bảng match_questions, match_participants, etc.
+--   - TẤT CẢ dữ liệu trận đấu lưu trong match.json trên Data Node
 -- Auto-run khi docker-compose up: Kiểm tra và chỉ tạo khi chưa có
 
 -- Disable foreign key checks tạm thời
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- ============================================
+-- BẢNG 1: DATA_NODES
+-- ============================================
+-- Quản lý các Data Node servers (server phụ lưu trữ dữ liệu)
+
+CREATE TABLE IF NOT EXISTS data_nodes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL COMMENT 'Tên server phụ',
+  host VARCHAR(255) NOT NULL COMMENT 'IP hoặc domain của server phụ',
+  port INT NOT NULL COMMENT 'Port để kết nối',
+  status ENUM('online', 'offline', 'error') DEFAULT 'offline' COMMENT 'Trạng thái kết nối',
+  storage_used BIGINT DEFAULT 0 COMMENT 'Dung lượng đã sử dụng (bytes)',
+  storage_total BIGINT DEFAULT 0 COMMENT 'Tổng dung lượng (bytes)',
+  last_ping DATETIME NULL COMMENT 'Lần ping cuối cùng',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_port (port),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Quản lý các Data Node servers';
+
+-- ============================================
+-- BẢNG 2: MATCHES (CHỈ METADATA)
+-- ============================================
 
 -- Kiểm tra xem bảng matches đã tồn tại chưa
 SET @table_exists = (

@@ -8,6 +8,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { pool } from '../../db/index.js';
 import { uploadFileToDataNode } from '../socket/data-node-server.js';
+import {
+  getMatchFromDataNode,
+  addQuestionToDataNode,
+  deleteQuestionFromDataNode
+} from '../match-reader.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -67,26 +72,43 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
   try {
     const { matchId, questionId } = req.body;
     const file = req.file;
-    
+
+    console.log('📤 [UPLOAD] Nhận request upload file:');
+    console.log(`   matchId: ${matchId}`);
+    console.log(`   fileName: ${file?.originalname}`);
+    console.log(`   fileSize: ${file?.size} bytes`);
+
     if (!file) {
       return res.status(400).json({ error: 'Không có file được upload' });
     }
-    
+
     if (!matchId) {
       return res.status(400).json({ error: 'Thiếu matchId' });
     }
-    
-    // Lấy thông tin match
-    const [matches] = await pool.query(
-      'SELECT * FROM matches WHERE id = ?',
-      [matchId]
-    );
+
+    // Lấy thông tin match - Hỗ trợ cả INT id và VARCHAR match_id
+    let query, params;
+    if (typeof matchId === 'string' && matchId.includes('_')) {
+      // matchId là VARCHAR (format: YYYYMMDD_CODE_Name)
+      query = 'SELECT * FROM matches WHERE match_id = ?';
+      params = [matchId];
+      console.log(`   Query by match_id (VARCHAR): ${matchId}`);
+    } else {
+      // matchId là INT
+      query = 'SELECT * FROM matches WHERE id = ?';
+      params = [matchId];
+      console.log(`   Query by id (INT): ${matchId}`);
+    }
+
+    const [matches] = await pool.query(query, params);
 
     if (matches.length === 0) {
+      console.error(`❌ [UPLOAD] Match not found: ${matchId}`);
       return res.status(404).json({ error: 'Không tìm thấy trận đấu' });
     }
 
     const match = matches[0];
+    console.log(`   Found match: ${match.match_id} (DB ID: ${match.id})`);
 
     if (!match.data_node_id) {
       return res.status(400).json({ error: 'Trận đấu chưa có data node' });
@@ -96,7 +118,7 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
       return res.status(400).json({ error: 'Trận đấu chưa có storage folder' });
     }
 
-    console.log(`📤 Uploading file to Data Node folder: ${match.storage_folder}`);
+    console.log(`   Uploading to Data Node ${match.data_node_id}, folder: ${match.storage_folder}`);
 
     // Upload file lên data node với storage_folder
     const uploadResult = await uploadFileToDataNode(
@@ -106,18 +128,20 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
       file.mimetype,
       match.storage_folder // Use storage_folder instead of match_X
     );
-    
+
     if (!uploadResult.success) {
       throw new Error(uploadResult.error || 'Upload thất bại');
     }
-    
-    // Log upload
+
+    console.log(`   Upload success: ${uploadResult.streamUrl}`);
+
+    // Log upload - Sử dụng match.id (INT) cho foreign key
     await pool.query(
-      `INSERT INTO match_upload_logs 
+      `INSERT INTO match_upload_logs
        (match_id, data_node_id, file_name, file_type, file_size, storage_path, stream_url, upload_status)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'success')`,
       [
-        matchId,
+        match.id,  // Sử dụng INT id cho foreign key
         match.data_node_id,
         file.originalname,
         file.mimetype,
@@ -126,7 +150,9 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
         uploadResult.streamUrl
       ]
     );
-    
+
+    console.log(`✅ [UPLOAD] Hoàn thành upload file: ${file.originalname}`);
+
     res.json({
       success: true,
       url: uploadResult.streamUrl,
@@ -135,9 +161,9 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
       fileSize: file.size,
       fileType: file.mimetype
     });
-    
+
   } catch (error) {
-    console.error('Lỗi upload file:', error);
+    console.error('❌ [UPLOAD] Lỗi upload file:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -145,106 +171,181 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
 /**
  * POST /api/matches/questions/bulk
  * Lưu nhiều câu hỏi cùng lúc
+ * ✅ GỬI TỚI DATA NODE (không lưu database)
  */
 router.post('/questions/bulk', requireAdmin, async (req, res) => {
-  const connection = await pool.getConnection();
-  
   try {
     const { matchId, questions } = req.body;
-    
+
+    console.log('📦 [BULK_ADD] Nhận request bulk add câu hỏi:');
+    console.log(`   matchId: ${matchId}`);
+    console.log(`   Số câu hỏi: ${questions?.length || 0}`);
+
     if (!matchId || !questions || !Array.isArray(questions)) {
       return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
     }
-    
-    await connection.beginTransaction();
-    
-    // Xóa câu hỏi cũ (nếu có)
-    await connection.query('DELETE FROM match_questions WHERE match_id = ?', [matchId]);
-    
-    // Insert câu hỏi mới
-    let insertCount = 0;
-    for (const question of questions) {
-      await connection.query(
-        `INSERT INTO match_questions 
-         (match_id, section, question_order, player_index, question_type, 
-          question_text, media_url, media_type, answer_text, points, time_limit)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          matchId,
-          question.section,
-          question.question_order,
-          question.player_index,
-          question.question_type,
-          question.question_text,
-          question.media_url,
-          question.media_type,
-          question.answer_text,
-          question.points || 10,
-          question.time_limit
-        ]
-      );
-      insertCount++;
-    }
-    
-    // Cập nhật status match
-    await connection.query(
-      'UPDATE matches SET status = ? WHERE id = ?',
-      ['ready', matchId]
+
+    // Lấy metadata từ database để biết node nào
+    const [matchRows] = await pool.query(
+      'SELECT data_node_id, match_id, match_name FROM matches WHERE match_id = ?',
+      [matchId]
     );
-    
-    await connection.commit();
-    
-    res.json({
-      success: true,
-      count: insertCount,
-      message: `Đã lưu ${insertCount} câu hỏi`
-    });
-    
+
+    if (matchRows.length === 0) {
+      console.error(`❌ [BULK_ADD] Match not found: ${matchId}`);
+      return res.status(404).json({
+        error: `Trận đấu không tồn tại: ${matchId}`
+      });
+    }
+
+    const matchRecord = matchRows[0];
+    const dataNodeId = matchRecord.data_node_id;
+
+    console.log(`   Match: ${matchRecord.match_name}`);
+    console.log(`   Data Node ID: ${dataNodeId}`);
+
+    // Gửi từng câu hỏi tới data node
+    try {
+      console.log(`📡 Đang gửi ${questions.length} câu hỏi tới Data Node ${dataNodeId}...`);
+
+      let successCount = 0;
+      const errors = [];
+
+      for (const question of questions) {
+        try {
+          await addQuestionToDataNode(dataNodeId, matchId, {
+            section: question.section,
+            playerIndex: question.player_index ? parseInt(question.player_index) : null,
+            order: parseInt(question.question_order),
+            type: question.question_type || 'text',
+            questionText: question.question_text || null,
+            mediaFile: question.media_file || null,
+            mediaSize: question.media_size || null,
+            answer: question.answer_text,
+            points: question.points || 10,
+            timeLimit: question.time_limit || null
+          });
+          successCount++;
+        } catch (err) {
+          errors.push({
+            question: question.question_order,
+            error: err.message
+          });
+        }
+      }
+
+      console.log(`✅ [BULK_ADD] Đã thêm ${successCount}/${questions.length} câu hỏi vào match.json`);
+
+      // Cập nhật status match
+      await pool.query(
+        'UPDATE matches SET status = ? WHERE match_id = ?',
+        ['ready', matchId]
+      );
+
+      res.json({
+        success: true,
+        count: successCount,
+        total: questions.length,
+        errors: errors.length > 0 ? errors : undefined,
+        message: `Đã lưu ${successCount}/${questions.length} câu hỏi vào match.json`,
+        _source: 'data node'
+      });
+
+    } catch (dataNodeError) {
+      console.error(`❌ [BULK_ADD] Không thể gửi tới Data Node:`, dataNodeError.message);
+
+      return res.status(503).json({
+        success: false,
+        error: 'Không thể thêm câu hỏi',
+        details: 'Data Node đang offline hoặc không phản hồi',
+        node_id: dataNodeId,
+        suggestion: 'Vui lòng kiểm tra Data Node và thử lại'
+      });
+    }
+
   } catch (error) {
-    await connection.rollback();
-    console.error('Lỗi lưu câu hỏi:', error);
+    console.error('❌ [BULK_ADD] Lỗi lưu câu hỏi:', error);
     res.status(500).json({ error: error.message });
-  } finally {
-    connection.release();
   }
 });
 
 /**
  * POST /api/matches/questions
  * Tạo câu hỏi mới (add từng câu)
+ * ✅ GỬI TỚI DATA NODE (không lưu database)
  */
 router.post('/questions', requireAdmin, async (req, res) => {
   try {
     const questionData = req.body;
 
-    const [result] = await pool.query(
-      `INSERT INTO match_questions
-       (match_id, section, question_order, player_index, question_type,
-        question_text, media_url, media_type, answer_text, points, time_limit)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        questionData.match_id,
-        questionData.section,
-        questionData.question_order,
-        questionData.player_index,
-        questionData.question_type,
-        questionData.question_text,
-        questionData.media_url,
-        questionData.media_type,
-        questionData.answer_text,
-        questionData.points || 10,
-        questionData.time_limit
-      ]
+    console.log('📝 [ADD_QUESTION] Nhận request thêm câu hỏi:');
+    console.log(`   match_id: ${questionData.match_id}`);
+    console.log(`   section: ${questionData.section}`);
+    console.log(`   question_order: ${questionData.question_order}`);
+    console.log(`   question_type: ${questionData.question_type}`);
+    console.log(`   question_text: ${questionData.question_text}`);
+    console.log(`   answer_text: ${questionData.answer_text}`);
+
+    // Lấy metadata từ database để biết node nào
+    const [matchRows] = await pool.query(
+      'SELECT data_node_id, match_id, match_name FROM matches WHERE match_id = ?',
+      [questionData.match_id]
     );
 
-    res.json({
-      success: true,
-      questionId: result.insertId,
-      message: 'Đã thêm câu hỏi'
-    });
+    if (matchRows.length === 0) {
+      console.error(`❌ [ADD_QUESTION] Match not found: ${questionData.match_id}`);
+      return res.status(404).json({
+        error: `Trận đấu không tồn tại: ${questionData.match_id}`
+      });
+    }
+
+    const matchRecord = matchRows[0];
+    const dataNodeId = matchRecord.data_node_id;
+    const matchId = matchRecord.match_id;
+
+    console.log(`   Match: ${matchRecord.match_name}`);
+    console.log(`   Data Node ID: ${dataNodeId}`);
+
+    // Gửi tới data node để lưu vào match.json
+    try {
+      console.log(`📡 Đang gửi câu hỏi tới Data Node ${dataNodeId}...`);
+
+      const question = await addQuestionToDataNode(dataNodeId, matchId, {
+        section: questionData.section,
+        playerIndex: questionData.player_index ? parseInt(questionData.player_index) : null,
+        order: parseInt(questionData.question_order),
+        type: questionData.question_type || 'text',
+        questionText: questionData.question_text || null,
+        mediaFile: questionData.media_file || null,
+        mediaSize: questionData.media_size || null,
+        answer: questionData.answer_text,
+        points: questionData.points || 10,
+        timeLimit: questionData.time_limit || null
+      });
+
+      console.log(`✅ [ADD_QUESTION] Đã thêm câu hỏi vào match.json thành công`);
+
+      res.json({
+        success: true,
+        question: question,
+        message: 'Đã thêm câu hỏi vào match.json',
+        _source: 'data node'
+      });
+
+    } catch (dataNodeError) {
+      console.error(`❌ [ADD_QUESTION] Không thể gửi tới Data Node:`, dataNodeError.message);
+
+      return res.status(503).json({
+        success: false,
+        error: 'Không thể thêm câu hỏi',
+        details: 'Data Node đang offline hoặc không phản hồi',
+        node_id: dataNodeId,
+        suggestion: 'Vui lòng kiểm tra Data Node và thử lại'
+      });
+    }
 
   } catch (error) {
-    console.error('Lỗi tạo câu hỏi:', error);
+    console.error('❌ [ADD_QUESTION] Lỗi tạo câu hỏi:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -252,25 +353,108 @@ router.post('/questions', requireAdmin, async (req, res) => {
 /**
  * GET /api/matches/:matchId/questions
  * Lấy danh sách câu hỏi của trận đấu
+ * ✅ ĐỌC TỪ match.json TRÊN DATA NODE (không dùng database)
  */
 router.get('/:matchId/questions', requireAdmin, async (req, res) => {
   try {
     const { matchId } = req.params;
 
-    const [questions] = await pool.query(
-      `SELECT * FROM match_questions
-       WHERE match_id = ?
-       ORDER BY section, player_index, question_order`,
+    console.log(`📖 [GET_QUESTIONS] Lấy danh sách câu hỏi cho match: ${matchId}`);
+
+    // Lấy metadata từ database để biết node nào
+    const [matchRows] = await pool.query(
+      'SELECT data_node_id, match_id, match_name FROM matches WHERE match_id = ?',
       [matchId]
     );
 
-    res.json({
-      success: true,
-      questions: questions
-    });
+    if (matchRows.length === 0) {
+      console.error(`❌ [GET_QUESTIONS] Match not found: ${matchId}`);
+      return res.status(404).json({
+        error: `Trận đấu không tồn tại: ${matchId}`
+      });
+    }
+
+    const matchRecord = matchRows[0];
+    const dataNodeId = matchRecord.data_node_id;
+
+    console.log(`   Match: ${matchRecord.match_name}`);
+    console.log(`   Data Node ID: ${dataNodeId}`);
+
+    // Đọc match.json từ data node
+    try {
+      console.log(`📡 Đang đọc match.json từ Data Node ${dataNodeId}...`);
+      const matchData = await getMatchFromDataNode(dataNodeId, matchId);
+
+      // Parse questions từ match.json
+      const questions = [];
+
+      for (const [sectionName, section] of Object.entries(matchData.sections)) {
+        // Sections không có player_index (khoi_dong_chung, vcnv, tang_toc)
+        if (section.questions && Array.isArray(section.questions)) {
+          section.questions.forEach(q => {
+            questions.push({
+              section: sectionName,
+              player_index: null,
+              order: q.order,
+              type: q.type,
+              question_text: q.question_text,
+              media_file: q.media_file || null,
+              media_url: q.media_url || null,
+              media_size: q.media_size || null,
+              answer: q.answer,
+              points: q.points,
+              time_limit: q.time_limit
+            });
+          });
+        }
+
+        // Sections có player_index (khoi_dong_rieng, ve_dich)
+        if (section.players && Array.isArray(section.players)) {
+          section.players.forEach(player => {
+            if (player.questions && Array.isArray(player.questions)) {
+              player.questions.forEach(q => {
+                questions.push({
+                  section: sectionName,
+                  player_index: player.player_index,
+                  order: q.order,
+                  type: q.type,
+                  question_text: q.question_text,
+                  media_file: q.media_file || null,
+                  media_url: q.media_url || null,
+                  media_size: q.media_size || null,
+                  answer: q.answer,
+                  points: q.points,
+                  time_limit: q.time_limit
+                });
+              });
+            }
+          });
+        }
+      }
+
+      console.log(`✅ [GET_QUESTIONS] Tìm thấy ${questions.length} câu hỏi từ match.json`);
+
+      res.json({
+        success: true,
+        questions: questions,
+        _source: 'match.json on data node'
+      });
+
+    } catch (dataNodeError) {
+      console.error(`❌ [GET_QUESTIONS] Không thể đọc từ Data Node:`, dataNodeError.message);
+
+      // Graceful degradation: Trả về error rõ ràng
+      return res.status(503).json({
+        success: false,
+        error: 'Không thể truy cập dữ liệu câu hỏi',
+        details: 'Data Node đang offline hoặc không phản hồi',
+        node_id: dataNodeId,
+        suggestion: 'Vui lòng kiểm tra Data Node và thử lại'
+      });
+    }
 
   } catch (error) {
-    console.error('Lỗi lấy câu hỏi:', error);
+    console.error('❌ [GET_QUESTIONS] Lỗi lấy câu hỏi:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -347,34 +531,60 @@ router.put('/questions/:questionId', requireAdmin, async (req, res) => {
 router.delete('/:matchId/questions/:questionId', requireAdmin, async (req, res) => {
   try {
     const { matchId, questionId } = req.params;
-    
+
+    console.log(`🗑️  [DELETE_QUESTION] Xóa câu hỏi ${questionId} từ match ${matchId}`);
+
+    // Convert match_id (VARCHAR) sang matches.id (INT) nếu cần
+    let matchDbId = matchId;
+
+    if (typeof matchId === 'string' && matchId.includes('_')) {
+      const [matchRows] = await pool.query(
+        'SELECT id FROM matches WHERE match_id = ?',
+        [matchId]
+      );
+
+      if (matchRows.length === 0) {
+        console.error(`❌ [DELETE_QUESTION] Match not found: ${matchId}`);
+        return res.status(404).json({
+          error: `Trận đấu không tồn tại: ${matchId}`
+        });
+      }
+
+      matchDbId = matchRows[0].id;
+      console.log(`   Converted: "${matchId}" → ID ${matchDbId}`);
+    }
+
     // Lấy thông tin câu hỏi
     const [questions] = await pool.query(
       'SELECT * FROM match_questions WHERE id = ? AND match_id = ?',
-      [questionId, matchId]
+      [questionId, matchDbId]
     );
-    
+
     if (questions.length === 0) {
+      console.error(`❌ [DELETE_QUESTION] Question not found: ${questionId}`);
       return res.status(404).json({ error: 'Không tìm thấy câu hỏi' });
     }
-    
+
     const question = questions[0];
-    
+
     // Xóa file trên data node nếu có
     if (question.media_url) {
+      console.log(`   TODO: Delete media file: ${question.media_url}`);
       // TODO: Implement delete file from data node
     }
-    
+
     // Xóa câu hỏi
     await pool.query('DELETE FROM match_questions WHERE id = ?', [questionId]);
-    
+
+    console.log(`✅ [DELETE_QUESTION] Đã xóa câu hỏi ${questionId}`);
+
     res.json({
       success: true,
       message: 'Đã xóa câu hỏi'
     });
-    
+
   } catch (error) {
-    console.error('Lỗi xóa câu hỏi:', error);
+    console.error('❌ [DELETE_QUESTION] Lỗi xóa câu hỏi:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -386,9 +596,31 @@ router.delete('/:matchId/questions/:questionId', requireAdmin, async (req, res) 
 router.get('/:matchId/summary', requireAdmin, async (req, res) => {
   try {
     const { matchId } = req.params;
-    
+
+    console.log(`📊 [GET_SUMMARY] Lấy summary cho match: ${matchId}`);
+
+    // Convert match_id (VARCHAR) sang matches.id (INT) nếu cần
+    let matchDbId = matchId;
+
+    if (typeof matchId === 'string' && matchId.includes('_')) {
+      const [matchRows] = await pool.query(
+        'SELECT id FROM matches WHERE match_id = ?',
+        [matchId]
+      );
+
+      if (matchRows.length === 0) {
+        console.error(`❌ [GET_SUMMARY] Match not found: ${matchId}`);
+        return res.status(404).json({
+          error: `Trận đấu không tồn tại: ${matchId}`
+        });
+      }
+
+      matchDbId = matchRows[0].id;
+      console.log(`   Converted: "${matchId}" → ID ${matchDbId}`);
+    }
+
     const [summary] = await pool.query(
-      `SELECT 
+      `SELECT
          section,
          COUNT(*) as total,
          SUM(CASE WHEN question_type = 'text' THEN 1 ELSE 0 END) as text_count,
@@ -397,16 +629,18 @@ router.get('/:matchId/summary', requireAdmin, async (req, res) => {
        FROM match_questions
        WHERE match_id = ?
        GROUP BY section`,
-      [matchId]
+      [matchDbId]
     );
-    
+
+    console.log(`✅ [GET_SUMMARY] Summary: ${summary.length} sections`);
+
     res.json({
       success: true,
       summary: summary
     });
-    
+
   } catch (error) {
-    console.error('Lỗi lấy summary:', error);
+    console.error('❌ [GET_SUMMARY] Lỗi lấy summary:', error);
     res.status(500).json({ error: error.message });
   }
 });

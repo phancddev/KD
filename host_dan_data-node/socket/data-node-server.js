@@ -8,9 +8,14 @@ import {
   updateDataNodeStatus,
   updateDataNodeStorage
 } from '../db/data-nodes.js';
+import { emitWithTimeout } from './socket-helpers.js';
 
 // Lưu trữ các kết nối data node
 const dataNodeConnections = new Map();
+
+// Lưu trữ timestamp của lần cập nhật status gần nhất
+// Key: nodeId, Value: { status: 'online'|'offline', timestamp: Date }
+const nodeStatusTimestamps = new Map();
 
 /**
  * Khởi tạo Data Node Socket Server
@@ -46,6 +51,13 @@ export function initDataNodeSocket(httpServer) {
           return;
         }
         
+        // Disconnect socket cũ nếu có (tránh duplicate registration)
+        const existingConnection = dataNodeConnections.get(dataNode.id);
+        if (existingConnection && existingConnection.socket) {
+          console.log(`⚠️  Node ${dataNode.id} đã có connection cũ, disconnect socket cũ...`);
+          existingConnection.socket.disconnect();
+        }
+
         // Lưu thông tin kết nối
         dataNodeConnections.set(dataNode.id, {
           socketId: socket.id,
@@ -55,9 +67,13 @@ export function initDataNodeSocket(httpServer) {
           name: name,
           connectedAt: new Date()
         });
-        
-        // Cập nhật trạng thái online
+
+        // Cập nhật trạng thái online VÀ timestamp
         await updateDataNodeStatus(dataNode.id, 'online');
+        nodeStatusTimestamps.set(dataNode.id, {
+          status: 'online',
+          timestamp: Date.now()
+        });
         
         // Lưu nodeId vào socket để dùng sau
         socket.nodeId = dataNode.id;
@@ -117,10 +133,14 @@ export function initDataNodeSocket(httpServer) {
       try {
         if (socket.nodeId) {
           console.log(`🔌 Data node ${socket.nodeId} ngắt kết nối`);
-          
-          // Cập nhật trạng thái offline
+
+          // Cập nhật trạng thái offline VÀ timestamp
           await updateDataNodeStatus(socket.nodeId, 'offline');
-          
+          nodeStatusTimestamps.set(socket.nodeId, {
+            status: 'offline',
+            timestamp: Date.now()
+          });
+
           // Xóa khỏi danh sách kết nối
           dataNodeConnections.delete(socket.nodeId);
           
@@ -174,31 +194,20 @@ export function isDataNodeOnline(nodeId) {
 
 /**
  * Gửi file tới data node
+ * SỬ DỤNG emitWithTimeout để tránh memory leak và hang forever
  */
 export async function sendFileToDataNode(nodeId, fileData) {
-  return new Promise((resolve, reject) => {
-    const socket = getDataNodeSocket(nodeId);
+  const socket = getDataNodeSocket(nodeId);
 
-    if (!socket) {
-      reject(new Error('Data node không online'));
-      return;
-    }
+  if (!socket) {
+    throw new Error('Data node không online');
+  }
 
-    // Gửi file qua socket với timeout
-    const timeout = setTimeout(() => {
-      reject(new Error('Timeout khi upload file'));
-    }, 60000); // 60 seconds timeout
+  console.log(`📤 [UPLOAD_FILE] Sending to node ${nodeId} with 60s timeout...`);
+  const response = await emitWithTimeout(socket, 'upload_file', fileData, 60000);
+  console.log(`✅ [UPLOAD_FILE] Response received from node ${nodeId}`);
 
-    socket.emit('upload_file', fileData, (response) => {
-      clearTimeout(timeout);
-
-      if (response.success) {
-        resolve(response);
-      } else {
-        reject(new Error(response.error || 'Upload failed'));
-      }
-    });
-  });
+  return response;
 }
 
 /**
@@ -230,54 +239,38 @@ export async function uploadFileToDataNode(nodeId, fileBuffer, fileName, mimeTyp
 
 /**
  * Tạo folder trên data node
- * @param {number} nodeId - ID của data node
- * @param {string} folderName - Tên folder cần tạo
+ * SỬ DỤNG emitWithTimeout
  */
 export async function createFolderOnDataNode(nodeId, folderName) {
-  return new Promise((resolve, reject) => {
-    const socket = getDataNodeSocket(nodeId);
+  const socket = getDataNodeSocket(nodeId);
 
-    if (!socket) {
-      reject(new Error('Data node không online'));
-      return;
-    }
+  if (!socket) {
+    throw new Error('Data node không online');
+  }
 
-    const timeout = setTimeout(() => {
-      reject(new Error('Timeout khi tạo folder'));
-    }, 10000); // 10 seconds timeout
+  console.log(`📤 [CREATE_FOLDER] Sending to node ${nodeId} with 10s timeout...`);
+  const response = await emitWithTimeout(socket, 'create_folder', { folderName }, 10000);
+  console.log(`✅ [CREATE_FOLDER] Response received from node ${nodeId}`);
 
-    socket.emit('create_folder', { folderName }, (response) => {
-      clearTimeout(timeout);
-
-      if (response.success) {
-        resolve(response);
-      } else {
-        reject(new Error(response.error || 'Tạo folder thất bại'));
-      }
-    });
-  });
+  return response;
 }
 
 /**
  * Xóa file từ data node
+ * SỬ DỤNG emitWithTimeout
  */
 export async function deleteFileFromDataNode(nodeId, filePath) {
-  return new Promise((resolve, reject) => {
-    const socket = getDataNodeSocket(nodeId);
-    
-    if (!socket) {
-      reject(new Error('Data node không online'));
-      return;
-    }
-    
-    socket.emit('delete_file', { filePath }, (response) => {
-      if (response.success) {
-        resolve(response);
-      } else {
-        reject(new Error(response.error || 'Delete failed'));
-      }
-    });
-  });
+  const socket = getDataNodeSocket(nodeId);
+
+  if (!socket) {
+    throw new Error('Data node không online');
+  }
+
+  console.log(`📤 [DELETE_FILE] Sending to node ${nodeId} with 15s timeout...`);
+  await emitWithTimeout(socket, 'delete_file', { filePath }, 15000);
+  console.log(`✅ [DELETE_FILE] Response received from node ${nodeId}`);
+
+  return true;
 }
 
 /**
@@ -306,8 +299,10 @@ export { dataNodeConnections };
 
 /**
  * Health Check - Kiểm tra trạng thái data nodes mỗi 5 giây
+ * SỬ DỤNG GRACE PERIOD để tránh race condition khi reconnect
  */
 let healthCheckInterval = null;
+const GRACE_PERIOD_MS = 3000; // 3 giây grace period
 
 export function startHealthCheck() {
   // Dừng interval cũ nếu có
@@ -315,7 +310,7 @@ export function startHealthCheck() {
     clearInterval(healthCheckInterval);
   }
 
-  console.log('🏥 Bắt đầu health check cho data nodes (mỗi 5 giây)');
+  console.log('🏥 Bắt đầu health check cho data nodes (mỗi 5 giây, grace period: 3s)');
 
   healthCheckInterval = setInterval(async () => {
     try {
@@ -326,13 +321,31 @@ export function startHealthCheck() {
         const isOnline = isDataNodeOnline(node.id);
         const currentStatus = node.status;
 
+        // Lấy timestamp của lần cập nhật gần nhất
+        const lastUpdate = nodeStatusTimestamps.get(node.id);
+        const now = Date.now();
+
+        // Nếu vừa mới cập nhật status (trong grace period) → SKIP
+        if (lastUpdate && (now - lastUpdate.timestamp) < GRACE_PERIOD_MS) {
+          // console.log(`⏳ Node ${node.id}: Trong grace period, skip health check`);
+          continue;
+        }
+
         // Cập nhật status nếu thay đổi
         if (isOnline && currentStatus !== 'online') {
-          console.log(`✅ Data node ${node.name} (ID: ${node.id}) đã online`);
+          console.log(`✅ [HEALTH_CHECK] Data node ${node.name} (ID: ${node.id}) đã online`);
           await updateDataNodeStatus(node.id, 'online');
+          nodeStatusTimestamps.set(node.id, {
+            status: 'online',
+            timestamp: now
+          });
         } else if (!isOnline && currentStatus === 'online') {
-          console.log(`❌ Data node ${node.name} (ID: ${node.id}) đã offline`);
+          console.log(`❌ [HEALTH_CHECK] Data node ${node.name} (ID: ${node.id}) đã offline`);
           await updateDataNodeStatus(node.id, 'offline');
+          nodeStatusTimestamps.set(node.id, {
+            status: 'offline',
+            timestamp: now
+          });
         }
       }
     } catch (error) {

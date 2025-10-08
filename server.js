@@ -985,9 +985,11 @@ app.use('/api/admin', adminApiRoutes);
 app.use('/api/admin', tangtocAdminApiRoutes);
 
 // Host Dan Data Node routes
+// IMPORTANT: Mount matchApiRoutes BEFORE matchQuestionApiRoutes
+// để route POST /api/matches không bị override
 app.use('/api', dataNodeApiRoutes);
-app.use('/api', matchApiRoutes);
-app.use('/api/matches', matchQuestionApiRoutes);
+app.use('/api', matchApiRoutes);  // Chứa POST /api/matches, GET /api/matches, etc.
+app.use('/api/matches', matchQuestionApiRoutes);  // Chứa POST /api/matches/:matchId/questions, etc.
 
 // Test route để kiểm tra routing (sau khi admin routes được đăng ký)
 app.get('/test', (req, res) => {
@@ -1014,6 +1016,10 @@ initTangTocSocket(io);
 
 // Khởi tạo Data Node Socket Server
 import { initDataNodeSocket, startHealthCheck } from './host_dan_data-node/socket/data-node-server.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 initDataNodeSocket(server);
 
 // Bắt đầu health check cho data nodes (mỗi 5 giây)
@@ -1085,6 +1091,10 @@ app.get('/admin/match-questions', checkAdmin, (req, res) => {
   res.sendFile(join(__dirname, 'views', 'admin', 'match-questions.html'));
 });
 
+app.get('/admin/match-manage', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'match-manage.html'));
+});
+
 /**
  * Proxy stream từ Data Node
  * GET /stream/:nodeId/:matchFolder/:fileName
@@ -1136,3 +1146,24 @@ app.get('/stream/:nodeId/:matchFolder/:fileName', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ========== CLEANUP TEMP FILES ==========
+/**
+ * Cleanup temp files định kỳ (mỗi 1 giờ)
+ */
+async function cleanupTempFiles() {
+  try {
+    console.log('🧹 Running temp files cleanup...');
+    const { stdout, stderr } = await execAsync('node scripts/cleanup-temp-files.js');
+    if (stdout) console.log(stdout);
+    if (stderr) console.error(stderr);
+  } catch (error) {
+    console.error('❌ Error running cleanup:', error.message);
+  }
+}
+
+// Chạy cleanup ngay khi khởi động
+cleanupTempFiles();
+
+// Chạy cleanup mỗi 1 giờ
+setInterval(cleanupTempFiles, 60 * 60 * 1000);

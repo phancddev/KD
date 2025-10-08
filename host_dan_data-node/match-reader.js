@@ -4,110 +4,120 @@
  */
 
 import { getDataNodeSocket } from './socket/data-node-server.js';
+import { emitWithTimeout } from './socket/socket-helpers.js';
 
 /**
  * Tạo trận đấu mới trên Data Node
+ * SỬ DỤNG TIMEOUT để tránh hang forever
  */
 export async function createMatchOnDataNode(dataNodeId, matchData) {
-  return new Promise((resolve, reject) => {
-    const socket = getDataNodeSocket(dataNodeId);
-    
-    if (!socket) {
-      return reject(new Error(`Data Node ${dataNodeId} không kết nối`));
-    }
-    
-    socket.emit('create_match', matchData, (response) => {
-      if (response.success) {
-        resolve(response.data);
-      } else {
-        reject(new Error(response.error || 'Không thể tạo trận đấu'));
-      }
-    });
-  });
+  const socket = getDataNodeSocket(dataNodeId);
+
+  if (!socket) {
+    throw new Error(`Data Node ${dataNodeId} không kết nối`);
+  }
+
+  console.log(`📤 [CREATE_MATCH] Sending to node ${dataNodeId} with 30s timeout...`);
+  const response = await emitWithTimeout(socket, 'create_match', matchData, 30000);
+  console.log(`✅ [CREATE_MATCH] Response received from node ${dataNodeId}`);
+
+  return response.data;
 }
 
 /**
  * Đọc match.json từ Data Node
+ * SỬ DỤNG TIMEOUT để tránh hang forever
  */
 export async function getMatchFromDataNode(dataNodeId, matchId) {
-  return new Promise((resolve, reject) => {
-    const socket = getDataNodeSocket(dataNodeId);
-    
-    if (!socket) {
-      return reject(new Error(`Data Node ${dataNodeId} không kết nối`));
-    }
-    
-    socket.emit('get_match', { matchId }, (response) => {
-      if (response.success) {
-        resolve(response.data);
-      } else {
-        reject(new Error(response.error || 'Không thể đọc trận đấu'));
-      }
-    });
-  });
+  const socket = getDataNodeSocket(dataNodeId);
+
+  if (!socket) {
+    throw new Error(`Data Node ${dataNodeId} không kết nối`);
+  }
+
+  console.log(`📤 [GET_MATCH] Sending to node ${dataNodeId} with 15s timeout...`);
+  const response = await emitWithTimeout(socket, 'get_match', { matchId }, 15000);
+  console.log(`✅ [GET_MATCH] Response received from node ${dataNodeId}`);
+
+  return response.data;
 }
 
 /**
  * Thêm câu hỏi vào match.json trên Data Node
+ * SỬ DỤNG TIMEOUT
  */
 export async function addQuestionToDataNode(dataNodeId, matchId, questionData) {
-  return new Promise((resolve, reject) => {
-    const socket = getDataNodeSocket(dataNodeId);
-    
-    if (!socket) {
-      return reject(new Error(`Data Node ${dataNodeId} không kết nối`));
-    }
-    
-    socket.emit('add_question', { matchId, ...questionData }, (response) => {
-      if (response.success) {
-        resolve(response.data);
-      } else {
-        reject(new Error(response.error || 'Không thể thêm câu hỏi'));
-      }
-    });
-  });
+  const socket = getDataNodeSocket(dataNodeId);
+
+  if (!socket) {
+    throw new Error(`Data Node ${dataNodeId} không kết nối`);
+  }
+
+  console.log(`📤 [ADD_QUESTION] Sending to node ${dataNodeId} with 20s timeout...`);
+  const response = await emitWithTimeout(socket, 'add_question', { matchId, ...questionData }, 20000);
+  console.log(`✅ [ADD_QUESTION] Response received from node ${dataNodeId}`);
+
+  return response.data;
 }
 
 /**
  * Xóa câu hỏi từ match.json trên Data Node
+ * SỬ DỤNG TIMEOUT
  */
 export async function deleteQuestionFromDataNode(dataNodeId, matchId, section, playerIndex, order) {
-  return new Promise((resolve, reject) => {
-    const socket = getDataNodeSocket(dataNodeId);
-    
-    if (!socket) {
-      return reject(new Error(`Data Node ${dataNodeId} không kết nối`));
-    }
-    
-    socket.emit('delete_question', { matchId, section, playerIndex, order }, (response) => {
-      if (response.success) {
-        resolve(true);
-      } else {
-        reject(new Error(response.error || 'Không thể xóa câu hỏi'));
-      }
-    });
-  });
+  const socket = getDataNodeSocket(dataNodeId);
+
+  if (!socket) {
+    throw new Error(`Data Node ${dataNodeId} không kết nối`);
+  }
+
+  console.log(`📤 [DELETE_QUESTION] Sending to node ${dataNodeId} with 15s timeout...`);
+  await emitWithTimeout(socket, 'delete_question', { matchId, section, playerIndex, order }, 15000);
+  console.log(`✅ [DELETE_QUESTION] Response received from node ${dataNodeId}`);
+
+  return true;
+}
+
+/**
+ * Gán câu hỏi cho thí sinh khác
+ * SỬ DỤNG TIMEOUT
+ */
+export async function assignPlayerToQuestion(dataNodeId, matchId, section, currentPlayerIndex, questionOrder, newPlayerIndex) {
+  const socket = getDataNodeSocket(dataNodeId);
+
+  if (!socket) {
+    throw new Error(`Data Node ${dataNodeId} không kết nối`);
+  }
+
+  console.log(`📤 [ASSIGN_PLAYER] Sending to node ${dataNodeId} with 15s timeout...`);
+  const response = await emitWithTimeout(socket, 'assign_player', {
+    matchId,
+    section,
+    currentPlayerIndex,
+    questionOrder,
+    newPlayerIndex
+  }, 15000);
+  console.log(`✅ [ASSIGN_PLAYER] Response received from node ${dataNodeId}`);
+
+  return response.data;
 }
 
 /**
  * Xóa trận đấu từ Data Node
+ * SỬ DỤNG TIMEOUT
  */
 export async function deleteMatchFromDataNode(dataNodeId, matchId) {
-  return new Promise((resolve, reject) => {
-    const socket = getDataNodeSocket(dataNodeId);
-    
-    if (!socket) {
-      return reject(new Error(`Data Node ${dataNodeId} không kết nối`));
-    }
-    
-    socket.emit('delete_match', { matchId }, (response) => {
-      if (response.success) {
-        resolve(true);
-      } else {
-        reject(new Error(response.error || 'Không thể xóa trận đấu'));
-      }
-    });
-  });
+  const socket = getDataNodeSocket(dataNodeId);
+
+  if (!socket) {
+    throw new Error(`Data Node ${dataNodeId} không kết nối`);
+  }
+
+  console.log(`📤 [DELETE_MATCH] Sending to node ${dataNodeId} with 20s timeout...`);
+  await emitWithTimeout(socket, 'delete_match', { matchId }, 20000);
+  console.log(`✅ [DELETE_MATCH] Response received from node ${dataNodeId}`);
+
+  return true;
 }
 
 /**

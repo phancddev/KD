@@ -28,13 +28,21 @@ async function loadDataNodes() {
   try {
     const response = await fetch('/api/data-nodes');
     const result = await response.json();
-    
+
     if (result.success) {
       dataNodes = result.data.filter(node => node.status === 'online');
+      console.log(`📊 Loaded ${dataNodes.length} online data nodes:`, dataNodes.map(n => `${n.name} (ID: ${n.id})`));
       renderDataNodeSelect();
+
+      // Hiển thị warning nếu không có node online
+      if (dataNodes.length === 0) {
+        console.warn('⚠️ CẢNH BÁO: Không có Data Node nào online! Không thể tạo trận đấu.');
+      }
     }
   } catch (error) {
-    console.error('Error loading data nodes:', error);
+    console.error('❌ Error loading data nodes:', error);
+    dataNodes = [];
+    renderDataNodeSelect();
   }
 }
 
@@ -54,19 +62,32 @@ function renderMatches() {
       playing: 'Đang chơi',
       finished: 'Kết thúc'
     };
-    
+
+    // Hiển thị thông tin node với badge trạng thái
+    let nodeDisplay = 'Chưa chọn';
+    if (match.data_node_name) {
+      const nodeStatus = match.data_node_status === 'online' ? '🟢' : '🔴';
+      const nodeStatusText = match.data_node_status === 'online' ? 'Online' : 'Offline';
+      const nodeColor = match.data_node_status === 'online' ? '#4caf50' : '#f44336';
+      nodeDisplay = `
+        ${match.data_node_name}
+        <br>
+        <small style="color: ${nodeColor};">${nodeStatus} ${nodeStatusText}</small>
+      `;
+    }
+
     return `
       <tr>
-        <td><strong>${match.code}</strong></td>
-        <td>${match.name}</td>
+        <td><strong>${match.match_code || match.code}</strong></td>
+        <td>${match.match_name || match.name}</td>
         <td>${match.host_username || 'N/A'}</td>
-        <td>${match.data_node_name || 'Chưa chọn'}</td>
+        <td>${nodeDisplay}</td>
         <td>${match.participant_count || 0}/4</td>
         <td><span class="status-badge status-${match.status}">${statusText[match.status]}</span></td>
         <td>${new Date(match.created_at).toLocaleDateString('vi-VN')}</td>
         <td>
-          <button class="btn btn-primary" onclick="manageQuestions(${match.id})">Câu hỏi</button>
-          <button class="btn btn-danger" onclick="deleteMatch(${match.id})">Xóa</button>
+          <button class="btn btn-primary" onclick="manageQuestions('${match.match_id || match.id}')">Câu hỏi</button>
+          <button class="btn btn-danger" onclick="deleteMatch('${match.match_id || match.id}')">Xóa</button>
         </td>
       </tr>
     `;
@@ -77,16 +98,29 @@ function renderMatches() {
 function renderDataNodeSelect() {
   const select = document.getElementById('dataNodeSelect');
   const errorDiv = document.getElementById('dataNodeError');
+  const submitBtn = document.getElementById('createMatchSubmitBtn');
 
   if (dataNodes.length === 0) {
     select.innerHTML = '<option value="">-- Không có Data Node online --</option>';
+    select.disabled = true;
     errorDiv.style.display = 'block';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+      submitBtn.style.cursor = 'not-allowed';
+    }
   } else {
     select.innerHTML = '<option value="">-- Chọn Data Node --</option>' +
       dataNodes.map(node => `
-        <option value="${node.id}">${node.name} (${node.host}:${node.port})</option>
+        <option value="${node.id}">${node.name} (${node.host}:${node.port}) - ${node.status === 'online' ? '🟢 Online' : '🔴 Offline'}</option>
       `).join('');
+    select.disabled = false;
     errorDiv.style.display = 'none';
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+    }
   }
 }
 
@@ -107,6 +141,7 @@ document.getElementById('createMatchForm').addEventListener('submit', async (e) 
   e.preventDefault();
 
   const dataNodeId = document.getElementById('dataNodeSelect').value;
+  const matchName = document.getElementById('matchName').value;
 
   // Validate Data Node selection
   if (!dataNodeId) {
@@ -114,8 +149,23 @@ document.getElementById('createMatchForm').addEventListener('submit', async (e) 
     return;
   }
 
+  // Double check: Kiểm tra node có thực sự online không
+  if (dataNodes.length === 0) {
+    alert('❌ KHÔNG THỂ TẠO TRẬN ĐẤU!\n\nKhông có Data Node nào đang online.\nVui lòng khởi động ít nhất 1 Data Node trước khi tạo trận đấu.');
+    return;
+  }
+
+  const selectedNode = dataNodes.find(n => n.id === parseInt(dataNodeId));
+  if (!selectedNode) {
+    alert('❌ Data Node đã chọn không còn online!\n\nVui lòng chọn lại Data Node khác.');
+    await loadDataNodes(); // Reload danh sách
+    return;
+  }
+
+  console.log(`🎮 Đang tạo trận đấu "${matchName}" trên Data Node: ${selectedNode.name} (ID: ${selectedNode.id})`);
+
   const data = {
-    name: document.getElementById('matchName').value,
+    name: matchName,
     dataNodeId: dataNodeId
   };
 
@@ -167,7 +217,7 @@ async function deleteMatch(id) {
 // Manage questions
 async function manageQuestions(matchId) {
   // Redirect to new questions management page
-  window.location.href = `/admin/match-questions?matchId=${matchId}`;
+  window.location.href = `/admin/match-manage?matchId=${matchId}`;
 }
 
 // Close questions modal

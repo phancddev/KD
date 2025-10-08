@@ -79,17 +79,45 @@ async function loadMatchInfo() {
   try {
     const response = await fetch(`/api/matches/${matchId}`);
     const data = await response.json();
-    
+
     if (data.success) {
-      matchData = data.match;
-      document.getElementById('matchName').textContent = matchData.name;
-      document.getElementById('dataNodeName').textContent = matchData.data_node_name || '-';
+      matchData = data.data || data.match;
+
+      console.log('📊 Match Info:', matchData);
+
+      // Hiển thị thông tin cơ bản
+      document.getElementById('matchName').textContent = matchData.match_name || matchData.name || '-';
       document.getElementById('playerCount').textContent = matchData.max_players || 4;
+
+      // Hiển thị thông tin node
+      const nodeInfo = matchData._node_info || {};
+      const nodeName = nodeInfo.node_name || matchData.data_node_name || '-';
+      const nodeId = nodeInfo.node_id || matchData.data_node_id || '-';
+
+      const dataNodeEl = document.getElementById('dataNodeName');
+      dataNodeEl.innerHTML = `${nodeName} <small style="color: #666;">(ID: ${nodeId})</small>`;
+
+      // Log thông tin node
+      console.log('🖥️  Data Node Info:');
+      console.log(`   Node ID: ${nodeId}`);
+      console.log(`   Node Name: ${nodeName}`);
+      console.log(`   Storage Folder: ${nodeInfo.storage_folder || matchData.storage_folder || '-'}`);
+
+      if (nodeInfo.error) {
+        console.warn(`⚠️  Node Warning: ${nodeInfo.error}`);
+        dataNodeEl.innerHTML += ` <span style="color: #f44336;">⚠️ Offline</span>`;
+      } else {
+        dataNodeEl.innerHTML += ` <span style="color: #4caf50;">🟢 Online</span>`;
+      }
+
+      if (data.warning) {
+        console.warn('⚠️  Warning:', data.warning);
+      }
     } else {
       throw new Error(data.error);
     }
   } catch (error) {
-    console.error('Lỗi khi load thông tin trận đấu:', error);
+    console.error('❌ Lỗi khi load thông tin trận đấu:', error);
     alert('Không thể load thông tin trận đấu!');
   }
 }
@@ -520,15 +548,15 @@ function collectQuestionData(questionId, section, playerIndex, questionOrder) {
   return {
     match_id: matchId,
     section: section,
-    question_order: questionOrder,
-    player_index: playerIndex,
-    question_type: questionType,
-    question_text: questionText,
+    questionOrder: questionOrder,        // ← Fix: camelCase
+    playerIndex: playerIndex,            // ← Fix: camelCase
+    questionType: questionType,          // ← Fix: camelCase
+    questionText: questionText,          // ← Fix: camelCase
     media_url: mediaUrl,
     media_type: mediaType,
-    answer_text: answer,
+    answerText: answer,                  // ← Fix: camelCase
     points: 10,
-    time_limit: section === 'khoi_dong_rieng' ? 10 : null
+    timeLimit: section === 'khoi_dong_rieng' ? 10 : null  // ← Fix: camelCase
   };
 }
 

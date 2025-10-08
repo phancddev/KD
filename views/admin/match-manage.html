@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý câu hỏi trận đấu - KD Admin</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+
+    .match-info {
+      background: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .info-item {
+      text-align: center;
+    }
+
+    .info-label {
+      font-size: 0.9em;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+
+    .info-value {
+      font-size: 1.3em;
+      font-weight: bold;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .section-tab {
+      padding: 12px 24px;
+      border: none;
+      background: #f0f0f0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-tab:hover {
+      background: #e0e0e0;
+    }
+
+    .section-tab.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .questions-container {
+      display: none;
+    }
+
+    .questions-container.active {
+      display: block;
+    }
+
+    .question-card {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 15px;
+      border-left: 4px solid #667eea;
+      transition: all 0.3s;
+    }
+
+    .question-card:hover {
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .question-number {
+      font-weight: bold;
+      color: #667eea;
+      font-size: 1.1em;
+    }
+
+    .question-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .btn-danger {
+      background: #f56565;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #e53e3e;
+    }
+
+    .btn-success {
+      background: #48bb78;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #38a169;
+    }
+
+    .question-content {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .question-text {
+      font-size: 1.1em;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .question-answer {
+      background: #e6ffed;
+      padding: 10px;
+      border-radius: 5px;
+      border-left: 3px solid #48bb78;
+    }
+
+    .answer-label {
+      font-weight: bold;
+      color: #38a169;
+      margin-bottom: 5px;
+    }
+
+    .question-meta {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 0.9em;
+      color: #666;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .player-selector {
+      margin-top: 15px;
+      padding: 15px;
+      background: #fff3cd;
+      border-radius: 8px;
+      border-left: 3px solid #ffc107;
+    }
+
+    .player-selector label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #856404;
+    }
+
+    .player-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .player-btn {
+      padding: 10px 20px;
+      border: 2px solid #ffc107;
+      background: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .player-btn:hover {
+      background: #ffc107;
+      color: white;
+    }
+
+    .player-btn.selected {
+      background: #ffc107;
+      color: white;
+      font-weight: bold;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state i {
+      font-size: 4em;
+      margin-bottom: 20px;
+      opacity: 0.3;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 1.2em;
+      color: #667eea;
+    }
+
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: white;
+      color: #667eea;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1000;
+    }
+
+    .back-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+  <a href="/admin/matches" class="back-btn">
+    <i class="fas fa-arrow-left"></i> Quay lại
+  </a>
+
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-clipboard-list"></i> Quản lý câu hỏi trận đấu</h1>
+      <div class="match-info">
+        <div class="info-item">
+          <div class="info-label">Mã trận</div>
+          <div class="info-value" id="match-code">---</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Tên trận</div>
+          <div class="info-value" id="match-name">---</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Tổng câu hỏi</div>
+          <div class="info-value" id="total-questions">0</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Trạng thái</div>
+          <div class="info-value" id="match-status">---</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="section-tabs" id="section-tabs"></div>
+      <div id="questions-content"></div>
+    </div>
+  </div>
+
+  <script src="/js/match-manage.js"></script>
+</body>
+</html>
+

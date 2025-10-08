@@ -166,7 +166,7 @@ async function loadQuestions() {
   try {
     const response = await fetch(`/api/matches/${matchId}/questions`);
     const data = await response.json();
-    
+
     if (data.success) {
       // Group questions by section
       questions = {};
@@ -176,12 +176,90 @@ async function loadQuestions() {
         }
         questions[q.section].push(q);
       });
-      
+
       updateTotalQuestions();
+      hideNodeOfflineWarning(); // Hide warning nếu load thành công
+    } else {
+      // API trả về success: false
+      if (response.status === 503) {
+        // Node offline
+        showNodeOfflineWarning(data.details || 'Data Node đang offline');
+      } else {
+        throw new Error(data.error || 'Không thể tải câu hỏi');
+      }
     }
   } catch (error) {
     console.error('Lỗi load questions:', error);
+
+    // Kiểm tra nếu là network error hoặc node offline
+    if (error.message.includes('offline') || error.message.includes('không kết nối')) {
+      showNodeOfflineWarning('Không thể kết nối tới Data Node. Vui lòng kiểm tra Data Node có đang chạy không.');
+    } else {
+      alert('Lỗi tải câu hỏi: ' + error.message);
+    }
   }
+}
+
+/**
+ * Hiển thị warning khi node offline
+ */
+function showNodeOfflineWarning(message) {
+  const container = document.querySelector('.sections-container');
+  if (!container) return;
+
+  // Xóa warning cũ nếu có
+  const oldWarning = document.getElementById('node-offline-warning');
+  if (oldWarning) {
+    oldWarning.remove();
+  }
+
+  // Tạo warning mới
+  const warning = document.createElement('div');
+  warning.id = 'node-offline-warning';
+  warning.className = 'alert alert-warning';
+  warning.style.cssText = 'margin: 20px; padding: 20px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;';
+  warning.innerHTML = `
+    <h4 style="color: #856404; margin-top: 0;">⚠️ Data Node Offline</h4>
+    <p style="color: #856404; margin: 10px 0;">${message}</p>
+    <p style="color: #856404; margin: 10px 0;"><strong>Không thể truy cập dữ liệu câu hỏi.</strong></p>
+    <p style="color: #856404; margin: 10px 0;">Vui lòng:</p>
+    <ul style="color: #856404; margin: 10px 0;">
+      <li>Kiểm tra Data Node có đang chạy không</li>
+      <li>Kiểm tra kết nối mạng</li>
+      <li>Refresh trang sau khi Data Node online</li>
+    </ul>
+    <button onclick="location.reload()" style="padding: 10px 20px; background: #ffc107; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+      🔄 Refresh Trang
+    </button>
+  `;
+
+  container.insertBefore(warning, container.firstChild);
+
+  // Disable tất cả action buttons
+  document.querySelectorAll('.add-question-btn, .edit-btn, .delete-btn').forEach(btn => {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    btn.title = 'Data Node offline - Không thể thao tác';
+  });
+}
+
+/**
+ * Ẩn warning khi node online
+ */
+function hideNodeOfflineWarning() {
+  const warning = document.getElementById('node-offline-warning');
+  if (warning) {
+    warning.remove();
+  }
+
+  // Enable lại action buttons
+  document.querySelectorAll('.add-question-btn, .edit-btn, .delete-btn').forEach(btn => {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+    btn.title = '';
+  });
 }
 
 /**

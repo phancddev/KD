@@ -173,26 +173,11 @@ async function addStorageFolderIndex() {
 
 /**
  * Add media_type column to match_questions if not exists
+ * DEPRECATED: Bảng match_questions đã bị xóa trong v2.1
  */
 async function addMediaTypeColumn() {
-  const hasColumn = await columnExists('match_questions', 'media_type');
-
-  if (hasColumn) {
-    console.log('   ✅ Column media_type already exists - SKIP');
-    return false;
-  }
-
-  console.log('   ⚠️  Column media_type NOT exists - ADDING...');
-
-  await pool.query(`
-    ALTER TABLE match_questions
-    ADD COLUMN media_type VARCHAR(50) NULL
-    COMMENT 'Loại media (image/jpeg, video/mp4, etc)'
-    AFTER media_url
-  `);
-
-  console.log('   ✅ Column added successfully');
-  return true;
+  console.log('   ℹ️  SKIP: Bảng match_questions đã bị xóa (dữ liệu lưu trong match.json trên Data Node)');
+  return false;
 }
 
 /**
@@ -269,82 +254,12 @@ async function updateNullGameMode() {
 
 /**
  * Fix match_questions table - add all missing columns
- * NOTE: Bảng này đã bị DROP trong v2.0 (questions lưu trong match.json trên Data Nodes)
- * Function này giữ lại để tương thích với code cũ, nhưng sẽ skip nếu bảng không tồn tại
+ * DEPRECATED v2.1: Bảng match_questions đã bị xóa hoàn toàn
+ * Dữ liệu giờ lưu trong match.json trên Data Nodes
  */
 async function fixMatchQuestionsSchema() {
-  console.log('   Checking match_questions columns...');
-
-  // Kiểm tra xem bảng match_questions có tồn tại không
-  const [tables] = await pool.query(`
-    SELECT COUNT(*) as count
-    FROM information_schema.TABLES
-    WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'match_questions'
-  `);
-
-  if (tables[0].count === 0) {
-    console.log('   ℹ️  Bảng match_questions không tồn tại (đã chuyển sang match.json trên Data Nodes) - SKIP');
-    return false;
-  }
-
-  let anyChanges = false;
-
-  // Check and add answer_text
-  if (!await columnExists('match_questions', 'answer_text')) {
-    console.log('   ⚠️  Adding answer_text...');
-    await pool.query(`
-      ALTER TABLE match_questions
-      ADD COLUMN answer_text TEXT NULL
-      COMMENT 'Đáp án đúng'
-      AFTER media_type
-    `);
-    anyChanges = true;
-  }
-
-  // Check and add answer_options
-  if (!await columnExists('match_questions', 'answer_options')) {
-    console.log('   ⚠️  Adding answer_options...');
-    await pool.query(`
-      ALTER TABLE match_questions
-      ADD COLUMN answer_options JSON NULL
-      COMMENT 'Các lựa chọn (nếu có)'
-      AFTER answer_text
-    `);
-    anyChanges = true;
-  }
-
-  // Check and add points
-  if (!await columnExists('match_questions', 'points')) {
-    console.log('   ⚠️  Adding points...');
-    await pool.query(`
-      ALTER TABLE match_questions
-      ADD COLUMN points INT DEFAULT 10
-      COMMENT 'Điểm cho câu hỏi'
-      AFTER answer_options
-    `);
-    anyChanges = true;
-  }
-
-  // Check and add time_limit
-  if (!await columnExists('match_questions', 'time_limit')) {
-    console.log('   ⚠️  Adding time_limit...');
-    await pool.query(`
-      ALTER TABLE match_questions
-      ADD COLUMN time_limit INT NULL
-      COMMENT 'Thời gian giới hạn (giây)'
-      AFTER points
-    `);
-    anyChanges = true;
-  }
-
-  if (anyChanges) {
-    console.log('   ✅ match_questions schema fixed');
-  } else {
-    console.log('   ✅ match_questions schema already complete - SKIP');
-  }
-
-  return anyChanges;
+  console.log('   ℹ️  SKIP: Bảng match_questions đã bị xóa (dữ liệu lưu trong match.json trên Data Node)');
+  return false;
 }
 
 async function checkAndMigrate() {
