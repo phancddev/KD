@@ -36,6 +36,10 @@ const SECTIONS = {
 let matchId = null;
 let matchData = null;
 let currentSection = 'khoi_dong_rieng';
+let currentPlayer = {
+  'khoi_dong_rieng': 0,
+  've_dich': 0
+};
 
 // Khởi tạo
 document.addEventListener('DOMContentLoaded', () => {
@@ -50,6 +54,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   loadMatchData();
+
+  // Setup nút "Thêm câu hỏi"
+  const addQuestionBtn = document.getElementById('add-question-btn');
+  if (addQuestionBtn) {
+    addQuestionBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = `/admin/match-upload?matchId=${matchId}`;
+    });
+  }
 });
 
 /**
@@ -152,73 +165,98 @@ function renderQuestions(sectionKey) {
     return;
   }
 
-  let allQuestions = [];
+  let html = '';
 
-  if (section.players) {
-    // Section có players (Khởi Động Riêng, Về Đích)
-    section.players.forEach((player, playerIndex) => {
-      if (player.questions) {
-        player.questions.forEach(q => {
-          allQuestions.push({
-            ...q,
-            player_index: player.player_index,
-            actual_player_index: playerIndex,
-            section: sectionKey
-          });
-        });
-      }
-    });
+  // ✅ Nếu section có players, hiển thị theo từng thí sinh
+  if (sectionConfig.hasPlayers) {
+    // Render player tabs
+    html += '<div class="player-tabs" style="margin-bottom: 20px;">';
+    for (let i = 0; i < sectionConfig.totalPlayers; i++) {
+      const player = section.players?.find(p => p.player_index === i);
+      const questionCount = player?.questions?.length || 0;
+      const isActive = currentPlayer[sectionKey] === i;
+
+      html += `
+        <button class="player-tab ${isActive ? 'active' : ''}"
+                onclick="switchPlayer('${sectionKey}', ${i})">
+          <i class="fas fa-user"></i> Thí sinh ${i + 1}
+          <span style="background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 10px; font-size: 0.9em; margin-left: 5px;">
+            ${questionCount}
+          </span>
+        </button>
+      `;
+    }
+    html += '</div>';
+
+    // Render questions cho player hiện tại
+    const playerIdx = currentPlayer[sectionKey];
+    const player = section.players?.find(p => p.player_index === playerIdx);
+    const questions = player?.questions || [];
+
+    if (questions.length === 0) {
+      html += `
+        <div class="empty-state">
+          <i class="fas fa-inbox"></i>
+          <p>Thí sinh ${playerIdx + 1} chưa có câu hỏi nào</p>
+          <p style="margin-top: 10px;">
+            <a href="/admin/match-upload?matchId=${matchId}" class="btn btn-primary">
+              <i class="fas fa-plus"></i> Thêm câu hỏi
+            </a>
+          </p>
+        </div>
+      `;
+    } else {
+      questions.forEach((question, index) => {
+        html += renderQuestionCard(question, index, sectionConfig, playerIdx);
+      });
+    }
+
   } else {
-    // Section không có players
-    if (section.questions) {
-      allQuestions = section.questions.map(q => ({
-        ...q,
-        player_index: null,
-        section: sectionKey
-      }));
+    // Section không có players - hiển thị tất cả câu hỏi
+    const questions = section.questions || [];
+
+    if (questions.length === 0) {
+      html += `
+        <div class="empty-state">
+          <i class="fas fa-inbox"></i>
+          <p>Chưa có câu hỏi nào trong phần này</p>
+          <p style="margin-top: 10px;">
+            <a href="/admin/match-upload?matchId=${matchId}" class="btn btn-primary">
+              <i class="fas fa-plus"></i> Thêm câu hỏi
+            </a>
+          </p>
+        </div>
+      `;
+    } else {
+      questions.forEach((question, index) => {
+        html += renderQuestionCard(question, index, sectionConfig, null);
+      });
     }
   }
-
-  if (allQuestions.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <i class="fas fa-inbox"></i>
-        <p>Chưa có câu hỏi nào trong phần này</p>
-        <p style="margin-top: 10px;">
-          <a href="/admin/match-upload?matchId=${matchId}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Thêm câu hỏi
-          </a>
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  let html = '';
-  allQuestions.forEach((question, index) => {
-    html += renderQuestionCard(question, index, sectionConfig);
-  });
 
   container.innerHTML = html;
 }
 
 /**
+ * Switch player tab
+ */
+function switchPlayer(sectionKey, playerIndex) {
+  currentPlayer[sectionKey] = playerIndex;
+  renderQuestions(sectionKey);
+}
+
+/**
  * Render một câu hỏi
  */
-function renderQuestionCard(question, index, sectionConfig) {
-  const playerInfo = question.player_index !== null && question.player_index !== undefined
-    ? `Người chơi ${question.player_index + 1}`
-    : 'Chưa gán';
-
+function renderQuestionCard(question, index, sectionConfig, playerIndex) {
   return `
     <div class="question-card">
       <div class="question-header">
         <div class="question-number">
           <i class="fas fa-question-circle"></i> Câu ${question.order + 1}
-          ${question.player_index !== null ? ` - ${playerInfo}` : ''}
         </div>
         <div class="question-actions">
-          <button class="btn btn-danger" onclick="deleteQuestion('${question.section}', ${question.actual_player_index}, ${question.order})">
+          <button class="btn btn-danger" onclick="deleteQuestion('${currentSection}', ${playerIndex}, ${question.order})">
             <i class="fas fa-trash"></i> Xóa
           </button>
         </div>
@@ -230,10 +268,10 @@ function renderQuestionCard(question, index, sectionConfig) {
             <strong>Câu hỏi:</strong> ${question.question_text}
           </div>
         ` : ''}
-        
+
         ${question.media_url ? `
           <div style="margin: 10px 0;">
-            <strong>Media:</strong> 
+            <strong>Media:</strong>
             ${question.type === 'image' ? `
               <img src="${question.media_url}" alt="Question" style="max-width: 300px; border-radius: 8px; margin-top: 10px;">
             ` : `
@@ -261,107 +299,25 @@ function renderQuestionCard(question, index, sectionConfig) {
           </div>
         ` : ''}
       </div>
-
-      ${sectionConfig.hasPlayers ? `
-        <div class="player-selector">
-          <label>
-            <i class="fas fa-user-tag"></i> Gán cho thí sinh:
-          </label>
-          <div class="player-buttons">
-            ${Array.from({length: sectionConfig.totalPlayers}, (_, i) => `
-              <button class="player-btn ${question.player_index === i ? 'selected' : ''}" 
-                      onclick="assignPlayer('${question.section}', ${question.actual_player_index}, ${question.order}, ${i})">
-                Thí sinh ${i + 1}
-              </button>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
     </div>
   `;
 }
 
-/**
- * Gán câu hỏi cho thí sinh
- * @param {string} section - Section key
- * @param {number} currentPlayerIndex - Index hiện tại trong array players
- * @param {number} questionOrder - Order của câu hỏi
- * @param {number} newPlayerIndex - Player index mới (0, 1, 2, 3)
- */
-async function assignPlayer(section, currentPlayerIndex, questionOrder, newPlayerIndex) {
-  // Lấy player_index hiện tại từ matchData
-  let currentPlayerIndexValue = null;
-  if (matchData.sections[section].players) {
-    const player = matchData.sections[section].players[currentPlayerIndex];
-    currentPlayerIndexValue = player ? player.player_index : null;
-  }
-
-  // Kiểm tra nếu đã gán cho thí sinh này rồi
-  if (currentPlayerIndexValue === newPlayerIndex) {
-    alert(`Câu hỏi này đã được gán cho Thí sinh ${newPlayerIndex + 1} rồi!`);
-    return;
-  }
-
-  if (!confirm(`Gán câu hỏi này cho Thí sinh ${newPlayerIndex + 1}?`)) {
-    return;
-  }
-
-  try {
-    console.log('Assigning player:', {
-      section,
-      currentPlayerIndex: currentPlayerIndexValue,
-      questionOrder,
-      newPlayerIndex
-    });
-
-    const response = await fetch(`/api/matches/${matchId}/questions/assign-player`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        section,
-        currentPlayerIndex: currentPlayerIndexValue,
-        questionOrder,
-        newPlayerIndex
-      })
-    });
-
-    const result = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || 'Không thể gán thí sinh');
-    }
-
-    alert('Đã gán câu hỏi cho thí sinh mới!');
-    await loadMatchData();
-
-  } catch (error) {
-    console.error('Error assigning player:', error);
-    alert('Lỗi: ' + error.message);
-  }
-}
+// ✅ Đã xóa function assignPlayer - không cần nữa vì đã setup sẵn khi upload
 
 /**
  * Xóa câu hỏi
  * @param {string} section - Section key
- * @param {number} actualPlayerIndex - Index trong array players (không phải player_index)
+ * @param {number} playerIndex - Player index (0, 1, 2, 3) hoặc null nếu không có player
  * @param {number} order - Order của câu hỏi
  */
-async function deleteQuestion(section, actualPlayerIndex, order) {
+async function deleteQuestion(section, playerIndex, order) {
   if (!confirm('Bạn có chắc muốn xóa câu hỏi này?')) {
     return;
   }
 
   try {
-    // Lấy player_index thực tế từ matchData
-    let playerIndex = null;
-    if (matchData.sections[section].players) {
-      const player = matchData.sections[section].players[actualPlayerIndex];
-      playerIndex = player ? player.player_index : null;
-    }
-
-    console.log('Deleting question:', { section, actualPlayerIndex, playerIndex, order });
+    console.log('Deleting question:', { section, playerIndex, order });
 
     const response = await fetch(`/api/matches/${matchId}/questions`, {
       method: 'DELETE',
@@ -390,3 +346,7 @@ async function deleteQuestion(section, actualPlayerIndex, order) {
   }
 }
 
+// Expose functions to global scope
+window.switchSection = switchSection;
+window.switchPlayer = switchPlayer;
+window.deleteQuestion = deleteQuestion;

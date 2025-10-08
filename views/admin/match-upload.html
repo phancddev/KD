@@ -138,6 +138,23 @@
       color: white;
     }
 
+    .player-progress {
+      font-size: 0.85em;
+      background: rgba(255,255,255,0.2);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 5px;
+    }
+
+    .player-tab.active .player-progress {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .player-tab.complete {
+      background: #4CAF50;
+      color: white;
+    }
+
     .progress-bar {
       width: 100%;
       height: 4px;
@@ -262,12 +279,20 @@
       
       <div id="khoi-dong-rieng-content">
         <div class="player-tabs">
-          <button class="player-tab active" onclick="switchPlayer('khoi-dong-rieng', 0)">Người chơi 1</button>
-          <button class="player-tab" onclick="switchPlayer('khoi-dong-rieng', 1)">Người chơi 2</button>
-          <button class="player-tab" onclick="switchPlayer('khoi-dong-rieng', 2)">Người chơi 3</button>
-          <button class="player-tab" onclick="switchPlayer('khoi-dong-rieng', 3)">Người chơi 4</button>
+          <button class="player-tab active" onclick="switchPlayer('khoi-dong-rieng', 0)">
+            Người chơi 1 <span class="player-progress" id="kdr-p0-progress">(0/6)</span>
+          </button>
+          <button class="player-tab" onclick="switchPlayer('khoi-dong-rieng', 1)">
+            Người chơi 2 <span class="player-progress" id="kdr-p1-progress">(0/6)</span>
+          </button>
+          <button class="player-tab" onclick="switchPlayer('khoi-dong-rieng', 2)">
+            Người chơi 3 <span class="player-progress" id="kdr-p2-progress">(0/6)</span>
+          </button>
+          <button class="player-tab" onclick="switchPlayer('khoi-dong-rieng', 3)">
+            Người chơi 4 <span class="player-progress" id="kdr-p3-progress">(0/6)</span>
+          </button>
         </div>
-        
+
         <div id="khoi-dong-rieng-questions"></div>
       </div>
     </div>
@@ -348,12 +373,20 @@
       
       <div id="ve-dich-content">
         <div class="player-tabs">
-          <button class="player-tab active" onclick="switchPlayer('ve-dich', 0)">Người chơi 1</button>
-          <button class="player-tab" onclick="switchPlayer('ve-dich', 1)">Người chơi 2</button>
-          <button class="player-tab" onclick="switchPlayer('ve-dich', 2)">Người chơi 3</button>
-          <button class="player-tab" onclick="switchPlayer('ve-dich', 3)">Người chơi 4</button>
+          <button class="player-tab active" onclick="switchPlayer('ve-dich', 0)">
+            Người chơi 1 <span class="player-progress" id="vd-p0-progress">(0/3)</span>
+          </button>
+          <button class="player-tab" onclick="switchPlayer('ve-dich', 1)">
+            Người chơi 2 <span class="player-progress" id="vd-p1-progress">(0/3)</span>
+          </button>
+          <button class="player-tab" onclick="switchPlayer('ve-dich', 2)">
+            Người chơi 3 <span class="player-progress" id="vd-p2-progress">(0/3)</span>
+          </button>
+          <button class="player-tab" onclick="switchPlayer('ve-dich', 3)">
+            Người chơi 4 <span class="player-progress" id="vd-p3-progress">(0/3)</span>
+          </button>
         </div>
-        
+
         <div id="ve-dich-questions"></div>
       </div>
     </div>

@@ -172,10 +172,42 @@
     .btn-success {
       background: #48bb78;
       color: white;
+      text-decoration: none;
     }
 
     .btn-success:hover {
       background: #38a169;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(72, 187, 120, 0.3);
+    }
+
+    .player-tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .player-tab {
+      padding: 10px 20px;
+      border: 2px solid #667eea;
+      background: white;
+      color: #667eea;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .player-tab:hover {
+      background: #f0f4ff;
+    }
+
+    .player-tab.active {
+      background: #667eea;
+      color: white;
     }
 
     .question-content {
@@ -330,7 +362,14 @@
     </div>
 
     <div class="content">
-      <div class="section-tabs" id="section-tabs"></div>
+      <!-- Action buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div class="section-tabs" id="section-tabs" style="margin-bottom: 0; flex: 1;"></div>
+        <a href="#" id="add-question-btn" class="btn btn-success" style="margin-left: 20px; white-space: nowrap;">
+          <i class="fas fa-plus"></i> Thêm câu hỏi
+        </a>
+      </div>
+
       <div id="questions-content"></div>
     </div>
   </div>

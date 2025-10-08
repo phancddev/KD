@@ -215,7 +215,9 @@ router.post('/questions/bulk', requireAdmin, async (req, res) => {
         try {
           await addQuestionToDataNode(dataNodeId, matchId, {
             section: question.section,
-            playerIndex: question.player_index ? parseInt(question.player_index) : null,
+            playerIndex: question.player_index !== null && question.player_index !== undefined
+              ? parseInt(question.player_index)
+              : null,
             order: parseInt(question.question_order),
             type: question.question_type || 'text',
             questionText: question.question_text || null,
@@ -312,7 +314,9 @@ router.post('/questions', requireAdmin, async (req, res) => {
 
       const question = await addQuestionToDataNode(dataNodeId, matchId, {
         section: questionData.section,
-        playerIndex: questionData.player_index ? parseInt(questionData.player_index) : null,
+        playerIndex: questionData.player_index !== null && questionData.player_index !== undefined
+          ? parseInt(questionData.player_index)
+          : null,
         order: parseInt(questionData.question_order),
         type: questionData.question_type || 'text',
         questionText: questionData.question_text || null,

@@ -400,6 +400,96 @@ router.post('/matches/:matchId/upload', requireAdmin, upload.single('file'), asy
       answerText
     });
 
+    // ✅ VALIDATION: Kiểm tra số lượng câu hỏi hiện tại
+    try {
+      const matchData = await getMatchFromDataNode(matchRecord.data_node_id, matchId);
+
+      // Cấu hình giới hạn cho từng section
+      const SECTION_LIMITS = {
+        'khoi_dong_rieng': { questionsPerPlayer: 6, hasPlayers: true },
+        've_dich': { questionsPerPlayer: 3, hasPlayers: true },
+        'khoi_dong_chung': { totalQuestions: 12, hasPlayers: false },
+        'vcnv': { totalQuestions: 6, hasPlayers: false },
+        'tang_toc': { totalQuestions: 4, hasPlayers: false }
+      };
+
+      const limit = SECTION_LIMITS[section];
+
+      if (!limit) {
+        return res.status(400).json({
+          success: false,
+          error: `Section không hợp lệ: ${section}`
+        });
+      }
+
+      // Kiểm tra cho sections có players (Khởi Động Riêng, Về Đích)
+      if (limit.hasPlayers) {
+        if (parsedPlayerIndex === null || parsedPlayerIndex === undefined) {
+          return res.status(400).json({
+            success: false,
+            error: `Section ${section} yêu cầu playerIndex`
+          });
+        }
+
+        const player = matchData.sections[section]?.players?.find(
+          p => p.player_index === parsedPlayerIndex
+        );
+
+        const currentCount = player?.questions?.length || 0;
+
+        if (currentCount >= limit.questionsPerPlayer) {
+          return res.status(400).json({
+            success: false,
+            error: `Thí sinh ${parsedPlayerIndex + 1} đã đủ ${limit.questionsPerPlayer} câu hỏi rồi! Không thể thêm nữa.`,
+            currentCount,
+            maxCount: limit.questionsPerPlayer
+          });
+        }
+
+        // ✅ VALIDATION: Kiểm tra order không trùng
+        const existingOrders = player?.questions?.map(q => q.order) || [];
+        if (existingOrders.includes(parseInt(questionOrder))) {
+          return res.status(400).json({
+            success: false,
+            error: `Câu hỏi order ${questionOrder} đã tồn tại cho thí sinh ${parsedPlayerIndex + 1}. Vui lòng chọn order khác.`,
+            existingOrders
+          });
+        }
+
+        console.log(`✅ Validation passed: Player ${parsedPlayerIndex} has ${currentCount}/${limit.questionsPerPlayer} questions`);
+
+      } else {
+        // Kiểm tra cho sections không có players
+        const currentCount = matchData.sections[section]?.questions?.length || 0;
+
+        if (currentCount >= limit.totalQuestions) {
+          return res.status(400).json({
+            success: false,
+            error: `Section ${section} đã đủ ${limit.totalQuestions} câu hỏi rồi! Không thể thêm nữa.`,
+            currentCount,
+            maxCount: limit.totalQuestions
+          });
+        }
+
+        // ✅ VALIDATION: Kiểm tra order không trùng
+        const existingOrders = matchData.sections[section]?.questions?.map(q => q.order) || [];
+        if (existingOrders.includes(parseInt(questionOrder))) {
+          return res.status(400).json({
+            success: false,
+            error: `Câu hỏi order ${questionOrder} đã tồn tại trong section ${section}. Vui lòng chọn order khác.`,
+            existingOrders
+          });
+        }
+
+        console.log(`✅ Validation passed: Section ${section} has ${currentCount}/${limit.totalQuestions} questions`);
+      }
+
+    } catch (validationError) {
+      console.error('⚠️  Validation error:', validationError.message);
+      // Nếu không đọc được match.json, vẫn cho phép upload (Data Node có thể đang khởi tạo)
+      console.warn('⚠️  Skipping validation due to error reading match.json');
+    }
+
     // Thêm câu hỏi vào match.json
     const question = await addQuestionToDataNode(matchRecord.data_node_id, matchId, {
       section,
