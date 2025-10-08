@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý Trận Đấu - Admin Panel</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Base Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: white;
+      color: #1f2937;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Admin Layout */
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .admin-sidebar {
+      width: 280px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(239, 68, 68, 0.1);
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 2rem 1.5rem;
+      border-bottom: 1px solid rgba(239, 68, 68, 0.1);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ef4444;
+    }
+
+    .sidebar-nav ul {
+      list-style: none;
+      padding: 1rem 0;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1.5rem;
+      text-decoration: none;
+      color: #64748b;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-nav li.active a,
+    .sidebar-nav a:hover {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
+
+    .sidebar-nav li.active a::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #ef4444;
+    }
+
+    .admin-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 2rem;
+      max-width: calc(100vw - 280px);
+    }
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 1.5rem 2rem;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .admin-header h1 {
+      color: #ef4444;
+      font-size: 1.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #ffc107;
+      color: black;
+    }
+
+    /* Table */
+    .matches-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .matches-table th,
+    .matches-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .matches-table th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: #374151;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .matches-table tbody tr:hover {
+      background: #f9fafb;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-draft {
+      background: #e5e7eb;
+      color: #6b7280;
+    }
+
+    .status-ready {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-playing {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-finished {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      background: white;
+      margin: 5% auto;
+      padding: 2rem;
+      border-radius: 16px;
+      max-width: 600px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-content h2 {
+      margin-bottom: 1.5rem;
+      color: #ef4444;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
+    /* Section Tabs */
+    .section-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 0.5rem 1rem;
+      border: 1px solid #d1d5db;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.3s ease;
+    }
+
+    .tab.active {
+      background: #ef4444;
+      color: white;
+      border-color: #ef4444;
+    }
+
+    .section-content {
+      display: none;
+    }
+
+    .section-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <div class="admin-sidebar"></div>
+
+    <!-- Main Content -->
+    <div class="admin-content">
+      <div class="admin-header">
+        <h1><i class="fas fa-trophy"></i> Quản lý Trận Đấu</h1>
+        <button class="btn btn-primary" onclick="showCreateModal()">
+          <i class="fas fa-plus"></i> Tạo Trận Đấu Mới
+        </button>
+      </div>
+
+      <div class="container">
+        <table class="matches-table">
+          <thead>
+            <tr>
+              <th>Mã</th>
+              <th>Tên Trận Đấu</th>
+              <th>Host</th>
+              <th>Data Node</th>
+              <th>Người Chơi</th>
+              <th>Trạng Thái</th>
+              <th>Ngày Tạo</th>
+              <th>Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody id="matchesTableBody">
+            <!-- Matches sẽ được render ở đây -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal tạo trận đấu -->
+  <div id="createMatchModal" class="modal">
+    <div class="modal-content">
+      <h2>Tạo Trận Đấu Mới</h2>
+      <form id="createMatchForm">
+        <div class="form-group">
+          <label for="matchName">Tên Trận Đấu:</label>
+          <input type="text" id="matchName" required>
+        </div>
+
+        <div class="form-group">
+          <label for="dataNodeSelect">Chọn Data Node: <span style="color: red;">*</span></label>
+          <select id="dataNodeSelect" required>
+            <option value="">-- Chọn Data Node --</option>
+          </select>
+          <small style="color: #666; display: block; margin-top: 5px;">
+            <i class="fas fa-info-circle"></i> Data Node là nơi lưu trữ file ảnh/video của trận đấu
+          </small>
+          <div id="dataNodeError" style="display: none; color: #f44336; margin-top: 5px;">
+            <i class="fas fa-exclamation-circle"></i> Vui lòng chọn Data Node! Không có Data Node online nào.
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="submit" class="btn btn-success">Tạo</button>
+          <button type="button" class="btn" onclick="closeCreateModal()">Hủy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal quản lý câu hỏi -->
+  <div id="questionsModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+      <h2 id="questionsModalTitle">Quản lý Câu Hỏi</h2>
+
+      <div class="section-tabs">
+        <button class="tab active" onclick="switchTab('khoi_dong_rieng')">Khởi Động Riêng</button>
+        <button class="tab" onclick="switchTab('khoi_dong_chung')">Khởi Động Chung</button>
+        <button class="tab" onclick="switchTab('vcnv')">Vượt Chướng Ngại Vật</button>
+        <button class="tab" onclick="switchTab('tang_toc')">Tăng Tốc</button>
+        <button class="tab" onclick="switchTab('ve_dich')">Về Đích</button>
+      </div>
+
+      <div id="khoi_dong_rieng" class="section-content active">
+        <h3>Khởi Động Riêng (24 câu - 6 câu/người)</h3>
+        <p>Mỗi người chơi có 6 câu riêng, đúng 10 điểm, sai 0 điểm, tổng 60 giây</p>
+        <div id="khoi_dong_rieng_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('khoi_dong_rieng')">+ Thêm Câu Hỏi</button>
+      </div>
+
+      <div id="khoi_dong_chung" class="section-content">
+        <h3>Khởi Động Chung (12 câu)</h3>
+        <p>Hiện câu hỏi → đợi 3 giây → cho bấm chuông</p>
+        <div id="khoi_dong_chung_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('khoi_dong_chung')">+ Thêm Câu Hỏi</button>
+      </div>
+
+      <div id="vcnv" class="section-content">
+        <h3>Vượt Chướng Ngại Vật (5 câu + 1 ảnh)</h3>
+        <div id="vcnv_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('vcnv')">+ Thêm Câu Hỏi</button>
+      </div>
+
+      <div id="tang_toc" class="section-content">
+        <h3>Tăng Tốc (3 ảnh + 1 video HOẶC 2 ảnh + 2 video)</h3>
+        <div id="tang_toc_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('tang_toc')">+ Thêm Câu Hỏi</button>
+      </div>
+
+      <div id="ve_dich" class="section-content">
+        <h3>Về Đích (12 câu - 3 câu/người)</h3>
+        <p>Mỗi người chơi có 3 câu (text hoặc video)</p>
+        <div id="ve_dich_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('ve_dich')">+ Thêm Câu Hỏi</button>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button class="btn" onclick="closeQuestionsModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/admin-sidebar.js"></script>
+  <script src="/js/admin-matches.js"></script>
+

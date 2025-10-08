@@ -1,0 +1,97 @@
+Add automatic migration for game_mode column
+
+Fix: Error: Unknown column 'gs.game_mode' in 'SELECT'
+
+## Problem
+- Code uses `game_mode` column in game_sessions table
+- Column doesn't exist in production database
+- Migration file exists (03-add-game-mode.sql) but not executed
+- Causes error when viewing game history in admin panel
+
+## Solution
+- Add automatic migration to db/check-and-migrate.js
+- Migration runs automatically on Docker start
+- Idempotent and safe for production data
+
+## Changes
+
+### db/check-and-migrate.js
+- Add addGameModeColumn() - Check and add game_mode column
+- Add addGameModeIndex() - Check and add index for performance
+- Add updateNullGameMode() - Update existing records to default 'khoidong'
+- Update checkAndMigrate() - Add Step 1-3 for game_mode migration
+
+### Documentation (NEW)
+- MIGRATION_README.md - Detailed migration system guide
+- MIGRATION_SUMMARY.md - Quick summary
+- DEPLOY_CHECKLIST.md - Step-by-step deploy checklist
+- FIX_GAME_MODE_ERROR.md - Error explanation and fix
+- CHANGES_SUMMARY.md - Summary of all changes
+- test-game-mode-migration.js - Test script
+
+## Migration Details
+
+### Step 1: Add Column
+```sql
+ALTER TABLE game_sessions
+ADD COLUMN game_mode ENUM('khoidong', 'tangtoc') DEFAULT 'khoidong'
+AFTER is_solo
+```
+
+### Step 2: Add Index
+```sql
+CREATE INDEX idx_game_sessions_game_mode ON game_sessions(game_mode)
+```
+
+### Step 3: Update NULL Values
+```sql
+UPDATE game_sessions
+SET game_mode = 'khoidong'
+WHERE game_mode IS NULL
+```
+
+## Features
+- ✅ IDEMPOTENT: Safe to run multiple times
+- ✅ AUTOMATIC: Runs on Docker start
+- ✅ NO DATA LOSS: Only ADD and UPDATE NULL
+- ✅ LOGGED: Detailed logs for debugging
+- ✅ TESTED: Includes test script
+
+## Deploy
+```bash
+git pull
+docker-compose down
+docker-compose build app
+docker-compose up -d
+docker-compose logs app | grep "database schema"
+```
+
+## Testing
+```bash
+# Test migration
+docker-compose exec app node test-game-mode-migration.js
+
+# Check database
+docker-compose exec mariadb mysql -u nqd_user -pnqd_password nqd_database -e "DESCRIBE game_sessions;"
+
+# Test application
+# - Login to admin panel
+# - View game history
+# - No more "Unknown column" error
+```
+
+## Impact
+- Fixes admin panel game history error
+- Improves query performance with index
+- Preserves existing data
+- Enables game mode tracking for analytics
+
+## Related Files
+- db/game-sessions.js (uses game_mode)
+- routes/admin-api.js (calls getGameHistory)
+- db/init/03-add-game-mode.sql (reference migration)
+
+## Rollback
+Not needed - migration is safe and idempotent.
+If needed: ALTER TABLE game_sessions DROP COLUMN game_mode;
+

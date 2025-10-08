@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Lý Câu Hỏi - Ngôi Đền Quý</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    .container {
+      max-width: 1400px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+
+    .header {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .match-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .info-item i {
+      color: #4CAF50;
+    }
+
+    #dataNodeStatusIcon {
+      font-size: 12px;
+      margin-right: 5px;
+    }
+
+    .sections-grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .section-card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .section-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .section-stats {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .section-content {
+      padding: 20px;
+    }
+
+    .questions-list {
+      display: grid;
+      gap: 15px;
+    }
+
+    .question-card {
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 15px;
+      transition: all 0.3s;
+    }
+
+    .question-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+    }
+
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .question-number {
+      font-weight: bold;
+      color: #667eea;
+      font-size: 16px;
+    }
+
+    .question-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .btn-success {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #45a049;
+    }
+
+    .btn-danger {
+      background: #f44336;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #da190b;
+    }
+
+    .btn-secondary {
+      background: #757575;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #616161;
+    }
+
+    .question-content {
+      margin: 10px 0;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+
+    .question-text {
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .question-media {
+      margin-top: 10px;
+    }
+
+    .question-media img,
+    .question-media video {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 4px;
+    }
+
+    .question-answer {
+      margin-top: 10px;
+      padding: 10px;
+      background: #e8f5e9;
+      border-left: 4px solid #4CAF50;
+      border-radius: 4px;
+    }
+
+    .answer-label {
+      font-weight: bold;
+      color: #2e7d32;
+      margin-bottom: 5px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .empty-state i {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .close-btn:hover {
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .form-input,
+    .form-textarea,
+    .form-select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .file-upload {
+      border: 2px dashed #e0e0e0;
+      border-radius: 4px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .file-upload:hover {
+      border-color: #667eea;
+      background: #f5f7ff;
+    }
+
+    .file-upload.dragover {
+      border-color: #667eea;
+      background: #f5f7ff;
+    }
+
+    .file-upload i {
+      font-size: 48px;
+      color: #ccc;
+      margin-bottom: 10px;
+    }
+
+    .file-preview {
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    .file-preview img,
+    .file-preview video {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 4px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #4CAF50;
+      transition: width 0.3s;
+    }
+
+    .type-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .type-btn {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .type-btn:hover {
+      border-color: #667eea;
+    }
+
+    .type-btn.active {
+      border-color: #667eea;
+      background: #667eea;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1><i class="fas fa-question-circle"></i> Quản Lý Câu Hỏi</h1>
+      <div class="match-info">
+        <div class="info-item">
+          <i class="fas fa-trophy"></i>
+          <span><strong>Trận đấu:</strong> <span id="matchName">-</span></span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-server"></i>
+          <span><strong>Data Node:</strong> <span id="dataNodeName">-</span></span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-network-wired"></i>
+          <span><strong>Host:</strong> <span id="dataNodeHost">-</span></span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-circle" id="dataNodeStatusIcon"></i>
+          <span><strong>Trạng thái:</strong> <span id="dataNodeStatus">-</span></span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-users"></i>
+          <span><strong>Số người chơi:</strong> <span id="playerCount">4</span></span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-list"></i>
+          <span><strong>Tổng câu hỏi:</strong> <span id="totalQuestions">0/58</span></span>
+        </div>
+      </div>
+
+      <!-- Warning if data node offline -->
+      <div id="dataNodeWarning" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+        <strong>Cảnh báo:</strong> Data Node đang offline! Không thể upload file ảnh/video. Vui lòng khởi động Data Node hoặc chọn Data Node khác.
+      </div>
+    </div>
+
+    <!-- Sections -->
+    <div class="sections-grid" id="sectionsContainer">
+      <!-- Sections will be rendered here -->
+    </div>
+  </div>
+
+  <!-- Add/Edit Question Modal -->
+  <div class="modal" id="questionModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Thêm Câu Hỏi</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+
+      <form id="questionForm" onsubmit="saveQuestion(event)">
+        <input type="hidden" id="questionId">
+        <input type="hidden" id="section">
+        <input type="hidden" id="questionOrder">
+        <input type="hidden" id="playerIndex">
+
+        <!-- Question Type -->
+        <div class="form-group">
+          <label class="form-label">Loại câu hỏi</label>
+          <div class="type-selector">
+            <button type="button" class="type-btn active" data-type="text" onclick="selectQuestionType('text')">
+              <i class="fas fa-font"></i> Text
+            </button>
+            <button type="button" class="type-btn" data-type="image" onclick="selectQuestionType('image')">
+              <i class="fas fa-image"></i> Ảnh
+            </button>
+            <button type="button" class="type-btn" data-type="video" onclick="selectQuestionType('video')">
+              <i class="fas fa-video"></i> Video
+            </button>
+          </div>
+        </div>
+
+        <!-- Question Content -->
+        <div class="form-group" id="textContent">
+          <label class="form-label">Câu hỏi</label>
+          <textarea class="form-textarea" id="questionText" placeholder="Nhập câu hỏi..."></textarea>
+        </div>
+
+        <div class="form-group" id="fileContent" style="display: none;">
+          <label class="form-label">Upload File</label>
+          <div class="file-upload" id="fileUpload" 
+               ondrop="handleDrop(event)" 
+               ondragover="handleDragOver(event)"
+               ondragleave="handleDragLeave(event)"
+               onclick="document.getElementById('fileInput').click()">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Kéo thả file hoặc click để chọn</p>
+            <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+          </div>
+          <div id="filePreview" class="file-preview"></div>
+          <div class="progress-bar" id="uploadProgress" style="display: none;">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <!-- Answer -->
+        <div class="form-group">
+          <label class="form-label">Đáp án</label>
+          <input type="text" class="form-input" id="answerText" placeholder="Nhập đáp án..." required>
+        </div>
+
+        <!-- Submit -->
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-save"></i> Lưu
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/match-questions.js"></script>
+</body>
+</html>
+

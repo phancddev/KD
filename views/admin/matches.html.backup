@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý Trận Đấu - Admin Panel</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .btn-primary { background: #007bff; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-warning { background: #ffc107; color: black; }
+    
+    .matches-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .matches-table th,
+    .matches-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .matches-table th {
+      background: #f8f9fa;
+      font-weight: bold;
+    }
+    
+    .status-badge {
+      padding: 5px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .status-draft { background: #e9ecef; color: #495057; }
+    .status-ready { background: #d4edda; color: #155724; }
+    .status-playing { background: #fff3cd; color: #856404; }
+    .status-finished { background: #d1ecf1; color: #0c5460; }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+    
+    .modal-content {
+      background: white;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 30px;
+      border-radius: 8px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    
+    .back-link {
+      color: #007bff;
+      text-decoration: none;
+      margin-bottom: 20px;
+      display: inline-block;
+    }
+    
+    .section-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #ddd;
+    }
+    
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 14px;
+    }
+    
+    .tab.active {
+      border-bottom: 3px solid #007bff;
+      font-weight: bold;
+    }
+    
+    .section-content {
+      display: none;
+    }
+    
+    .section-content.active {
+      display: block;
+    }
+    
+    .question-item {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+    }
+    
+    .upload-area {
+      border: 2px dashed #ddd;
+      padding: 20px;
+      text-align: center;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    .upload-area:hover {
+      background: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/admin/dashboard" class="back-link">← Quay lại Dashboard</a>
+    
+    <div class="header">
+      <h1>Quản lý Trận Đấu</h1>
+      <button class="btn btn-primary" onclick="showCreateModal()">+ Tạo Trận Đấu Mới</button>
+    </div>
+    
+    <table class="matches-table">
+      <thead>
+        <tr>
+          <th>Mã</th>
+          <th>Tên Trận Đấu</th>
+          <th>Host</th>
+          <th>Data Node</th>
+          <th>Người Chơi</th>
+          <th>Trạng Thái</th>
+          <th>Ngày Tạo</th>
+          <th>Thao Tác</th>
+        </tr>
+      </thead>
+      <tbody id="matchesTableBody">
+        <!-- Matches sẽ được render ở đây -->
+      </tbody>
+    </table>
+  </div>
+  
+  <!-- Modal tạo trận đấu -->
+  <div id="createMatchModal" class="modal">
+    <div class="modal-content">
+      <h2>Tạo Trận Đấu Mới</h2>
+      <form id="createMatchForm">
+        <div class="form-group">
+          <label for="matchName">Tên Trận Đấu:</label>
+          <input type="text" id="matchName" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="dataNodeSelect">Chọn Data Node:</label>
+          <select id="dataNodeSelect">
+            <option value="">-- Chọn sau --</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+          <button type="submit" class="btn btn-success">Tạo</button>
+          <button type="button" class="btn" onclick="closeCreateModal()">Hủy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Modal quản lý câu hỏi -->
+  <div id="questionsModal" class="modal">
+    <div class="modal-content">
+      <h2 id="questionsModalTitle">Quản lý Câu Hỏi</h2>
+      
+      <div class="section-tabs">
+        <button class="tab active" onclick="switchTab('khoi_dong_rieng')">Khởi Động Riêng</button>
+        <button class="tab" onclick="switchTab('khoi_dong_chung')">Khởi Động Chung</button>
+        <button class="tab" onclick="switchTab('vcnv')">Vượt Chướng Ngại Vật</button>
+        <button class="tab" onclick="switchTab('tang_toc')">Tăng Tốc</button>
+        <button class="tab" onclick="switchTab('ve_dich')">Về Đích</button>
+      </div>
+      
+      <div id="khoi_dong_rieng" class="section-content active">
+        <h3>Khởi Động Riêng (24 câu - 6 câu/người)</h3>
+        <p>Mỗi người chơi có 6 câu riêng, đúng 10 điểm, sai 0 điểm, tổng 60 giây</p>
+        <div id="khoi_dong_rieng_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('khoi_dong_rieng')">+ Thêm Câu Hỏi</button>
+      </div>
+      
+      <div id="khoi_dong_chung" class="section-content">
+        <h3>Khởi Động Chung (12 câu)</h3>
+        <p>Hiện câu hỏi → đợi 3 giây → cho bấm chuông</p>
+        <div id="khoi_dong_chung_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('khoi_dong_chung')">+ Thêm Câu Hỏi</button>
+      </div>
+      
+      <div id="vcnv" class="section-content">
+        <h3>Vượt Chướng Ngại Vật (5 câu + 1 ảnh)</h3>
+        <div id="vcnv_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('vcnv')">+ Thêm Câu Hỏi</button>
+      </div>
+      
+      <div id="tang_toc" class="section-content">
+        <h3>Tăng Tốc (3 ảnh + 1 video HOẶC 2 ảnh + 2 video)</h3>
+        <div id="tang_toc_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('tang_toc')">+ Thêm Câu Hỏi</button>
+      </div>
+      
+      <div id="ve_dich" class="section-content">
+        <h3>Về Đích (12 câu - 3 câu/người)</h3>
+        <p>Mỗi người chơi có 3 câu (text hoặc video)</p>
+        <div id="ve_dich_questions"></div>
+        <button class="btn btn-primary" onclick="addQuestion('ve_dich')">+ Thêm Câu Hỏi</button>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <button class="btn" onclick="closeQuestionsModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/admin-matches.js"></script>
+</body>
+</html>
+

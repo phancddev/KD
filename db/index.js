@@ -37,6 +37,7 @@ async function initDatabase() {
     const tangtocSqlPath = path.join(process.cwd(), 'db', 'init', '01-tangtoc-migration.sql');
     const adminSqlPath = path.join(process.cwd(), 'db', 'init', '02-create-admin.sql');
     const tangtocReportsSqlPath = path.join(process.cwd(), 'db', 'init', '02-tangtoc-reports-migration.sql');
+    const dataNodesSqlPath = path.join(process.cwd(), 'db', 'init', '04-host-dan-data-node-migration.sql');
 
     try {
       // Thực thi script khởi tạo chính
@@ -75,6 +76,17 @@ async function initDatabase() {
       const tangtocReportsStatements = tangtocReportsSql.split(';').filter(stmt => stmt.trim());
 
       for (const statement of tangtocReportsStatements) {
+        if (statement.trim()) {
+          await pool.query(statement);
+        }
+      }
+
+      // Thực thi script migration Data Nodes
+      console.log('⚙️  Đang chạy migration Data Nodes...');
+      const dataNodesSql = fs.readFileSync(dataNodesSqlPath, 'utf8');
+      const dataNodesStatements = dataNodesSql.split(';').filter(stmt => stmt.trim());
+
+      for (const statement of dataNodesStatements) {
         if (statement.trim()) {
           await pool.query(statement);
         }
@@ -644,6 +656,185 @@ async function runMigrations() {
     try {
       await pool.query('CREATE INDEX idx_tangtoc_question_deletion_logs_question_id ON tangtoc_question_deletion_logs(question_id)');
     } catch (e) {}
+
+    // ===== MIGRATION CHO HỆ THỐNG DATA NODES =====
+    console.log('⚙️  Đang chạy migration cho hệ thống Data Nodes...');
+
+    // Bảng data_nodes
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS data_nodes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL COMMENT 'Tên server phụ',
+        host VARCHAR(255) NOT NULL COMMENT 'IP hoặc domain của server phụ',
+        port INT NOT NULL COMMENT 'Port để kết nối',
+        status ENUM('online', 'offline', 'error') DEFAULT 'offline' COMMENT 'Trạng thái kết nối',
+        storage_used BIGINT DEFAULT 0 COMMENT 'Dung lượng đã sử dụng (bytes)',
+        storage_total BIGINT DEFAULT 0 COMMENT 'Tổng dung lượng (bytes)',
+        last_ping DATETIME NULL COMMENT 'Lần ping cuối cùng',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_port (port),
+        INDEX idx_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Quản lý các server phụ (data nodes)'
+    `);
+
+    // Bảng matches
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS matches (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(20) NOT NULL COMMENT 'Mã trận đấu (unique)',
+        name VARCHAR(255) NOT NULL COMMENT 'Tên trận đấu',
+        host_user_id INT NOT NULL COMMENT 'ID người tạo trận đấu',
+        max_players INT DEFAULT 4 COMMENT 'Số người chơi tối đa',
+        status ENUM('draft', 'ready', 'playing', 'finished') DEFAULT 'draft' COMMENT 'Trạng thái trận đấu',
+        data_node_id INT NULL COMMENT 'ID của data node lưu trữ dữ liệu',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        started_at DATETIME NULL COMMENT 'Thời gian bắt đầu',
+        finished_at DATETIME NULL COMMENT 'Thời gian kết thúc',
+        UNIQUE KEY unique_code (code),
+        FOREIGN KEY (host_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (data_node_id) REFERENCES data_nodes(id) ON DELETE SET NULL,
+        INDEX idx_status (status),
+        INDEX idx_host (host_user_id),
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Quản lý các trận đấu'
+    `);
+
+    // Bảng match_questions
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS match_questions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        match_id INT NOT NULL COMMENT 'ID trận đấu',
+        section ENUM('khoi_dong_rieng', 'khoi_dong_chung', 'vcnv', 'tang_toc', 've_dich') NOT NULL COMMENT 'Phần thi',
+        question_order INT NOT NULL COMMENT 'Thứ tự câu hỏi trong phần thi',
+        player_index INT NULL COMMENT 'Index người chơi (cho khởi động riêng và về đích)',
+        question_type ENUM('text', 'image', 'video') NOT NULL DEFAULT 'text' COMMENT 'Loại câu hỏi',
+        question_text TEXT NULL COMMENT 'Nội dung câu hỏi (text)',
+        media_url TEXT NULL COMMENT 'URL media (image/video) từ data node',
+        media_type VARCHAR(50) NULL COMMENT 'Loại media (image/jpeg, video/mp4, etc)',
+        answer_text TEXT NULL COMMENT 'Đáp án đúng',
+        answer_options JSON NULL COMMENT 'Các lựa chọn (nếu có)',
+        points INT DEFAULT 10 COMMENT 'Điểm số',
+        time_limit INT NULL COMMENT 'Thời gian giới hạn (giây)',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+        INDEX idx_match_section (match_id, section),
+        INDEX idx_order (match_id, section, question_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Câu hỏi theo từng phần thi'
+    `);
+
+    // Bảng match_participants (người tham gia trận đấu)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS match_participants (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        match_id INT NOT NULL COMMENT 'ID trận đấu',
+        user_id INT NOT NULL COMMENT 'ID người chơi',
+        player_index INT NOT NULL COMMENT 'Vị trí người chơi (0-3)',
+        is_host BOOLEAN DEFAULT FALSE COMMENT 'Có phải host không',
+        status ENUM('waiting', 'ready', 'playing', 'finished') DEFAULT 'waiting' COMMENT 'Trạng thái',
+        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_match_user (match_id, user_id),
+        UNIQUE KEY unique_match_index (match_id, player_index),
+        INDEX idx_match (match_id),
+        INDEX idx_user (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Người chơi tham gia trận đấu'
+    `);
+
+    // Bảng match_players (thông tin người chơi trong game)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS match_players (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        match_id INT NOT NULL COMMENT 'ID trận đấu',
+        user_id INT NULL COMMENT 'ID người chơi (NULL nếu chưa join)',
+        player_index INT NOT NULL COMMENT 'Vị trí người chơi (0-3)',
+        player_name VARCHAR(255) NULL COMMENT 'Tên người chơi',
+        score INT DEFAULT 0 COMMENT 'Điểm số',
+        joined_at DATETIME NULL COMMENT 'Thời gian tham gia',
+        FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        UNIQUE KEY unique_match_player (match_id, player_index),
+        INDEX idx_match (match_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Người chơi trong trận đấu'
+    `);
+
+    // Bảng match_answers
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS match_answers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        match_id INT NOT NULL COMMENT 'ID trận đấu',
+        question_id INT NOT NULL COMMENT 'ID câu hỏi',
+        player_id INT NOT NULL COMMENT 'ID người chơi',
+        answer TEXT NULL COMMENT 'Câu trả lời',
+        is_correct BOOLEAN DEFAULT FALSE COMMENT 'Đúng/Sai',
+        points_earned INT DEFAULT 0 COMMENT 'Điểm nhận được',
+        answer_time FLOAT NULL COMMENT 'Thời gian trả lời (giây)',
+        answered_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian trả lời',
+        FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+        FOREIGN KEY (question_id) REFERENCES match_questions(id) ON DELETE CASCADE,
+        FOREIGN KEY (player_id) REFERENCES match_players(id) ON DELETE CASCADE,
+        INDEX idx_match_player (match_id, player_id),
+        INDEX idx_question (question_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Câu trả lời của người chơi'
+    `);
+
+    // Bảng match_results
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS match_results (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        match_id INT NOT NULL COMMENT 'ID trận đấu',
+        player_id INT NOT NULL COMMENT 'ID người chơi',
+        final_score INT DEFAULT 0 COMMENT 'Điểm cuối cùng',
+        rank INT NULL COMMENT 'Xếp hạng',
+        total_correct INT DEFAULT 0 COMMENT 'Tổng số câu đúng',
+        total_questions INT DEFAULT 0 COMMENT 'Tổng số câu hỏi',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+        FOREIGN KEY (player_id) REFERENCES match_players(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_match_player_result (match_id, player_id),
+        INDEX idx_match (match_id),
+        INDEX idx_rank (match_id, rank)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Kết quả trận đấu'
+    `);
+
+    // Bảng match_events
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS match_events (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        match_id INT NOT NULL COMMENT 'ID trận đấu',
+        event_type ENUM('start', 'pause', 'resume', 'finish', 'player_join', 'player_leave', 'question_start', 'question_end', 'section_change') NOT NULL COMMENT 'Loại sự kiện',
+        event_data JSON NULL COMMENT 'Dữ liệu sự kiện',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+        INDEX idx_match_type (match_id, event_type),
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Lịch sử sự kiện trận đấu'
+    `);
+
+    // Bảng match_upload_logs (log upload files)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS match_upload_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        match_id INT NOT NULL COMMENT 'ID trận đấu',
+        data_node_id INT NOT NULL COMMENT 'ID data node',
+        file_name VARCHAR(255) NOT NULL COMMENT 'Tên file',
+        file_type VARCHAR(50) NOT NULL COMMENT 'Loại file',
+        file_size BIGINT NOT NULL COMMENT 'Kích thước file (bytes)',
+        storage_path VARCHAR(500) NOT NULL COMMENT 'Đường dẫn lưu trữ',
+        stream_url VARCHAR(500) NOT NULL COMMENT 'URL stream',
+        upload_status ENUM('uploading', 'success', 'failed') DEFAULT 'uploading',
+        error_message TEXT NULL COMMENT 'Thông báo lỗi nếu có',
+        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+        FOREIGN KEY (data_node_id) REFERENCES data_nodes(id) ON DELETE CASCADE,
+        INDEX idx_match (match_id),
+        INDEX idx_node (data_node_id),
+        INDEX idx_status (upload_status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Log upload files lên data nodes'
+    `);
 
     console.log('✅ Tất cả migrations đã hoàn tất!');
   } catch (err) {

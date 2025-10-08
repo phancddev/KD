@@ -20,6 +20,14 @@ console.log('🚀 Imported adminApiRoutes successfully');
 import tangtocAdminApiRoutes from './routes/tangtoc-admin-api.js';
 console.log('🚀 Imported tangtocAdminApiRoutes successfully');
 
+import dataNodeApiRoutes from './host_dan_data-node/routes/data-node-api.js';
+console.log('🚀 Imported dataNodeApiRoutes successfully');
+
+import matchApiRoutes from './host_dan_data-node/routes/match-api.js';
+console.log('🚀 Imported matchApiRoutes successfully');
+
+import matchQuestionApiRoutes from './host_dan_data-node/routes/match-question-api.js';
+console.log('🚀 Imported matchQuestionApiRoutes successfully');
 
 import tangTocRoutes from './views/tangTocKD/server-routes.js';
 console.log('🚀 Imported tangTocRoutes successfully');
@@ -317,6 +325,8 @@ app.post('/login', async (req, res) => {
         username: user.username,
         email: user.email,
         fullName: user.full_name,
+        is_admin: user.is_admin,
+        isAdmin: user.is_admin === 1,
         loginTime: new Date()
       };
       
@@ -613,7 +623,9 @@ app.post('/register', async (req, res) => {
       id: newUser.id,
       username: newUser.username,
       email: newUser.email,
-      fullName: newUser.fullName
+      fullName: newUser.fullName,
+      is_admin: newUser.isAdmin ? 1 : 0,
+      isAdmin: newUser.isAdmin === true
     };
     
     return res.redirect('/');
@@ -972,6 +984,11 @@ app.use('/admin', adminRoutes);
 app.use('/api/admin', adminApiRoutes);
 app.use('/api/admin', tangtocAdminApiRoutes);
 
+// Host Dan Data Node routes
+app.use('/api', dataNodeApiRoutes);
+app.use('/api', matchApiRoutes);
+app.use('/api/matches', matchQuestionApiRoutes);
+
 // Test route để kiểm tra routing (sau khi admin routes được đăng ký)
 app.get('/test', (req, res) => {
   res.json({ message: 'Server routing is working!' });
@@ -994,6 +1011,13 @@ const server = createServer(app);
 const io = initSocketIO(server);
 // Khởi tạo socket riêng cho Tăng Tốc room
 initTangTocSocket(io);
+
+// Khởi tạo Data Node Socket Server
+import { initDataNodeSocket, startHealthCheck } from './host_dan_data-node/socket/data-node-server.js';
+initDataNodeSocket(server);
+
+// Bắt đầu health check cho data nodes (mỗi 5 giây)
+startHealthCheck();
 
 // Khởi động server
 server.listen(PORT, () => {
@@ -1043,4 +1067,72 @@ app.get('/admin/question-logs', checkAdmin, (req, res) => {
 
 app.get('/admin/tangtoc-questions', checkAdmin, (req, res) => {
   res.sendFile(join(__dirname, 'views', 'tangTocKD', 'admin-tangtoc-questions.html'));
+});
+
+app.get('/admin/data-nodes', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'data-nodes.html'));
+});
+
+app.get('/admin/matches', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'matches.html'));
+});
+
+app.get('/admin/match-upload', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'match-upload.html'));
+});
+
+app.get('/admin/match-questions', checkAdmin, (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'admin', 'match-questions.html'));
+});
+
+/**
+ * Proxy stream từ Data Node
+ * GET /stream/:nodeId/:matchFolder/:fileName
+ */
+app.get('/stream/:nodeId/:matchFolder/:fileName', async (req, res) => {
+  try {
+    const { nodeId, matchFolder, fileName } = req.params;
+
+    // Get data node info
+    const [nodes] = await pool.query(
+      'SELECT * FROM data_nodes WHERE id = ?',
+      [nodeId]
+    );
+
+    if (nodes.length === 0) {
+      return res.status(404).json({ error: 'Data node không tồn tại' });
+    }
+
+    const node = nodes[0];
+
+    if (node.status !== 'online') {
+      return res.status(503).json({ error: 'Data node offline' });
+    }
+
+    // Proxy request to data node
+    const dataNodeUrl = `http://${node.host}:${node.port}/stream/${matchFolder}/${fileName}`;
+
+    console.log(`🔄 Proxy stream: ${dataNodeUrl}`);
+
+    // Forward request
+    const fetch = (await import('node-fetch')).default;
+    const response = await fetch(dataNodeUrl, {
+      headers: {
+        'Range': req.headers.range || ''
+      }
+    });
+
+    // Forward response headers
+    res.status(response.status);
+    response.headers.forEach((value, name) => {
+      res.setHeader(name, value);
+    });
+
+    // Pipe response
+    response.body.pipe(res);
+
+  } catch (error) {
+    console.error('❌ Lỗi proxy stream:', error);
+    res.status(500).json({ error: error.message });
+  }
 });

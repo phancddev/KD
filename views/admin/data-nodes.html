@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý Data Nodes - Admin Panel</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: white;
+      color: #1f2937;
+      line-height: 1.6;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(239, 68, 68, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(220, 38, 38, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(248, 113, 113, 0.06) 0%, transparent 50%);
+      filter: blur(40px);
+      animation: float 20s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(30px, -30px) rotate(120deg); }
+      66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    .admin-sidebar {
+      width: 280px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(239, 68, 68, 0.1);
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 2rem 1.5rem;
+      border-bottom: 1px solid rgba(239, 68, 68, 0.1);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ef4444;
+    }
+
+    .logo i {
+      font-size: 1.5rem;
+    }
+
+    .sidebar-nav ul {
+      list-style: none;
+      padding: 1rem 0;
+    }
+
+    .sidebar-nav li {
+      margin: 0.25rem 0;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1.5rem;
+      text-decoration: none;
+      color: #64748b;
+      transition: all 0.3s ease;
+      border-radius: 0;
+      position: relative;
+    }
+
+    .sidebar-nav li.active a,
+    .sidebar-nav a:hover {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
+
+    .sidebar-nav li.active a::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #ef4444;
+    }
+
+    .sidebar-nav i {
+      width: 20px;
+      text-align: center;
+    }
+
+    .admin-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 2rem;
+      max-width: calc(100vw - 280px);
+    }
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 1.5rem 2rem;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .admin-header h1 {
+      color: #ef4444;
+      font-size: 1.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 100%;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+    
+    .nodes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .node-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      background: white;
+    }
+    
+    .node-card.online {
+      border-left: 4px solid #28a745;
+    }
+    
+    .node-card.offline {
+      border-left: 4px solid #dc3545;
+    }
+    
+    .node-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .node-name {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .status-badge {
+      padding: 5px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .status-online {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    .status-offline {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    
+    .node-info {
+      margin-bottom: 15px;
+    }
+    
+    .node-info-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    
+    .storage-bar {
+      width: 100%;
+      height: 20px;
+      background: #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    
+    .storage-fill {
+      height: 100%;
+      background: #007bff;
+      transition: width 0.3s;
+    }
+    
+    .node-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background: white;
+      max-width: 500px;
+      margin: 100px auto;
+      padding: 30px;
+      border-radius: 8px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    
+    .back-link {
+      color: #007bff;
+      text-decoration: none;
+      margin-bottom: 20px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <div class="admin-sidebar"></div>
+
+    <!-- Main Content -->
+    <div class="admin-content">
+      <div class="admin-header">
+        <h1><i class="fas fa-server"></i> Quản lý Data Nodes</h1>
+        <button class="btn btn-primary" onclick="showAddModal()">
+          <i class="fas fa-plus"></i> Thêm Data Node
+        </button>
+      </div>
+
+      <div class="container">
+        <div id="nodesContainer" class="nodes-grid">
+          <!-- Nodes sẽ được render ở đây -->
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal thêm/sửa data node -->
+  <div id="nodeModal" class="modal">
+    <div class="modal-content">
+      <h2 id="modalTitle">Thêm Data Node</h2>
+      <form id="nodeForm">
+        <input type="hidden" id="nodeId">
+        
+        <div class="form-group">
+          <label for="nodeName">Tên Server:</label>
+          <input type="text" id="nodeName" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="nodeHost">Host/IP:</label>
+          <input type="text" id="nodeHost" placeholder="192.168.1.100" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="nodePort">Port:</label>
+          <input type="number" id="nodePort" min="1024" max="65535" required>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+          <button type="submit" class="btn btn-success">Lưu</button>
+          <button type="button" class="btn" onclick="closeModal()">Hủy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/admin-sidebar.js"></script>
+  <script>
+    let nodes = [];
+    const socket = io();
+    
+    // Load danh sách nodes
+    async function loadNodes() {
+      try {
+        const response = await fetch('/api/data-nodes');
+        const result = await response.json();
+        
+        if (result.success) {
+          nodes = result.data;
+          renderNodes();
+        }
+      } catch (error) {
+        console.error('Error loading nodes:', error);
+        alert('Lỗi khi tải danh sách data nodes');
+      }
+    }
+    
+    // Render danh sách nodes
+    function renderNodes() {
+      const container = document.getElementById('nodesContainer');
+      
+      if (nodes.length === 0) {
+        container.innerHTML = '<p>Chưa có data node nào. Hãy thêm mới!</p>';
+        return;
+      }
+      
+      container.innerHTML = nodes.map(node => {
+        const isOnline = node.status === 'online';
+        const storagePercent = node.storage_total > 0 
+          ? (node.storage_used / node.storage_total * 100).toFixed(1)
+          : 0;
+        
+        return `
+          <div class="node-card ${node.status}">
+            <div class="node-header">
+              <div class="node-name">${node.name}</div>
+              <span class="status-badge status-${node.status}">${isOnline ? 'Online' : 'Offline'}</span>
+            </div>
+            
+            <div class="node-info">
+              <div class="node-info-item">
+                <span>Host:</span>
+                <span>${node.host}</span>
+              </div>
+              <div class="node-info-item">
+                <span>Port:</span>
+                <span>${node.port}</span>
+              </div>
+              <div class="node-info-item">
+                <span>Storage:</span>
+                <span>${formatBytes(node.storage_used)} / ${formatBytes(node.storage_total)}</span>
+              </div>
+              <div class="storage-bar">
+                <div class="storage-fill" style="width: ${storagePercent}%"></div>
+              </div>
+            </div>
+            
+            <div class="node-actions">
+              <button class="btn btn-primary" onclick="editNode(${node.id})">Sửa</button>
+              <button class="btn btn-danger" onclick="deleteNode(${node.id})">Xóa</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Format bytes
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+    
+    // Show modal thêm
+    function showAddModal() {
+      document.getElementById('modalTitle').textContent = 'Thêm Data Node';
+      document.getElementById('nodeForm').reset();
+      document.getElementById('nodeId').value = '';
+      document.getElementById('nodeModal').style.display = 'block';
+    }
+    
+    // Edit node
+    function editNode(id) {
+      const node = nodes.find(n => n.id === id);
+      if (!node) return;
+      
+      document.getElementById('modalTitle').textContent = 'Sửa Data Node';
+      document.getElementById('nodeId').value = node.id;
+      document.getElementById('nodeName').value = node.name;
+      document.getElementById('nodeHost').value = node.host;
+      document.getElementById('nodePort').value = node.port;
+      document.getElementById('nodeModal').style.display = 'block';
+    }
+    
+    // Close modal
+    function closeModal() {
+      document.getElementById('nodeModal').style.display = 'none';
+    }
+    
+    // Submit form
+    document.getElementById('nodeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = document.getElementById('nodeId').value;
+      const data = {
+        name: document.getElementById('nodeName').value,
+        host: document.getElementById('nodeHost').value,
+        port: parseInt(document.getElementById('nodePort').value)
+      };
+      
+      try {
+        const url = id ? `/api/data-nodes/${id}` : '/api/data-nodes';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(result.message);
+          closeModal();
+          loadNodes();
+        } else {
+          alert('Lỗi: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error saving node:', error);
+        alert('Lỗi khi lưu data node');
+      }
+    });
+    
+    // Delete node
+    async function deleteNode(id) {
+      if (!confirm('Bạn có chắc muốn xóa data node này?')) return;
+      
+      try {
+        const response = await fetch(`/api/data-nodes/${id}`, {
+          method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(result.message);
+          loadNodes();
+        } else {
+          alert('Lỗi: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error deleting node:', error);
+        alert('Lỗi khi xóa data node');
+      }
+    }
+    
+    // Socket events
+    socket.on('node_online', (data) => {
+      console.log('Node online:', data);
+      loadNodes();
+    });
+    
+    socket.on('node_offline', (data) => {
+      console.log('Node offline:', data);
+      loadNodes();
+    });
+    
+    // Load khi trang được tải
+    loadNodes();
+    
+    // Auto refresh mỗi 10 giây
+    setInterval(loadNodes, 10000);
+  </script>
+</body>
+</html>
+

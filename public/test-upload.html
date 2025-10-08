@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Upload</title>
+</head>
+<body>
+  <h1>Test Upload System</h1>
+  
+  <div>
+    <h2>1. Test Load JS</h2>
+    <button onclick="testLoadJS()">Test</button>
+    <div id="result1"></div>
+  </div>
+  
+  <div>
+    <h2>2. Test API</h2>
+    <button onclick="testAPI()">Test</button>
+    <div id="result2"></div>
+  </div>
+  
+  <script>
+    function testLoadJS() {
+      const result = document.getElementById('result1');
+      if (typeof QUESTION_CONFIG !== 'undefined') {
+        result.innerHTML = '<p style="color: green;">✅ JS loaded successfully!</p>';
+        result.innerHTML += '<pre>' + JSON.stringify(QUESTION_CONFIG, null, 2) + '</pre>';
+      } else {
+        result.innerHTML = '<p style="color: red;">❌ JS not loaded!</p>';
+      }
+    }
+    
+    async function testAPI() {
+      const result = document.getElementById('result2');
+      try {
+        const response = await fetch('/api/matches/1');
+        const data = await response.json();
+        result.innerHTML = '<p style="color: green;">✅ API working!</p>';
+        result.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+      } catch (error) {
+        result.innerHTML = '<p style="color: red;">❌ API error: ' + error.message + '</p>';
+      }
+    }
+  </script>
+  
+  <script src="/js/match-upload.js"></script>
+</body>
+</html>
+

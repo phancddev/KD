@@ -1,7 +1,7 @@
 FROM node:18-alpine
 
-# Install Python and pip
-RUN apk add --no-cache python3 py3-pip
+# Install Python, pip, and netcat for database health check
+RUN apk add --no-cache python3 py3-pip netcat-openbsd
 
 # Tạo thư mục làm việc
 WORKDIR /app
@@ -26,8 +26,12 @@ RUN mkdir -p uploads
 RUN chmod +x scripts/csv_parser.py
 RUN chmod +x scripts/parser-tangtoc.py
 
+# Copy and make entrypoint executable
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Expose port
 EXPOSE 2701
 
-# Start the application
-CMD ["npm", "start"]
+# Use entrypoint to run migrations before starting app
+ENTRYPOINT ["/docker-entrypoint.sh"]
