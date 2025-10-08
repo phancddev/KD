@@ -19,6 +19,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
+ * Check if table exists
+ */
+async function tableExists(tableName) {
+  const [tables] = await pool.query(`
+    SELECT TABLE_NAME
+    FROM INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+  `, [tableName]);
+
+  return tables.length > 0;
+}
+
+/**
  * Check if column exists in table
  */
 async function columnExists(tableName, columnName) {
@@ -49,9 +63,65 @@ async function indexExists(tableName, indexName) {
 }
 
 /**
+ * Tự động tạo bảng matches v2.0 nếu chưa tồn tại
+ */
+async function createMatchesTableIfNotExists() {
+  const hasTable = await tableExists('matches');
+
+  if (hasTable) {
+    // Kiểm tra xem có phải bảng v2.0 không (có match_id column)
+    const hasMatchId = await columnExists('matches', 'match_id');
+
+    if (hasMatchId) {
+      console.log('   ✅ Bảng matches v2.0 đã tồn tại - SKIP');
+      return false;
+    } else {
+      console.log('   ⚠️  Bảng matches v1.0 tồn tại - Cần chạy migration thủ công!');
+      console.log('   💡 Chạy: docker exec -i kd-mariadb-1 mysql -uroot -proot_password nqd_database < db/init/05-matches-metadata.sql');
+      return false;
+    }
+  }
+
+  console.log('   ⚠️  Bảng matches chưa tồn tại - TỰ ĐỘNG TẠO...');
+
+  // Đọc và chạy migration SQL
+  try {
+    const migrationPath = path.join(__dirname, 'init/05-matches-metadata.sql');
+    const migrationSQL = await fs.readFile(migrationPath, 'utf-8');
+
+    // Split SQL thành các statements
+    const statements = migrationSQL
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('--'));
+
+    for (const statement of statements) {
+      if (statement.trim()) {
+        await pool.query(statement);
+      }
+    }
+
+    console.log('   ✅ Đã tạo bảng matches v2.0 thành công!');
+    return true;
+
+  } catch (error) {
+    console.error('   ❌ Lỗi khi tạo bảng matches:', error.message);
+    throw error;
+  }
+}
+
+/**
  * Add storage_folder column if not exists
  */
 async function addStorageFolderColumn() {
+  // Kiểm tra bảng matches có tồn tại không
+  const hasTable = await tableExists('matches');
+
+  if (!hasTable) {
+    console.log('   ℹ️  Bảng matches chưa tồn tại - SKIP (sẽ được tạo tự động)');
+    return false;
+  }
+
   const hasColumn = await columnExists('matches', 'storage_folder');
 
   if (hasColumn) {
@@ -76,6 +146,14 @@ async function addStorageFolderColumn() {
  * Add index on storage_folder if not exists
  */
 async function addStorageFolderIndex() {
+  // Kiểm tra bảng matches có tồn tại không
+  const hasTable = await tableExists('matches');
+
+  if (!hasTable) {
+    console.log('   ℹ️  Bảng matches chưa tồn tại - SKIP');
+    return false;
+  }
+
   const hasIndex = await indexExists('matches', 'idx_storage_folder');
 
   if (hasIndex) {
@@ -276,9 +354,16 @@ async function checkAndMigrate() {
     let anyChanges = false;
 
     // ============================================
+    // STEP 0: Tạo bảng matches v2.0 nếu chưa có
+    // ============================================
+    console.log('📝 Step 0: Check and create matches table v2.0');
+    const matchesCreated = await createMatchesTableIfNotExists();
+    anyChanges = anyChanges || matchesCreated;
+
+    // ============================================
     // STEP 1: Add game_mode column to game_sessions
     // ============================================
-    console.log('📝 Step 1: Check game_mode column in game_sessions');
+    console.log('\n📝 Step 1: Check game_mode column in game_sessions');
     const gameModeAdded = await addGameModeColumn();
     anyChanges = anyChanges || gameModeAdded;
 
@@ -328,37 +413,44 @@ async function checkAndMigrate() {
     // ============================================
     console.log('\n📊 Step 7: Check existing matches');
 
-    // Kiểm tra schema version (v1 có 'code', v2 có 'match_code')
-    const [columns] = await pool.query(`
-      SELECT COLUMN_NAME
-      FROM information_schema.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'matches'
-      AND COLUMN_NAME IN ('code', 'match_code')
-    `);
+    // Kiểm tra bảng matches có tồn tại không
+    const hasMatchesTable = await tableExists('matches');
 
-    const hasMatchCode = columns.some(c => c.COLUMN_NAME === 'match_code');
-    const codeColumn = hasMatchCode ? 'match_code' : 'code';
-    const nameColumn = hasMatchCode ? 'match_name' : 'name';
-
-    const [matches] = await pool.query(`
-      SELECT id, ${codeColumn} as code, ${nameColumn} as name, storage_folder, created_at
-      FROM matches
-      ORDER BY id
-    `);
-
-    if (matches.length === 0) {
-      console.log('   ℹ️  No matches found in database');
+    if (!hasMatchesTable) {
+      console.log('   ℹ️  Bảng matches chưa tồn tại - SKIP');
     } else {
-      console.log(`   Found ${matches.length} match(es)`);
+      // Kiểm tra schema version (v1 có 'code', v2 có 'match_code')
+      const [columns] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'matches'
+        AND COLUMN_NAME IN ('code', 'match_code')
+      `);
 
-      // Count matches with/without storage_folder
-      const withFolder = matches.filter(m => m.storage_folder).length;
-      const withoutFolder = matches.filter(m => !m.storage_folder).length;
+      const hasMatchCode = columns.some(c => c.COLUMN_NAME === 'match_code');
+      const codeColumn = hasMatchCode ? 'match_code' : 'code';
+      const nameColumn = hasMatchCode ? 'match_name' : 'name';
 
-      console.log(`   ✅ With storage_folder: ${withFolder}`);
-      if (withoutFolder > 0) {
-        console.log(`   ⚠️  Without storage_folder: ${withoutFolder}`);
+      const [matches] = await pool.query(`
+        SELECT id, ${codeColumn} as code, ${nameColumn} as name, storage_folder, created_at
+        FROM matches
+        ORDER BY id
+      `);
+
+      if (matches.length === 0) {
+        console.log('   ℹ️  No matches found in database');
+      } else {
+        console.log(`   Found ${matches.length} match(es)`);
+
+        // Count matches with/without storage_folder
+        const withFolder = matches.filter(m => m.storage_folder).length;
+        const withoutFolder = matches.filter(m => !m.storage_folder).length;
+
+        console.log(`   ✅ With storage_folder: ${withFolder}`);
+        if (withoutFolder > 0) {
+          console.log(`   ⚠️  Without storage_folder: ${withoutFolder}`);
+        }
       }
     }
 
@@ -367,54 +459,70 @@ async function checkAndMigrate() {
     // ============================================
     console.log('\n📝 Step 8: Update NULL values');
 
-    const [count] = await pool.query(`
-      SELECT COUNT(*) as count
-      FROM matches
-      WHERE storage_folder IS NULL
-    `);
+    if (!hasMatchesTable) {
+      console.log('   ℹ️  Bảng matches chưa tồn tại - SKIP');
+    } else {
+      // Lấy lại column names (có thể đã thay đổi sau Step 0)
+      const [columns2] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'matches'
+        AND COLUMN_NAME IN ('code', 'match_code')
+      `);
 
-    if (count[0].count > 0) {
-      console.log(`   Found ${count[0].count} match(es) with NULL storage_folder`);
+      const hasMatchCode2 = columns2.some(c => c.COLUMN_NAME === 'match_code');
+      const codeColumn2 = hasMatchCode2 ? 'match_code' : 'code';
+      const nameColumn2 = hasMatchCode2 ? 'match_name' : 'name';
 
-      // Get matches without storage_folder
-      const [nullMatches] = await pool.query(`
-        SELECT id, ${codeColumn} as code, ${nameColumn} as name, created_at
+      const [count] = await pool.query(`
+        SELECT COUNT(*) as count
         FROM matches
         WHERE storage_folder IS NULL
       `);
 
-      // Update each match individually
-      let updated = 0;
-      for (const match of nullMatches) {
-        try {
-          // Generate date string from created_at
-          const dateStr = new Date(match.created_at).toISOString().slice(0, 10).replace(/-/g, '');
+      if (count[0].count > 0) {
+        console.log(`   Found ${count[0].count} match(es) with NULL storage_folder`);
 
-          // Remove Vietnamese tones and special chars
-          let cleanName = match.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          cleanName = cleanName.replace(/đ/g, 'd').replace(/Đ/g, 'D');
-          cleanName = cleanName.replace(/[^a-zA-Z0-9]/g, '');
+        // Get matches without storage_folder
+        const [nullMatches] = await pool.query(`
+          SELECT id, ${codeColumn2} as code, ${nameColumn2} as name, created_at
+          FROM matches
+          WHERE storage_folder IS NULL
+        `);
 
-          // Generate storage folder name
-          const storageFolder = `${dateStr}_${match.code}_${cleanName}`;
+        // Update each match individually
+        let updated = 0;
+        for (const match of nullMatches) {
+          try {
+            // Generate date string from created_at
+            const dateStr = new Date(match.created_at).toISOString().slice(0, 10).replace(/-/g, '');
 
-          // Update database
-          await pool.query(
-            'UPDATE matches SET storage_folder = ? WHERE id = ?',
-            [storageFolder, match.id]
-          );
+            // Remove Vietnamese tones and special chars
+            let cleanName = match.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            cleanName = cleanName.replace(/đ/g, 'd').replace(/Đ/g, 'D');
+            cleanName = cleanName.replace(/[^a-zA-Z0-9]/g, '');
 
-          console.log(`   ✅ Match ${match.id}: ${storageFolder}`);
-          updated++;
-        } catch (error) {
-          console.log(`   ❌ Match ${match.id}: Failed - ${error.message}`);
+            // Generate storage folder name
+            const storageFolder = `${dateStr}_${match.code}_${cleanName}`;
+
+            // Update database
+            await pool.query(
+              'UPDATE matches SET storage_folder = ? WHERE id = ?',
+              [storageFolder, match.id]
+            );
+
+            console.log(`   ✅ Match ${match.id}: ${storageFolder}`);
+            updated++;
+          } catch (error) {
+            console.log(`   ❌ Match ${match.id}: Failed - ${error.message}`);
+          }
         }
-      }
 
-      console.log(`   ✅ Updated ${updated}/${nullMatches.length} match(es)`);
-    } else {
-      console.log('\n📝 Step 8: Update NULL values');
-      console.log('   ✅ All matches already have storage_folder - SKIP');
+        console.log(`   ✅ Updated ${updated}/${nullMatches.length} match(es)`);
+      } else {
+        console.log('   ✅ All matches already have storage_folder - SKIP');
+      }
     }
 
     console.log('\n========================================');
