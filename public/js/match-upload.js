@@ -14,14 +14,11 @@ const QUESTION_CONFIG = {
     allowedTypes: ['text', 'image', 'video']
   },
   'vcnv': {
-    totalQuestions: 6,
-    textQuestions: 5,
-    imageQuestions: 1,
+    totalQuestions: 4,
     allowedTypes: ['text', 'image', 'video']
   },
   'tang_toc': {
-    option1: { images: 3, videos: 1 },
-    option2: { images: 2, videos: 2 },
+    totalQuestions: 4,
     allowedTypes: ['text', 'image', 'video']
   },
   've_dich': {
@@ -34,7 +31,6 @@ const QUESTION_CONFIG = {
 // State
 let matchId = null;
 let matchData = null;
-let currentTangTocOption = 1;
 let currentPlayers = {
   'khoi_dong_rieng': 0,
   've_dich': 0
@@ -441,7 +437,7 @@ function renderKhoiDongChung() {
 
 /**
  * Render câu hỏi VCNV
- * Cập nhật: Cho phép tất cả câu hỏi có thể là text, image, hoặc video
+ * Cập nhật: 4 câu hỏi thi chung
  */
 function renderVCNV() {
   const container = document.getElementById('vcnv-questions');
@@ -451,7 +447,7 @@ function renderVCNV() {
   const existingQuestions = getExistingQuestions('vcnv', null);
 
   let html = '';
-  // Tất cả 6 câu đều cho phép text, image, video
+  // 4 câu đều cho phép text, image, video
   for (let i = 0; i < config.totalQuestions; i++) {
     const existingQ = existingQuestions.find(q => q.order === i);
     html += createQuestionItem('vcnv', null, i, config.allowedTypes, existingQ);
@@ -467,25 +463,20 @@ function renderVCNV() {
 
 /**
  * Render câu hỏi Tăng Tốc
- * Cập nhật: Cho phép tất cả câu hỏi có thể là text, image, hoặc video
+ * Cập nhật: 4 câu hỏi thi chung
  */
 function renderTangToc() {
   const container = document.getElementById('tang-toc-questions');
-  const option = currentTangTocOption === 1 ?
-    QUESTION_CONFIG.tang_toc.option1 :
-    QUESTION_CONFIG.tang_toc.option2;
+  const config = QUESTION_CONFIG.tang_toc;
 
   // ✅ Lấy câu hỏi đã có từ match.json
   const existingQuestions = getExistingQuestions('tang_toc', null);
 
   let html = '';
-  let questionIndex = 0;
-
-  // Render tất cả 4 câu với đầy đủ các loại
-  const totalQuestions = option.images + option.videos;
-  for (let i = 0; i < totalQuestions; i++) {
-    const existingQ = existingQuestions.find(q => q.order === questionIndex);
-    html += createQuestionItem('tang_toc', null, questionIndex++, QUESTION_CONFIG.tang_toc.allowedTypes, existingQ);
+  // 4 câu đều cho phép text, image, video
+  for (let i = 0; i < config.totalQuestions; i++) {
+    const existingQ = existingQuestions.find(q => q.order === i);
+    html += createQuestionItem('tang_toc', null, i, config.allowedTypes, existingQ);
   }
 
   container.innerHTML = html;
@@ -660,20 +651,7 @@ function switchPlayer(section, playerIndex) {
   }
 }
 
-/**
- * Select Tăng Tốc option
- */
-function selectTangTocOption(option) {
-  currentTangTocOption = option;
-  
-  // Update UI
-  document.querySelectorAll('.option-card').forEach((card, index) => {
-    card.classList.toggle('selected', index + 1 === option);
-  });
-  
-  // Re-render
-  renderTangToc();
-}
+
 
 /**
  * Toggle section
@@ -842,15 +820,14 @@ function collectAllQuestions() {
   }
 
   // VCNV
-  for (let q = 0; q < 6; q++) {
+  for (let q = 0; q < 4; q++) {
     const questionId = `vcnv-q${q}`;
     const questionData = collectQuestionData(questionId, 'vcnv', null, q);
     if (questionData) allQuestions.push(questionData);
   }
 
   // Tăng tốc
-  const tangTocCount = currentTangTocOption === 1 ? 4 : 4;
-  for (let q = 0; q < tangTocCount; q++) {
+  for (let q = 0; q < 4; q++) {
     const questionId = `tang_toc-q${q}`;
     const questionData = collectQuestionData(questionId, 'tang_toc', null, q);
     if (questionData) allQuestions.push(questionData);
@@ -942,7 +919,7 @@ function getSavedQuestionData(section, playerIndex, questionOrder) {
  */
 function updateTotalQuestions() {
   const allQuestions = collectAllQuestions();
-  const total = 54; // 24 + 12 + 6 + 4 + 12 = 58 (adjust based on actual)
+  const total = 56; // 24 + 12 + 4 + 4 + 12 = 56
   document.getElementById('totalQuestions').textContent = `${allQuestions.length}/${total}`;
 }
 
@@ -1008,7 +985,6 @@ function deleteExistingMedia(questionId) {
 // Expose functions to global scope for HTML onclick handlers
 window.changeQuestionType = changeQuestionType;
 window.switchPlayer = switchPlayer;
-window.selectTangTocOption = selectTangTocOption;
 window.toggleSection = toggleSection;
 window.handleDragOver = handleDragOver;
 window.handleDragLeave = handleDragLeave;
