@@ -706,6 +706,11 @@ app.get('/game/vcnv-demo', (req, res) => {
   res.sendFile(join(__dirname, 'views', 'game', 'vcnv-demo.html'));
 });
 
+// Test VCNV Layout
+app.get('/test-vcnv-layout', (req, res) => {
+  res.sendFile(join(__dirname, 'test-vcnv-layout.html'));
+});
+
 // Participants API cho Tang Tốc room (phục vụ UI tangtoc-room)
 app.get('/api/room/:roomId/participants', (req, res) => {
   try {
