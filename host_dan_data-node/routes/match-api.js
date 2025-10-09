@@ -751,5 +751,63 @@ router.delete('/matches/:matchId/questions', requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/matches/:matchId/vcnv
+ * Lấy dữ liệu VCNV để chơi game
+ */
+router.get('/:matchId/vcnv', async (req, res) => {
+  try {
+    const { matchId } = req.params;
+
+    console.log(`📊 [VCNV] Getting VCNV data for match ${matchId}`);
+
+    // Lấy thông tin match từ database
+    const match = await getMatchById(matchId);
+    if (!match) {
+      return res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy trận đấu'
+      });
+    }
+
+    // Lấy dữ liệu match từ Data Node
+    const matchData = await getMatchFromDataNode(match.data_node_id, matchId);
+
+    if (!matchData || !matchData.sections || !matchData.sections.vcnv) {
+      return res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy dữ liệu VCNV cho trận đấu này'
+      });
+    }
+
+    const vcnvSection = matchData.sections.vcnv;
+
+    // Chuẩn bị dữ liệu trả về
+    const vcnvData = {
+      main_image_url: vcnvSection.main_image_url || null,
+      questions: (vcnvSection.questions || []).map(q => ({
+        order: q.order,
+        question_text: q.question_text,
+        answer_text: q.answer,
+        word_count: q.word_count || q.answer.length
+      }))
+    };
+
+    console.log(`✅ [VCNV] Found ${vcnvData.questions.length} questions`);
+
+    res.json({
+      success: true,
+      data: vcnvData
+    });
+
+  } catch (error) {
+    console.error('❌ [VCNV] Error getting VCNV data:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 export default router;
 

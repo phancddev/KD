@@ -1,0 +1,36 @@
+{
+  "main_image_url": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=675&fit=crop",
+  "questions": [
+    {
+      "order": 0,
+      "question_text": "Đây là quốc gia nào?",
+      "answer_text": "VIỆT NAM",
+      "word_count": 8
+    },
+    {
+      "order": 1,
+      "question_text": "Thủ đô của Việt Nam là gì?",
+      "answer_text": "HÀ NỘI",
+      "word_count": 6
+    },
+    {
+      "order": 2,
+      "question_text": "Sông nào dài nhất Việt Nam?",
+      "answer_text": "MEKONG",
+      "word_count": 6
+    },
+    {
+      "order": 3,
+      "question_text": "Món ăn truyền thống của Việt Nam?",
+      "answer_text": "PHỞ",
+      "word_count": 3
+    },
+    {
+      "order": 4,
+      "question_text": "Biểu tượng của Hà Nội?",
+      "answer_text": "THÁP RÙABÙA",
+      "word_count": 10
+    }
+  ]
+}
+

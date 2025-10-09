@@ -678,7 +678,7 @@
         </div>
         <div class="summary-item">
           <span>Tổng số câu hỏi:</span>
-          <strong id="totalQuestions">0/56</strong>
+          <strong id="totalQuestions">0/57</strong>
         </div>
       </div>
 
@@ -736,11 +736,18 @@
         <div class="section-header">
           <div>
             <div class="section-title">🏃 VƯỢT CHƯỚNG NGẠI VẬT</div>
-            <div class="section-info">4 câu | Thi chung</div>
+            <div class="section-info">5 câu | Ảnh ghép 5 mảnh | Đáp án theo số chữ</div>
           </div>
-          <button class="btn-primary" onclick="toggleSection('vcnv')">
-            <i class="fas fa-chevron-down"></i>
-          </button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-primary" onclick="previewVCNV()"
+                    style="background: #10b981; padding: 0.5rem 1rem;"
+                    title="Xem trước với dữ liệu đã nhập (chưa cần lưu)">
+              <i class="fas fa-eye"></i> Xem trước
+            </button>
+            <button class="btn-primary" onclick="toggleSection('vcnv')">
+              <i class="fas fa-chevron-down"></i>
+            </button>
+          </div>
         </div>
 
         <div id="vcnv-content">

@@ -14,8 +14,10 @@ const QUESTION_CONFIG = {
     allowedTypes: ['text', 'image', 'video']
   },
   'vcnv': {
-    totalQuestions: 4,
-    allowedTypes: ['text', 'image', 'video']
+    totalQuestions: 5,
+    allowedTypes: ['text', 'image', 'video'],
+    requiresMainImage: true, // Yêu cầu upload ảnh tổng
+    requiresWordCount: true  // Yêu cầu nhập số chữ cho đáp án
   },
   'tang_toc': {
     totalQuestions: 4,
@@ -437,7 +439,7 @@ function renderKhoiDongChung() {
 
 /**
  * Render câu hỏi VCNV
- * Cập nhật: 4 câu hỏi thi chung
+ * Cập nhật: 5 câu hỏi thi chung với ảnh ghép
  */
 function renderVCNV() {
   const container = document.getElementById('vcnv-questions');
@@ -447,10 +449,34 @@ function renderVCNV() {
   const existingQuestions = getExistingQuestions('vcnv', null);
 
   let html = '';
-  // 4 câu đều cho phép text, image, video
+
+  // Thêm phần upload ảnh tổng cho VCNV
+  html += `
+    <div class="vcnv-main-image-section" style="margin-bottom: 2rem; padding: 1.5rem; background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(239, 68, 68, 0.1); border-radius: 8px;">
+      <h4 style="margin-bottom: 1rem; color: #ef4444;">
+        <i class="fas fa-image"></i> Ảnh tổng Vượt Chướng Ngại Vật
+      </h4>
+      <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1rem;">
+        Upload ảnh lớn sẽ được chia thành 5 mảnh ghép (4 góc + 1 giữa). Mỗi câu trả lời đúng sẽ lật mở 1 mảnh.
+      </p>
+      <div class="file-upload-area"
+           ondrop="handleDrop(event, 'vcnv-main-image')"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           onclick="document.getElementById('vcnv-main-image-file').click()">
+        <i class="fas fa-cloud-upload-alt" style="font-size: 36px; color: #ccc;"></i>
+        <p style="margin: 10px 0 0 0;">Kéo thả ảnh hoặc click để chọn</p>
+        <input type="file" id="vcnv-main-image-file" accept="image/*"
+               style="display: none;" onchange="handleFileSelect(event, 'vcnv-main-image')" />
+      </div>
+      <div id="vcnv-main-image-preview"></div>
+    </div>
+  `;
+
+  // 5 câu hỏi với trường nhập số chữ
   for (let i = 0; i < config.totalQuestions; i++) {
     const existingQ = existingQuestions.find(q => q.order === i);
-    html += createQuestionItem('vcnv', null, i, config.allowedTypes, existingQ);
+    html += createVCNVQuestionItem(i, existingQ);
   }
 
   container.innerHTML = html;
@@ -510,6 +536,60 @@ function renderVeDich() {
   setTimeout(() => {
     populateExistingData('ve_dich', playerIndex, existingQuestions);
   }, 0);
+}
+
+/**
+ * Tạo HTML cho 1 câu hỏi VCNV (có trường số chữ)
+ */
+function createVCNVQuestionItem(questionIndex, existingQuestion = null) {
+  const questionId = `vcnv-q${questionIndex}`;
+  const wordCount = existingQuestion?.word_count || '';
+
+  let statusBadge = '';
+  if (existingQuestion) {
+    statusBadge = '<span style="background: #4CAF50; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.85em; margin-left: 10px;">✓ Đã có</span>';
+  }
+
+  return `
+    <div class="question-item" id="${questionId}" style="background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(239, 68, 68, 0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+      <div class="question-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <span class="question-number" style="font-weight: 700; color: #ef4444;">
+          Chướng ngại vật ${questionIndex + 1}${statusBadge}
+        </span>
+      </div>
+
+      <div class="question-content">
+        <div class="text-input-section" style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
+            <i class="fas fa-font"></i> Câu hỏi:
+          </label>
+          <textarea class="question-input" rows="3" placeholder="Nhập câu hỏi..."
+                    id="${questionId}-text"></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 15px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
+              <i class="fas fa-spell-check"></i> Đáp án:
+            </label>
+            <input type="text" class="question-input" placeholder="Nhập đáp án"
+                   id="${questionId}-answer" />
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
+              <i class="fas fa-hashtag"></i> Số chữ trong đáp án:
+            </label>
+            <input type="number" class="question-input" placeholder="VD: 5" min="1" max="20"
+                   id="${questionId}-wordcount" value="${wordCount}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-bar" id="${questionId}-progress" style="display: none;">
+        <div class="progress-fill" style="width: 0%"></div>
+      </div>
+    </div>
+  `;
 }
 
 /**
@@ -820,9 +900,9 @@ function collectAllQuestions() {
   }
 
   // VCNV
-  for (let q = 0; q < 4; q++) {
+  for (let q = 0; q < 5; q++) {
     const questionId = `vcnv-q${q}`;
-    const questionData = collectQuestionData(questionId, 'vcnv', null, q);
+    const questionData = collectVCNVQuestionData(questionId, q);
     if (questionData) allQuestions.push(questionData);
   }
 
@@ -843,6 +923,40 @@ function collectAllQuestions() {
   }
 
   return allQuestions;
+}
+
+/**
+ * Collect VCNV question data (có thêm word_count)
+ */
+function collectVCNVQuestionData(questionId, questionOrder) {
+  const questionItem = document.getElementById(questionId);
+  if (!questionItem) return null;
+
+  const textInput = document.getElementById(`${questionId}-text`);
+  const answerInput = document.getElementById(`${questionId}-answer`);
+  const wordCountInput = document.getElementById(`${questionId}-wordcount`);
+
+  const questionText = textInput ? textInput.value.trim() : '';
+  const answer = answerInput ? answerInput.value.trim() : '';
+  const wordCount = wordCountInput ? parseInt(wordCountInput.value) : 0;
+
+  // Validate: Phải có câu hỏi, đáp án và số chữ
+  if (!questionText || !answer || !wordCount) return null;
+
+  return {
+    match_id: matchId,
+    section: 'vcnv',
+    question_order: questionOrder,
+    player_index: null,
+    question_type: 'text',
+    question_text: questionText,
+    media_file: null,
+    media_size: null,
+    answer_text: answer,
+    word_count: wordCount,
+    points: 10,
+    time_limit: null
+  };
 }
 
 /**
@@ -919,7 +1033,7 @@ function getSavedQuestionData(section, playerIndex, questionOrder) {
  */
 function updateTotalQuestions() {
   const allQuestions = collectAllQuestions();
-  const total = 56; // 24 + 12 + 4 + 4 + 12 = 56
+  const total = 57; // 24 + 12 + 5 + 4 + 12 = 57
   document.getElementById('totalQuestions').textContent = `${allQuestions.length}/${total}`;
 }
 
@@ -982,6 +1096,93 @@ function deleteExistingMedia(questionId) {
   alert('Đã xóa preview. Vui lòng upload file mới nếu cần.');
 }
 
+/**
+ * Preview VCNV game với dữ liệu từ form
+ */
+function previewVCNV() {
+  try {
+    // Thu thập dữ liệu VCNV từ form
+    const vcnvData = collectVCNVPreviewData();
+
+    if (!vcnvData) {
+      alert('⚠️ Vui lòng nhập đầy đủ thông tin VCNV trước khi xem trước!\n\n' +
+            'Cần có:\n' +
+            '✓ Ít nhất 1 câu hỏi với đầy đủ: Câu hỏi, Đáp án, Số chữ\n' +
+            '✓ Ảnh tổng (nếu chưa có sẽ dùng ảnh mặc định)');
+      return;
+    }
+
+    const questionCount = vcnvData.questions.length;
+    console.log(`📊 Preview VCNV với ${questionCount} câu hỏi`);
+
+    // Lưu vào sessionStorage để trang preview đọc
+    sessionStorage.setItem('vcnv_preview_data', JSON.stringify(vcnvData));
+
+    // Mở trang preview trong tab mới
+    const previewUrl = `/game/vcnv-play?preview=true`;
+    window.open(previewUrl, '_blank');
+  } catch (error) {
+    console.error('Lỗi khi preview VCNV:', error);
+    alert('Có lỗi khi xem trước: ' + error.message);
+  }
+}
+
+/**
+ * Thu thập dữ liệu VCNV từ form để preview
+ */
+function collectVCNVPreviewData() {
+  const questions = [];
+
+  // Thu thập 5 câu hỏi
+  for (let i = 0; i < 5; i++) {
+    const questionId = `vcnv-q${i}`;
+    const textInput = document.getElementById(`${questionId}-text`);
+    const answerInput = document.getElementById(`${questionId}-answer`);
+    const wordCountInput = document.getElementById(`${questionId}-wordcount`);
+
+    const questionText = textInput ? textInput.value.trim() : '';
+    const answerText = answerInput ? answerInput.value.trim() : '';
+    const wordCount = wordCountInput ? parseInt(wordCountInput.value) : 0;
+
+    if (!questionText || !answerText || !wordCount) {
+      console.warn(`Câu hỏi ${i + 1} chưa đầy đủ thông tin`);
+      continue;
+    }
+
+    questions.push({
+      order: i,
+      question_text: questionText,
+      answer_text: answerText,
+      word_count: wordCount
+    });
+  }
+
+  if (questions.length === 0) {
+    return null;
+  }
+
+  // Lấy URL ảnh tổng (nếu đã upload)
+  const mainImagePreview = document.getElementById('vcnv-main-image-preview');
+  let mainImageUrl = null;
+
+  if (mainImagePreview) {
+    const img = mainImagePreview.querySelector('img');
+    if (img) {
+      mainImageUrl = img.src;
+    }
+  }
+
+  // Nếu chưa có ảnh, dùng ảnh mặc định
+  if (!mainImageUrl) {
+    mainImageUrl = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=675&fit=crop';
+  }
+
+  return {
+    main_image_url: mainImageUrl,
+    questions: questions
+  };
+}
+
 // Expose functions to global scope for HTML onclick handlers
 window.changeQuestionType = changeQuestionType;
 window.switchPlayer = switchPlayer;
@@ -992,3 +1193,4 @@ window.handleDrop = handleDrop;
 window.handleFileSelect = handleFileSelect;
 window.saveAllQuestions = saveAllQuestions;
 window.deleteExistingMedia = deleteExistingMedia;
+window.previewVCNV = previewVCNV;

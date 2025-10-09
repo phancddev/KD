@@ -692,8 +692,18 @@ app.get('/tangtoc-room', (req, res) => {
   if (!req.session.user) {
     return res.redirect('/login');
   }
-  
+
   res.sendFile(join(__dirname, 'views', 'tangTocKD', 'room-battle-tangtoc.html'));
+});
+
+// VCNV Play - Game Vượt Chướng Ngại Vật
+app.get('/game/vcnv-play', (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'game', 'vcnv-play.html'));
+});
+
+// VCNV Demo
+app.get('/game/vcnv-demo', (req, res) => {
+  res.sendFile(join(__dirname, 'views', 'game', 'vcnv-demo.html'));
 });
 
 // Participants API cho Tang Tốc room (phục vụ UI tangtoc-room)

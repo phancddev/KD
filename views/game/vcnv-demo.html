@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo VCNV - KD APP</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .demo-container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 3rem;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      max-width: 600px;
+    }
+
+    h1 {
+      color: white;
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    p {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+    .btn-demo {
+      display: inline-block;
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-demo:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .features {
+      margin-top: 2rem;
+      text-align: left;
+    }
+
+    .feature-item {
+      color: white;
+      margin: 1rem 0;
+      padding-left: 2rem;
+      position: relative;
+    }
+
+    .feature-item::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+      font-size: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <h1>🏃 Demo VCNV</h1>
+    <p>Trải nghiệm game Vượt Chướng Ngại Vật với dữ liệu mẫu!</p>
+    
+    <a href="/game/vcnv-play?demo=true" class="btn-demo">
+      🎮 Chơi Demo
+    </a>
+
+    <div class="features">
+      <div class="feature-item">5 câu hỏi về Việt Nam</div>
+      <div class="feature-item">Ảnh ghép 5 mảnh tự động lật</div>
+      <div class="feature-item">Đáp án theo số chữ</div>
+      <div class="feature-item">Hiệu ứng animation mượt mà</div>
+    </div>
+  </div>
+</body>
+</html>
+
