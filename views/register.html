@@ -215,6 +215,20 @@
             box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3);
         }
 
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .btn.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .auth-footer {
             text-align: center;
             margin-top: 24px;
@@ -248,11 +262,39 @@
             font-size: 14px;
             margin-top: 16px;
             display: none;
+            align-items: center;
+            gap: 8px;
         }
 
         .error-message.show {
-            display: block;
+            display: flex;
             animation: slideIn 0.3s ease;
+        }
+
+        .error-message i {
+            font-size: 18px;
+        }
+
+        .success-message {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #16a34a;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 16px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .success-message.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        .success-message i {
+            font-size: 18px;
         }
 
         .field-error {
@@ -373,55 +415,60 @@
             <!-- Wrapped form in container for horizontal layout -->
             <div class="auth-form-container">
                 <form action="/register" method="POST" id="registerForm" class="auth-form">
+                    <div id="error-message" class="error-message"></div>
+                    <div id="success-message" class="success-message"></div>
+
                     <div class="form-group">
                         <label for="username">
                             <i class="fas fa-user"></i>
                             Tên đăng nhập
                         </label>
-                        <input type="text" id="username" name="username" required>
+                        <input type="text" id="username" name="username" required placeholder="Tối thiểu 3 ký tự">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="email">
                             <i class="fas fa-envelope"></i>
                             Email
                         </label>
                         <input type="email" id="email" name="email" required placeholder="example@domain.com">
-                        <div id="email-error" class="field-error" style="display: none; color: #dc2626; font-size: 12px; margin-top: 4px;"></div>
+                        <div id="email-error" class="field-error"></div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="fullName">
                             <i class="fas fa-id-card"></i>
                             Họ tên đầy đủ
                         </label>
-                        <input type="text" id="fullName" name="fullName" required>
+                        <input type="text" id="fullName" name="fullName" required placeholder="Nhập họ và tên của bạn">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="password">
                             <i class="fas fa-lock"></i>
                             Mật khẩu
                         </label>
-                        <input type="password" id="password" name="password" required>
+                        <input type="password" id="password" name="password" required placeholder="Tối thiểu 6 ký tự">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="confirmPassword">
                             <i class="fas fa-lock"></i>
                             Xác nhận mật khẩu
                         </label>
-                        <input type="password" id="confirmPassword" name="confirmPassword" required>
+                        <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Nhập lại mật khẩu">
                     </div>
-                    
+
                     <div class="form-group">
                         <button type="submit" class="btn btn-primary btn-block">
                             <i class="fas fa-user-plus"></i>
                             Đăng ký
                         </button>
                     </div>
-                    
-                    <div id="error-message" class="error-message"></div>
+
+                    <div class="auth-footer">
+                        <p>Đã có tài khoản? <a href="/login">Đăng nhập ngay</a></p>
+                    </div>
                 </form>
             </div>
         </div>

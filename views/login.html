@@ -231,11 +231,39 @@
             font-size: 14px;
             margin-top: 16px;
             display: none;
+            align-items: center;
+            gap: 8px;
         }
 
         .error-message.show {
-            display: block;
+            display: flex;
             animation: slideIn 0.3s ease;
+        }
+
+        .error-message i {
+            font-size: 18px;
+        }
+
+        .success-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 16px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .success-message.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        .success-message i {
+            font-size: 18px;
         }
 
         @keyframes slideIn {
@@ -307,20 +335,24 @@
             opacity: 0.8;
         }
 
-        .btn.loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
+        .btn.loading i {
             animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* Input validation states */
+        .form-group input.error {
+            border-color: #dc2626;
+            background: rgba(220, 38, 38, 0.05);
+        }
+
+        .form-group input.valid {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
         }
     </style>
 </head>
@@ -352,62 +384,150 @@
                     <input type="password" id="password" name="password" required>
                 </div>
                 
+                <div id="error-message" class="error-message"></div>
+                <div id="success-message" class="success-message"></div>
+
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-sign-in-alt"></i>
                         Đăng nhập
                     </button>
                 </div>
-                
-                <div class="auth-footer" id="register-link" style="display: none;">
-                    <p>Chưa có tài khoản? <a href="/register">Đăng ký ngay</a></p>
+
+                <div class="auth-footer">
+                    <p>Chưa có tài khoản? <a href="/register" id="register-link">Đăng ký ngay</a></p>
                 </div>
-                
-                <div id="error-message" class="error-message"></div>
             </form>
         </div>
     </div>
     
     <script>
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+
+        // Hàm hiển thị thông báo lỗi
+        function showError(message) {
+            errorMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i><span>${message}</span>`;
+            errorMessage.classList.add('show');
+            successMessage.classList.remove('show');
+        }
+
+        // Hàm hiển thị thông báo thành công
+        function showSuccess(message) {
+            successMessage.innerHTML = `<i class="fas fa-check-circle"></i><span>${message}</span>`;
+            successMessage.classList.add('show');
+            errorMessage.classList.remove('show');
+        }
+
+        // Kiểm tra URL parameters để hiển thị thông báo
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (urlParams.has('error')) {
+            const errorCode = urlParams.get('error');
+            let errorMsg = '';
+
+            switch(errorCode) {
+                case '1':
+                    errorMsg = 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.';
+                    break;
+                case '2':
+                    errorMsg = 'Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.';
+                    break;
+                case '3':
+                    errorMsg = 'Đã xảy ra lỗi trong quá trình đăng nhập. Vui lòng thử lại sau.';
+                    break;
+                default:
+                    errorMsg = 'Đăng nhập thất bại. Vui lòng thử lại.';
+            }
+
+            showError(errorMsg);
+        }
+
+        if (urlParams.has('registered')) {
+            showSuccess('Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.');
+        }
+
+        if (urlParams.has('logout')) {
+            showSuccess('Đã đăng xuất thành công. Hẹn gặp lại bạn!');
+        }
+
         // Kiểm tra xem chức năng register có được bật không
         async function checkRegistrationStatus() {
             try {
                 const response = await fetch('/api/features/registration-status');
                 const data = await response.json();
-                
-                if (data.enabled) {
-                    document.getElementById('register-link').style.display = 'block';
-                } else {
-                    document.getElementById('register-link').style.display = 'none';
+
+                const registerLink = document.getElementById('register-link');
+                if (!data.enabled) {
+                    registerLink.style.display = 'none';
+                    registerLink.parentElement.innerHTML = '<p style="color: #6b7280; font-size: 14px;">Chức năng đăng ký hiện đang tạm khóa.</p>';
                 }
             } catch (error) {
-                console.log('Không thể kiểm tra trạng thái register, ẩn link đăng ký');
-                document.getElementById('register-link').style.display = 'none';
+                console.log('Không thể kiểm tra trạng thái register');
             }
         }
 
         // Kiểm tra khi trang load
         checkRegistrationStatus();
 
-        // Basic form handling
+        // Form validation và xử lý submit
         document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
             const button = this.querySelector('.btn-primary');
+
+            // Xóa thông báo cũ
+            errorMessage.classList.remove('show');
+            successMessage.classList.remove('show');
+            usernameInput.classList.remove('error');
+            passwordInput.classList.remove('error');
+
+            // Validate
+            if (!username || !password) {
+                e.preventDefault();
+                showError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+                if (!username) usernameInput.classList.add('error');
+                if (!password) passwordInput.classList.add('error');
+                return;
+            }
+
+            if (username.length < 3) {
+                e.preventDefault();
+                showError('Tên đăng nhập phải có ít nhất 3 ký tự.');
+                usernameInput.classList.add('error');
+                return;
+            }
+
+            if (password.length < 6) {
+                e.preventDefault();
+                showError('Mật khẩu phải có ít nhất 6 ký tự.');
+                passwordInput.classList.add('error');
+                return;
+            }
+
+            // Hiển thị loading state
             button.classList.add('loading');
-            
-            // Remove loading state after form submission
-            setTimeout(() => {
-                button.classList.remove('loading');
-            }, 2000);
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đăng nhập...';
         });
 
         // Input focus effects
         document.querySelectorAll('input').forEach(input => {
             input.addEventListener('focus', function() {
                 this.parentElement.classList.add('focused');
+                // Xóa thông báo lỗi khi user bắt đầu nhập lại
+                errorMessage.classList.remove('show');
             });
-            
+
             input.addEventListener('blur', function() {
                 this.parentElement.classList.remove('focused');
+            });
+
+            // Xóa thông báo lỗi khi user bắt đầu gõ
+            input.addEventListener('input', function() {
+                errorMessage.classList.remove('show');
             });
         });
     </script>

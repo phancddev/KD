@@ -596,41 +596,48 @@ app.post('/register', async (req, res) => {
       message: 'Hiện tại không thể tạo tài khoản mới'
     });
   }
-  
+
   const { username, password, confirmPassword, email, fullName } = req.body;
-  
+
   try {
     // Kiểm tra dữ liệu đầu vào
-    if (!username || !password || !confirmPassword) {
+    if (!username || !password || !confirmPassword || !email || !fullName) {
       return res.redirect('/register?error=4');
     }
-    
+
+    // Validate username length
+    if (username.length < 3) {
+      return res.redirect('/register?error=4');
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.redirect('/register?error=4');
+    }
+
     if (password !== confirmPassword) {
       return res.redirect('/register?error=2');
     }
-    
+
     // Kiểm tra username đã tồn tại chưa
     const existingUser = await findUserByUsername(username);
     if (existingUser) {
       return res.redirect('/register?error=1');
     }
-    
+
     // Tạo người dùng mới
     const newUser = await createUser(username, password, email, fullName);
-    
-    // Đăng nhập tự động sau khi đăng ký
-    req.session.user = {
-      id: newUser.id,
-      username: newUser.username,
-      email: newUser.email,
-      fullName: newUser.fullName,
-      is_admin: newUser.isAdmin ? 1 : 0,
-      isAdmin: newUser.isAdmin === true
-    };
-    
-    return res.redirect('/');
+
+    // Redirect về trang login với thông báo thành công
+    return res.redirect('/login?registered=1');
   } catch (error) {
     console.error('Lỗi đăng ký:', error);
+
+    // Kiểm tra lỗi duplicate email
+    if (error.message && error.message.includes('email')) {
+      return res.redirect('/register?error=3');
+    }
+
     return res.redirect('/register?error=5');
   }
 });
@@ -655,13 +662,13 @@ app.get('/logout', async (req, res) => {
   
   // Xóa session
   req.session.destroy();
-  
+
   // Xóa người dùng khỏi danh sách online
   if (userId) {
     removeOnlineUser(userId);
   }
-  
-  res.redirect('/login');
+
+  res.redirect('/login?logout=1');
 });
 
 app.get('/room-battle', (req, res) => {
