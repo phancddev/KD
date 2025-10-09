@@ -339,6 +339,7 @@ router.post('/questions', requireAdmin, async (req, res) => {
         mediaFile: questionData.media_file || null,
         mediaSize: questionData.media_size || null,
         answer: questionData.answer_text,
+        acceptedAnswers: questionData.accepted_answers || null, // Thêm accepted_answers
         points: questionData.points || 10,
         timeLimit: questionData.time_limit || null
       });
@@ -580,6 +581,7 @@ router.put('/:matchId/questions/update', requireAdmin, async (req, res) => {
         type: questionData.type || 'text',
         question_text: questionData.question_text || null,
         answer: questionData.answer,
+        accepted_answers: questionData.accepted_answers || null, // Thêm accepted_answers
         points: questionData.points || 10,
         time_limit: questionData.time_limit || null
       }

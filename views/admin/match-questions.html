@@ -297,6 +297,44 @@
       resize: vertical;
     }
 
+    .accepted-answers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .accepted-answer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f3f4f6;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .accepted-answer-text {
+      flex: 1;
+      color: #374151;
+      font-size: 14px;
+    }
+
+    .remove-answer-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+
+    .remove-answer-btn:hover {
+      background: #dc2626;
+    }
+
     .file-upload {
       border: 2px dashed #e0e0e0;
       border-radius: 4px;
@@ -480,8 +518,25 @@
 
         <!-- Answer -->
         <div class="form-group">
-          <label class="form-label">Đáp án</label>
-          <input type="text" class="form-input" id="answerText" placeholder="Nhập đáp án..." required>
+          <label class="form-label">Đáp án chính</label>
+          <input type="text" class="form-input" id="answerText" placeholder="Nhập đáp án chính..." required>
+        </div>
+
+        <!-- Accepted Answers -->
+        <div class="form-group">
+          <label class="form-label">
+            <i class="fas fa-check-double"></i> Các đáp án chấp nhận khác (tùy chọn)
+          </label>
+          <div id="acceptedAnswersList" class="accepted-answers-list"></div>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <input type="text" class="form-input" id="newAcceptedAnswer" placeholder="Nhập đáp án bổ sung...">
+            <button type="button" class="btn btn-primary" onclick="addAcceptedAnswer()">
+              <i class="fas fa-plus"></i> Thêm
+            </button>
+          </div>
+          <small style="color: #6b7280; margin-top: 4px; display: block;">
+            Đáp án hiển thị cho thí sinh vẫn là "Đáp án chính" ở trên. Các đáp án bổ sung chỉ dùng để hệ thống chấm đúng.
+          </small>
         </div>
 
         <!-- Submit -->

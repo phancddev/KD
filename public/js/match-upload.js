@@ -44,6 +44,8 @@ let questions = {
   'tang_toc': [],
   've_dich': {}
 };
+// Lưu accepted answers cho từng câu hỏi
+let acceptedAnswersMap = {}; // { questionId: [answer1, answer2, ...] }
 
 // Khởi tạo khi load trang
 document.addEventListener('DOMContentLoaded', async () => {
@@ -604,9 +606,9 @@ function createVCNVQuestionItem(questionIndex, existingQuestion = null) {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 15px;">
           <div>
             <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
-              <i class="fas fa-spell-check"></i> Đáp án:
+              <i class="fas fa-spell-check"></i> Đáp án chính:
             </label>
-            <input type="text" class="question-input vcnv-answer-input" placeholder="Nhập đáp án"
+            <input type="text" class="question-input vcnv-answer-input" placeholder="Nhập đáp án chính"
                    id="${questionId}-answer" data-question-id="${questionId}" />
           </div>
           <div>
@@ -618,6 +620,26 @@ function createVCNVQuestionItem(questionIndex, existingQuestion = null) {
                    id="${questionId}-wordcount" value="${wordCount}" readonly
                    style="background-color: #f3f4f6; cursor: not-allowed;" />
           </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555;">
+            <i class="fas fa-check-double"></i> Các đáp án chấp nhận khác (tùy chọn):
+          </label>
+          <div id="${questionId}-accepted-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+            <p style="color: #9ca3af; font-size: 14px; margin: 0;">Chưa có đáp án bổ sung nào</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" class="question-input" placeholder="Nhập đáp án bổ sung..."
+                   id="${questionId}-new-accepted" style="flex: 1;" />
+            <button type="button" onclick="addAcceptedAnswerToQuestion('${questionId}')"
+                    style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.3s;">
+              <i class="fas fa-plus"></i> Thêm
+            </button>
+          </div>
+          <small style="color: #6b7280; margin-top: 4px; display: block;">
+            Đáp án hiển thị vẫn là "Đáp án chính" ở trên. Các đáp án bổ sung chỉ dùng để hệ thống chấm đúng.
+          </small>
         </div>
       </div>
 
@@ -677,8 +699,33 @@ function createQuestionItem(section, playerIndex, questionIndex, allowedTypes, e
         ${createFileUpload(questionId, defaultType)}
       </div>
 
-      <input type="text" class="question-input" placeholder="Đáp án"
-             id="${questionId}-answer" />
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
+          <i class="fas fa-spell-check"></i> Đáp án chính:
+        </label>
+        <input type="text" class="question-input" placeholder="Nhập đáp án chính..."
+               id="${questionId}-answer" />
+      </div>
+
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555;">
+          <i class="fas fa-check-double"></i> Các đáp án chấp nhận khác (tùy chọn):
+        </label>
+        <div id="${questionId}-accepted-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+          <p style="color: #9ca3af; font-size: 14px; margin: 0;">Chưa có đáp án bổ sung nào</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" class="question-input" placeholder="Nhập đáp án bổ sung..."
+                 id="${questionId}-new-accepted" style="flex: 1;" />
+          <button type="button" onclick="addAcceptedAnswerToQuestion('${questionId}')"
+                  style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.3s;">
+            <i class="fas fa-plus"></i> Thêm
+          </button>
+        </div>
+        <small style="color: #6b7280; margin-top: 4px; display: block;">
+          Đáp án hiển thị vẫn là "Đáp án chính" ở trên. Các đáp án bổ sung chỉ dùng để hệ thống chấm đúng.
+        </small>
+      </div>
 
       <div class="progress-bar" id="${questionId}-progress" style="display: none;">
         <div class="progress-fill" style="width: 0%"></div>
@@ -979,6 +1026,9 @@ function collectVCNVQuestionData(questionId, questionOrder) {
   // Validate: Phải có câu hỏi, đáp án và số chữ
   if (!questionText || !answer || !wordCount) return null;
 
+  // Lấy accepted answers cho câu hỏi này
+  const acceptedAnswers = acceptedAnswersMap[questionId] || [];
+
   return {
     match_id: matchId,
     section: 'vcnv',
@@ -989,6 +1039,7 @@ function collectVCNVQuestionData(questionId, questionOrder) {
     media_file: null,
     media_size: null,
     answer_text: answer,
+    accepted_answers: acceptedAnswers.length > 0 ? acceptedAnswers : null, // Thêm accepted_answers
     word_count: wordCount,
     points: 10,
     time_limit: null
@@ -1038,6 +1089,9 @@ function collectQuestionData(questionId, section, playerIndex, questionOrder) {
     }
   }
 
+  // Lấy accepted answers cho câu hỏi này
+  const acceptedAnswers = acceptedAnswersMap[questionId] || [];
+
   return {
     match_id: matchId,
     section: section,
@@ -1048,6 +1102,7 @@ function collectQuestionData(questionId, section, playerIndex, questionOrder) {
     media_file: mediaFileName,
     media_size: mediaFileSize,
     answer_text: answer,
+    accepted_answers: acceptedAnswers.length > 0 ? acceptedAnswers : null, // Thêm accepted_answers
     points: 10,
     time_limit: section === 'khoi_dong_rieng' ? 10 : null
   };
@@ -1219,6 +1274,72 @@ function collectVCNVPreviewData() {
   };
 }
 
+/**
+ * Thêm đáp án bổ sung cho câu hỏi
+ */
+function addAcceptedAnswerToQuestion(questionId) {
+  const input = document.getElementById(`${questionId}-new-accepted`);
+  const answer = input.value.trim();
+
+  if (!answer) {
+    alert('Vui lòng nhập đáp án!');
+    return;
+  }
+
+  // Khởi tạo mảng nếu chưa có
+  if (!acceptedAnswersMap[questionId]) {
+    acceptedAnswersMap[questionId] = [];
+  }
+
+  // Kiểm tra trùng lặp
+  if (acceptedAnswersMap[questionId].includes(answer)) {
+    alert('Đáp án này đã tồn tại!');
+    return;
+  }
+
+  // Thêm vào mảng
+  acceptedAnswersMap[questionId].push(answer);
+  input.value = '';
+
+  // Render lại danh sách
+  renderAcceptedAnswersForQuestion(questionId);
+}
+
+/**
+ * Xóa đáp án bổ sung
+ */
+function removeAcceptedAnswerFromQuestion(questionId, index) {
+  if (!acceptedAnswersMap[questionId]) return;
+
+  acceptedAnswersMap[questionId].splice(index, 1);
+  renderAcceptedAnswersForQuestion(questionId);
+}
+
+/**
+ * Render danh sách đáp án bổ sung cho câu hỏi
+ */
+function renderAcceptedAnswersForQuestion(questionId) {
+  const container = document.getElementById(`${questionId}-accepted-list`);
+  if (!container) return;
+
+  const answers = acceptedAnswersMap[questionId] || [];
+
+  if (answers.length === 0) {
+    container.innerHTML = '<p style="color: #9ca3af; font-size: 14px; margin: 0;">Chưa có đáp án bổ sung nào</p>';
+    return;
+  }
+
+  container.innerHTML = answers.map((answer, index) => `
+    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f3f4f6; border-radius: 4px; border: 1px solid #e5e7eb;">
+      <span style="flex: 1; color: #374151; font-size: 14px;">${answer}</span>
+      <button type="button" onclick="removeAcceptedAnswerFromQuestion('${questionId}', ${index})"
+              style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background 0.2s;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
 // Expose functions to global scope for HTML onclick handlers
 window.changeQuestionType = changeQuestionType;
 window.switchPlayer = switchPlayer;
@@ -1230,3 +1351,5 @@ window.handleFileSelect = handleFileSelect;
 window.saveAllQuestions = saveAllQuestions;
 window.deleteExistingMedia = deleteExistingMedia;
 window.previewVCNV = previewVCNV;
+window.addAcceptedAnswerToQuestion = addAcceptedAnswerToQuestion;
+window.removeAcceptedAnswerFromQuestion = removeAcceptedAnswerFromQuestion;

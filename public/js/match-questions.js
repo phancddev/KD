@@ -55,6 +55,7 @@ let matchData = null;
 let questions = {};
 let currentQuestion = null;
 let uploadedFile = null;
+let acceptedAnswers = []; // Mảng lưu các đáp án bổ sung
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -373,6 +374,14 @@ function renderQuestionCard(question) {
       <div class="question-answer">
         <div class="answer-label">Đáp án:</div>
         <div>${question.answer_text}</div>
+        ${question.accepted_answers && question.accepted_answers.length > 0 ? `
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+            <div class="answer-label" style="font-size: 12px; color: #6b7280;">Đáp án bổ sung:</div>
+            <div style="font-size: 13px; color: #374151;">
+              ${question.accepted_answers.map(ans => `<span style="display: inline-block; background: #f3f4f6; padding: 2px 8px; margin: 2px; border-radius: 4px;">${ans}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -484,6 +493,10 @@ async function editQuestion(questionId) {
       document.getElementById('questionText').value = currentQuestion.question_text || '';
       document.getElementById('answerText').value = currentQuestion.answer_text || '';
 
+      // Load accepted answers
+      acceptedAnswers = currentQuestion.accepted_answers ? [...currentQuestion.accepted_answers] : [];
+      renderAcceptedAnswers();
+
       // Select type - Hiển thị cả text và media nếu có
       const hasText = currentQuestion.question_text && currentQuestion.question_text.trim() !== '';
       const hasMedia = currentQuestion.media_url;
@@ -584,6 +597,10 @@ function openModal(title, section) {
   document.getElementById('playerIndex').value = currentQuestion.player_index || '';
   document.getElementById('filePreview').innerHTML = '';
   uploadedFile = null;
+
+  // Reset accepted answers
+  acceptedAnswers = [];
+  renderAcceptedAnswers();
 
   // Set allowed types
   const typeButtons = document.querySelectorAll('.type-btn');
@@ -802,6 +819,7 @@ async function saveQuestion(event) {
     media_url: uploadedFile ? uploadedFile.url : (currentQuestion && currentQuestion.media_url ? currentQuestion.media_url : null),
     media_type: uploadedFile ? uploadedFile.fileType : (currentQuestion && currentQuestion.media_type ? currentQuestion.media_type : null),
     answer_text: answerText,
+    accepted_answers: acceptedAnswers.length > 0 ? acceptedAnswers : null, // Thêm accepted_answers
     points: 10,
     time_limit: currentQuestion.section === 'khoi_dong_rieng' ? 10 : null
   };
@@ -840,6 +858,58 @@ async function saveQuestion(event) {
   }
 }
 
+/**
+ * Add accepted answer
+ */
+function addAcceptedAnswer() {
+  const input = document.getElementById('newAcceptedAnswer');
+  const answer = input.value.trim();
+
+  if (!answer) {
+    alert('Vui lòng nhập đáp án!');
+    return;
+  }
+
+  // Kiểm tra trùng lặp
+  if (acceptedAnswers.includes(answer)) {
+    alert('Đáp án này đã tồn tại!');
+    return;
+  }
+
+  acceptedAnswers.push(answer);
+  input.value = '';
+  renderAcceptedAnswers();
+}
+
+/**
+ * Remove accepted answer
+ */
+function removeAcceptedAnswer(index) {
+  acceptedAnswers.splice(index, 1);
+  renderAcceptedAnswers();
+}
+
+/**
+ * Render accepted answers list
+ */
+function renderAcceptedAnswers() {
+  const container = document.getElementById('acceptedAnswersList');
+
+  if (acceptedAnswers.length === 0) {
+    container.innerHTML = '<p style="color: #9ca3af; font-size: 14px; margin: 0;">Chưa có đáp án bổ sung nào</p>';
+    return;
+  }
+
+  container.innerHTML = acceptedAnswers.map((answer, index) => `
+    <div class="accepted-answer-item">
+      <span class="accepted-answer-text">${answer}</span>
+      <button type="button" class="remove-answer-btn" onclick="removeAcceptedAnswer(${index})">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
 // Expose functions to global scope
 window.addQuestion = addQuestion;
 window.editQuestion = editQuestion;
@@ -852,4 +922,6 @@ window.handleDragLeave = handleDragLeave;
 window.handleFileSelect = handleFileSelect;
 window.saveQuestion = saveQuestion;
 window.deleteMediaPreview = deleteMediaPreview;
+window.addAcceptedAnswer = addAcceptedAnswer;
+window.removeAcceptedAnswer = removeAcceptedAnswer;
 
