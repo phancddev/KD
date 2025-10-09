@@ -451,22 +451,26 @@
           </div>
         </div>
 
-        <!-- Question Content -->
+        <!-- Question Content - Hiển thị cả text và file -->
         <div class="form-group" id="textContent">
-          <label class="form-label">Câu hỏi</label>
-          <textarea class="form-textarea" id="questionText" placeholder="Nhập câu hỏi..."></textarea>
+          <label class="form-label">
+            <i class="fas fa-font"></i> Câu hỏi dạng text (tùy chọn)
+          </label>
+          <textarea class="form-textarea" id="questionText" placeholder="Nhập câu hỏi dạng text..."></textarea>
         </div>
 
-        <div class="form-group" id="fileContent" style="display: none;">
-          <label class="form-label">Upload File</label>
-          <div class="file-upload" id="fileUpload" 
-               ondrop="handleDrop(event)" 
+        <div class="form-group" id="fileContent">
+          <label class="form-label">
+            <i class="fas fa-image"></i> Ảnh/Video (tùy chọn)
+          </label>
+          <div class="file-upload" id="fileUpload"
+               ondrop="handleDrop(event)"
                ondragover="handleDragOver(event)"
                ondragleave="handleDragLeave(event)"
                onclick="document.getElementById('fileInput').click()">
             <i class="fas fa-cloud-upload-alt"></i>
             <p>Kéo thả file hoặc click để chọn</p>
-            <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+            <input type="file" id="fileInput" accept="image/*,video/*" style="display: none;" onchange="handleFileSelect(event)">
           </div>
           <div id="filePreview" class="file-preview"></div>
           <div class="progress-bar" id="uploadProgress" style="display: none;">

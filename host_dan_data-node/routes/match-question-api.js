@@ -11,7 +11,8 @@ import { uploadFileToDataNode } from '../socket/data-node-server.js';
 import {
   getMatchFromDataNode,
   addQuestionToDataNode,
-  deleteQuestionFromDataNode
+  deleteQuestionFromDataNode,
+  updateQuestionInDataNode
 } from '../match-reader.js';
 
 const router = express.Router();
@@ -100,13 +101,19 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
       console.log(`   Query by id (INT): ${matchId}`);
     }
 
-    const [matches] = await pool.query(query, params);
+    const result = await pool.query(query, params);
+    console.log(`   Query result:`, result);
 
-    if (matches.length === 0) {
+    if (!result || !result[0] || result[0].length === 0) {
       console.error(`❌ [UPLOAD] Match not found: ${matchId}`);
-      return res.status(404).json({ error: 'Không tìm thấy trận đấu' });
+      return res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy trận đấu',
+        details: `matchId: ${matchId}, query: ${query}`
+      });
     }
 
+    const matches = result[0];
     const match = matches[0];
     console.log(`   Found match: ${match.match_id} (DB ID: ${match.id})`);
 
@@ -136,20 +143,25 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
     console.log(`   Upload success: ${uploadResult.streamUrl}`);
 
     // Log upload - Sử dụng match.id (INT) cho foreign key
-    await pool.query(
-      `INSERT INTO match_upload_logs
-       (match_id, data_node_id, file_name, file_type, file_size, storage_path, stream_url, upload_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'success')`,
-      [
-        match.id,  // Sử dụng INT id cho foreign key
-        match.data_node_id,
-        file.originalname,
-        file.mimetype,
-        file.size,
-        uploadResult.storagePath,
-        uploadResult.streamUrl
-      ]
-    );
+    try {
+      await pool.query(
+        `INSERT INTO match_upload_logs
+         (match_id, data_node_id, file_name, file_type, file_size, storage_path, stream_url, upload_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'success')`,
+        [
+          match.id,  // Sử dụng INT id cho foreign key
+          match.data_node_id,
+          file.originalname,
+          file.mimetype,
+          file.size,
+          uploadResult.storagePath,
+          uploadResult.streamUrl
+        ]
+      );
+    } catch (logError) {
+      // Không fail upload nếu log thất bại
+      console.warn(`⚠️  [UPLOAD] Không thể log upload (bỏ qua):`, logError.message);
+    }
 
     console.log(`✅ [UPLOAD] Hoàn thành upload file: ${file.originalname}`);
 
@@ -164,7 +176,11 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => 
 
   } catch (error) {
     console.error('❌ [UPLOAD] Lỗi upload file:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -355,9 +371,39 @@ router.post('/questions', requireAdmin, async (req, res) => {
 });
 
 /**
+ * Convert direct data node URL to proxy URL
+ * Example: http://127.0.0.1:1024/stream/match_1/file.mp4
+ *       -> /stream/1/match_1/file.mp4
+ */
+function convertToProxyUrl(directUrl, dataNodeId, matchId) {
+  if (!directUrl) return null;
+
+  try {
+    // Parse URL để lấy path
+    const url = new URL(directUrl);
+    const pathParts = url.pathname.split('/').filter(p => p);
+
+    // Format: /stream/matchId/fileName
+    // Convert to: /stream/:nodeId/:matchFolder/:fileName
+    if (pathParts[0] === 'stream' && pathParts.length >= 3) {
+      const matchFolder = pathParts[1];
+      const fileName = pathParts.slice(2).join('/');
+      return `/stream/${dataNodeId}/${matchFolder}/${fileName}`;
+    }
+
+    // Nếu không match pattern, return original
+    return directUrl;
+  } catch (error) {
+    console.error('Error converting URL:', error);
+    return directUrl;
+  }
+}
+
+/**
  * GET /api/matches/:matchId/questions
  * Lấy danh sách câu hỏi của trận đấu
  * ✅ ĐỌC TỪ match.json TRÊN DATA NODE (không dùng database)
+ * ✅ CONVERT media_url từ direct URL sang proxy URL
  */
 router.get('/:matchId/questions', requireAdmin, async (req, res) => {
   try {
@@ -403,7 +449,7 @@ router.get('/:matchId/questions', requireAdmin, async (req, res) => {
               type: q.type,
               question_text: q.question_text,
               media_file: q.media_file || null,
-              media_url: q.media_url || null,
+              media_url: convertToProxyUrl(q.media_url, dataNodeId, matchId),
               media_size: q.media_size || null,
               answer: q.answer,
               points: q.points,
@@ -424,7 +470,7 @@ router.get('/:matchId/questions', requireAdmin, async (req, res) => {
                   type: q.type,
                   question_text: q.question_text,
                   media_file: q.media_file || null,
-                  media_url: q.media_url || null,
+                  media_url: convertToProxyUrl(q.media_url, dataNodeId, matchId),
                   media_size: q.media_size || null,
                   answer: q.answer,
                   points: q.points,
@@ -492,8 +538,72 @@ router.get('/questions/:questionId', requireAdmin, async (req, res) => {
 });
 
 /**
+ * PUT /api/matches/:matchId/questions/update
+ * Cập nhật câu hỏi trong match.json (qua Data Node)
+ */
+router.put('/:matchId/questions/update', requireAdmin, async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    const { section, playerIndex, order, questionData } = req.body;
+
+    console.log('📝 [UPDATE_QUESTION] Nhận request cập nhật câu hỏi:');
+    console.log(`   match_id: ${matchId}`);
+    console.log(`   section: ${section}`);
+    console.log(`   player_index: ${playerIndex}`);
+    console.log(`   order: ${order}`);
+    console.log(`   questionData:`, questionData);
+
+    // Lấy metadata từ database
+    const [matchRows] = await pool.query(
+      'SELECT data_node_id, match_id, match_name FROM matches WHERE match_id = ?',
+      [matchId]
+    );
+
+    if (matchRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Trận đấu không tồn tại'
+      });
+    }
+
+    const match = matchRows[0];
+    const dataNodeId = match.data_node_id;
+
+    console.log(`   Data Node ID: ${dataNodeId}`);
+
+    // Gọi Data Node để update question trong match.json
+    await updateQuestionInDataNode(dataNodeId, matchId, {
+      section,
+      playerIndex: playerIndex !== null && playerIndex !== undefined ? parseInt(playerIndex) : null,
+      order: parseInt(order),
+      questionData: {
+        type: questionData.type || 'text',
+        question_text: questionData.question_text || null,
+        answer: questionData.answer,
+        points: questionData.points || 10,
+        time_limit: questionData.time_limit || null
+      }
+    });
+
+    console.log('✅ Đã cập nhật câu hỏi trong match.json');
+
+    res.json({
+      success: true,
+      message: 'Đã cập nhật câu hỏi trong match.json'
+    });
+
+  } catch (error) {
+    console.error('❌ Lỗi cập nhật câu hỏi:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * PUT /api/matches/questions/:questionId
- * Cập nhật câu hỏi
+ * Cập nhật câu hỏi (legacy - update database)
  */
 router.put('/questions/:questionId', requireAdmin, async (req, res) => {
   try {

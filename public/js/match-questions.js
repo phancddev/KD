@@ -27,7 +27,7 @@ const SECTIONS = {
     icon: 'fa-mountain',
     color: '#4facfe',
     totalQuestions: 6,
-    allowedTypes: ['text', 'image'],
+    allowedTypes: ['text', 'image', 'video'],
     hasPlayers: false
   },
   'tang_toc': {
@@ -35,7 +35,7 @@ const SECTIONS = {
     icon: 'fa-bolt',
     color: '#43e97b',
     totalQuestions: 4,
-    allowedTypes: ['image', 'video'],
+    allowedTypes: ['text', 'image', 'video'],
     hasPlayers: false
   },
   've_dich': {
@@ -44,7 +44,7 @@ const SECTIONS = {
     color: '#fa709a',
     questionsPerPlayer: 3,
     totalPlayers: 4,
-    allowedTypes: ['text', 'video'],
+    allowedTypes: ['text', 'image', 'video'],
     hasPlayers: true
   }
 };
@@ -484,17 +484,55 @@ async function editQuestion(questionId) {
       document.getElementById('questionText').value = currentQuestion.question_text || '';
       document.getElementById('answerText').value = currentQuestion.answer_text || '';
 
-      // Select type
-      selectQuestionType(currentQuestion.question_type);
+      // Select type - Hiển thị cả text và media nếu có
+      const hasText = currentQuestion.question_text && currentQuestion.question_text.trim() !== '';
+      const hasMedia = currentQuestion.media_url;
 
-      // Show media if exists
+      if (hasMedia) {
+        // Nếu có media, chọn type tương ứng
+        selectQuestionType(currentQuestion.question_type);
+      } else if (hasText) {
+        // Nếu chỉ có text
+        selectQuestionType('text');
+      } else {
+        // Default
+        selectQuestionType(section.allowedTypes[0]);
+      }
+
+      // Show media if exists với nút xóa
       if (currentQuestion.media_url) {
         const preview = document.getElementById('filePreview');
-        if (currentQuestion.question_type === 'image') {
-          preview.innerHTML = `<img src="${currentQuestion.media_url}" alt="Preview">`;
-        } else if (currentQuestion.question_type === 'video') {
-          preview.innerHTML = `<video src="${currentQuestion.media_url}" controls></video>`;
+        const isImage = currentQuestion.question_type === 'image' || currentQuestion.media_url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+        const isVideo = currentQuestion.question_type === 'video' || currentQuestion.media_url.match(/\.(mp4|avi|mov|wmv|flv|webm)$/i);
+
+        if (isImage) {
+          preview.innerHTML = `
+            <div style="position: relative; display: inline-block;">
+              <img src="${currentQuestion.media_url}" alt="Preview" style="max-width: 300px; border-radius: 4px;">
+              <button type="button" onclick="deleteMediaPreview()"
+                      style="position: absolute; top: 5px; right: 5px; background: #f44336; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px;">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          `;
+        } else if (isVideo) {
+          preview.innerHTML = `
+            <div style="position: relative; display: inline-block;">
+              <video src="${currentQuestion.media_url}" controls style="max-width: 400px; border-radius: 4px;"></video>
+              <button type="button" onclick="deleteMediaPreview()"
+                      style="position: absolute; top: 5px; right: 5px; background: #f44336; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px;">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          `;
         }
+
+        // Lưu thông tin media hiện tại
+        uploadedFile = {
+          url: currentQuestion.media_url,
+          fileName: currentQuestion.media_url.split('/').pop(),
+          fileType: currentQuestion.question_type
+        };
       }
     }
   } catch (error) {
@@ -573,6 +611,7 @@ function closeModal() {
 
 /**
  * Select question type
+ * Cập nhật: Không còn ẩn/hiện content, chỉ update active button
  */
 function selectQuestionType(type) {
   // Update buttons
@@ -583,21 +622,12 @@ function selectQuestionType(type) {
     }
   });
 
-  // Show/hide content
-  if (type === 'text') {
-    document.getElementById('textContent').style.display = 'block';
-    document.getElementById('fileContent').style.display = 'none';
-  } else {
-    document.getElementById('textContent').style.display = 'none';
-    document.getElementById('fileContent').style.display = 'block';
-
-    // Update file input accept
-    const fileInput = document.getElementById('fileInput');
-    if (type === 'image') {
-      fileInput.accept = 'image/*';
-    } else if (type === 'video') {
-      fileInput.accept = 'video/*';
-    }
+  // Cả text và file đều hiển thị, không cần ẩn/hiện
+  // Chỉ cập nhật file input accept nếu cần
+  const fileInput = document.getElementById('fileInput');
+  if (fileInput) {
+    // Accept cả image và video
+    fileInput.accept = 'image/*,video/*';
   }
 
   if (currentQuestion) {
@@ -636,11 +666,27 @@ function handleFileSelect(event) {
 }
 
 /**
+ * Delete media preview
+ */
+function deleteMediaPreview() {
+  if (confirm('Bạn có chắc muốn xóa ảnh/video này?')) {
+    document.getElementById('filePreview').innerHTML = '';
+    uploadedFile = null;
+
+    // Reset file input
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }
+}
+
+/**
  * Upload file to data node
  */
 async function uploadFile(file) {
   // Check if data node is online
-  if (!matchData.dataNode) {
+  if (!matchData || !matchData.dataNode) {
     alert('Trận đấu chưa có Data Node. Vui lòng chọn Data Node trước!');
     return;
   }
@@ -673,11 +719,27 @@ async function uploadFile(file) {
       progressFill.style.width = '100%';
       uploadedFile = data;
 
-      // Show preview
+      // Show preview với nút xóa
       if (file.type.startsWith('image/')) {
-        preview.innerHTML = `<img src="${data.url}" alt="Preview">`;
+        preview.innerHTML = `
+          <div style="position: relative; display: inline-block;">
+            <img src="${data.url}" alt="Preview" style="max-width: 300px; border-radius: 4px;">
+            <button type="button" onclick="deleteMediaPreview()"
+                    style="position: absolute; top: 5px; right: 5px; background: #f44336; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px;">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        `;
       } else if (file.type.startsWith('video/')) {
-        preview.innerHTML = `<video src="${data.url}" controls></video>`;
+        preview.innerHTML = `
+          <div style="position: relative; display: inline-block;">
+            <video src="${data.url}" controls style="max-width: 400px; border-radius: 4px;"></video>
+            <button type="button" onclick="deleteMediaPreview()"
+                    style="position: absolute; top: 5px; right: 5px; background: #f44336; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px;">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        `;
       }
 
       setTimeout(() => {
@@ -700,24 +762,33 @@ async function saveQuestion(event) {
   event.preventDefault();
 
   const questionId = document.getElementById('questionId').value;
-  const questionType = currentQuestion.question_type;
-  const questionText = document.getElementById('questionText').value;
-  const answerText = document.getElementById('answerText').value;
+  const questionText = document.getElementById('questionText').value.trim();
+  const answerText = document.getElementById('answerText').value.trim();
+  const hasText = questionText !== '';
+  const hasMedia = uploadedFile || (currentQuestion && currentQuestion.media_url);
 
-  // Validate
-  if (questionType === 'text' && !questionText) {
-    alert('Vui lòng nhập câu hỏi!');
-    return;
-  }
-
-  if ((questionType === 'image' || questionType === 'video') && !uploadedFile && !questionId) {
-    alert('Vui lòng upload file!');
+  // Validate: Phải có ít nhất text HOẶC media
+  if (!hasText && !hasMedia) {
+    alert('Vui lòng nhập câu hỏi text hoặc upload ảnh/video!');
     return;
   }
 
   if (!answerText) {
     alert('Vui lòng nhập đáp án!');
     return;
+  }
+
+  // Xác định question_type dựa trên nội dung
+  let questionType = currentQuestion.question_type;
+  if (hasText && hasMedia) {
+    questionType = 'mixed';
+  } else if (hasText) {
+    questionType = 'text';
+  } else if (hasMedia) {
+    // Giữ nguyên type hiện tại (image/video)
+    if (uploadedFile) {
+      questionType = uploadedFile.fileType && uploadedFile.fileType.startsWith('video') ? 'video' : 'image';
+    }
   }
 
   // Prepare data
@@ -727,9 +798,9 @@ async function saveQuestion(event) {
     question_order: currentQuestion.question_order,
     player_index: currentQuestion.player_index,
     question_type: questionType,
-    question_text: questionType === 'text' ? questionText : null,
-    media_url: uploadedFile ? uploadedFile.url : (currentQuestion.media_url || null),
-    media_type: uploadedFile ? uploadedFile.fileType : (currentQuestion.media_type || null),
+    question_text: hasText ? questionText : null,
+    media_url: uploadedFile ? uploadedFile.url : (currentQuestion && currentQuestion.media_url ? currentQuestion.media_url : null),
+    media_type: uploadedFile ? uploadedFile.fileType : (currentQuestion && currentQuestion.media_type ? currentQuestion.media_type : null),
     answer_text: answerText,
     points: 10,
     time_limit: currentQuestion.section === 'khoi_dong_rieng' ? 10 : null
@@ -780,4 +851,5 @@ window.handleDragOver = handleDragOver;
 window.handleDragLeave = handleDragLeave;
 window.handleFileSelect = handleFileSelect;
 window.saveQuestion = saveQuestion;
+window.deleteMediaPreview = deleteMediaPreview;
 

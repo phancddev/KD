@@ -17,17 +17,17 @@ const QUESTION_CONFIG = {
     totalQuestions: 6,
     textQuestions: 5,
     imageQuestions: 1,
-    allowedTypes: ['text', 'image']
+    allowedTypes: ['text', 'image', 'video']
   },
   'tang_toc': {
     option1: { images: 3, videos: 1 },
     option2: { images: 2, videos: 2 },
-    allowedTypes: ['image', 'video']
+    allowedTypes: ['text', 'image', 'video']
   },
   've_dich': {
     questionsPerPlayer: 3,
     totalPlayers: 4,
-    allowedTypes: ['text', 'video']
+    allowedTypes: ['text', 'image', 'video']
   }
 };
 
@@ -280,25 +280,51 @@ function getExistingQuestions(section, playerIndex) {
 
 /**
  * Populate existing data vào form
+ * Cải thiện để hiển thị đầy đủ cả text và media
  */
 function populateExistingData(section, playerIndex, existingQuestions) {
+  console.log(`📝 Populating ${section} player ${playerIndex}:`, existingQuestions);
+
   existingQuestions.forEach(q => {
+    // Fix: replace ALL underscores, not just first one
     const questionId = playerIndex !== null ?
-      `${section.replace('_', '-')}-p${playerIndex}-q${q.order}` :
-      `${section.replace('_', '-')}-q${q.order}`;
+      `${section.replace(/_/g, '-')}-p${playerIndex}-q${q.order}` :
+      `${section.replace(/_/g, '-')}-q${q.order}`;
+
+    console.log(`   Question ${q.order}:`, {
+      questionId,
+      question_text: q.question_text,
+      answer: q.answer,
+      media_url: q.media_url
+    });
 
     // Fill answer
     const answerInput = document.getElementById(`${questionId}-answer`);
     if (answerInput && q.answer) {
       answerInput.value = q.answer;
+      console.log(`   ✅ Filled answer for ${questionId}`);
+    } else if (q.answer) {
+      console.warn(`   ❌ Answer input not found: ${questionId}-answer`);
     }
 
-    // Fill question text
+    // Fill question text (luôn hiển thị nếu có)
     if (q.question_text) {
       const textInput = document.getElementById(`${questionId}-text`);
+      console.log(`   Looking for text input: ${questionId}-text`, textInput);
+
       if (textInput) {
         textInput.value = q.question_text;
+        // Highlight để người dùng biết đã có nội dung
+        textInput.style.backgroundColor = '#f0f8ff';
+        console.log(`   ✅ Filled question text for ${questionId}: "${q.question_text}"`);
+      } else {
+        console.warn(`   ❌ Text input not found: ${questionId}-text`);
+        // Debug: show all textarea IDs
+        const allTextareas = Array.from(document.querySelectorAll('textarea')).map(el => el.id);
+        console.warn(`   Available textareas:`, allTextareas);
       }
+    } else {
+      console.log(`   ⚠️  No question_text for ${questionId}`);
     }
 
     // Show media preview and save media info to local state
@@ -313,26 +339,45 @@ function populateExistingData(section, playerIndex, existingQuestions) {
 
       const previewDiv = document.getElementById(`${questionId}-preview`);
       if (previewDiv) {
-        if (q.type === 'image') {
-          previewDiv.innerHTML = `
-            <img src="${q.media_url}" class="file-preview" style="max-width: 200px; border-radius: 4px; margin-top: 10px;" />
-            <div style="margin-top: 5px; font-size: 12px; color: #666;">
-              ✅ Đã upload
-              <button onclick="deleteExistingMedia('${questionId}')" style="margin-left: 10px; color: #f44336; cursor: pointer; border: none; background: none;">
-                <i class="fas fa-trash"></i> Xóa
-              </button>
-            </div>
-          `;
-        } else if (q.type === 'video') {
+        // Xác định loại media từ URL hoặc type
+        const isVideo = q.type === 'video' || q.media_url.match(/\.(mp4|avi|mov|wmv|flv|webm)$/i);
+        const isImage = q.type === 'image' || q.media_url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+
+        if (isVideo) {
           previewDiv.innerHTML = `
             <video src="${q.media_url}" class="file-preview" controls style="max-width: 300px; border-radius: 4px; margin-top: 10px;"></video>
             <div style="margin-top: 5px; font-size: 12px; color: #666;">
-              ✅ Đã upload
+              ✅ Đã upload video
               <button onclick="deleteExistingMedia('${questionId}')" style="margin-left: 10px; color: #f44336; cursor: pointer; border: none; background: none;">
                 <i class="fas fa-trash"></i> Xóa
               </button>
             </div>
           `;
+        } else if (isImage) {
+          previewDiv.innerHTML = `
+            <img src="${q.media_url}" class="file-preview" style="max-width: 200px; border-radius: 4px; margin-top: 10px;" />
+            <div style="margin-top: 5px; font-size: 12px; color: #666;">
+              ✅ Đã upload ảnh
+              <button onclick="deleteExistingMedia('${questionId}')" style="margin-left: 10px; color: #f44336; cursor: pointer; border: none; background: none;">
+                <i class="fas fa-trash"></i> Xóa
+              </button>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // Hiển thị thông báo nếu câu hỏi có cả text và media
+    if (q.question_text && q.media_url) {
+      const questionItem = document.getElementById(questionId);
+      if (questionItem) {
+        const header = questionItem.querySelector('.question-header');
+        if (header && !header.querySelector('.dual-mode-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'dual-mode-badge';
+          badge.style.cssText = 'background: #2196F3; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.85em; margin-left: 10px;';
+          badge.innerHTML = '<i class="fas fa-layer-group"></i> Text + Media';
+          header.querySelector('.question-number').appendChild(badge);
         }
       }
     }
@@ -347,8 +392,11 @@ function renderKhoiDongRieng() {
   const playerIndex = currentPlayers['khoi_dong_rieng'];
   const config = QUESTION_CONFIG.khoi_dong_rieng;
 
+  console.log(`🎨 Rendering Khởi Động Riêng for player ${playerIndex}`);
+
   // ✅ Lấy câu hỏi đã có từ match.json
   const existingQuestions = getExistingQuestions('khoi_dong_rieng', playerIndex);
+  console.log(`   Found ${existingQuestions.length} existing questions:`, existingQuestions);
 
   let html = '';
   for (let i = 0; i < config.questionsPerPlayer; i++) {
@@ -357,9 +405,14 @@ function renderKhoiDongRieng() {
   }
 
   container.innerHTML = html;
+  console.log(`   ✅ HTML rendered, now populating data...`);
 
-  // ✅ Populate existing data vào form
-  populateExistingData('khoi_dong_rieng', playerIndex, existingQuestions);
+  // ✅ Populate existing data vào form - PHẢI GỌI SAU KHI innerHTML đã set
+  // Dùng setTimeout để đảm bảo DOM đã render xong
+  setTimeout(() => {
+    console.log(`   ⏰ setTimeout callback executing...`);
+    populateExistingData('khoi_dong_rieng', playerIndex, existingQuestions);
+  }, 100);  // Tăng lên 100ms để chắc chắn
 }
 
 /**
@@ -381,11 +434,14 @@ function renderKhoiDongChung() {
   container.innerHTML = html;
 
   // ✅ Populate existing data vào form
-  populateExistingData('khoi_dong_chung', null, existingQuestions);
+  setTimeout(() => {
+    populateExistingData('khoi_dong_chung', null, existingQuestions);
+  }, 0);
 }
 
 /**
  * Render câu hỏi VCNV
+ * Cập nhật: Cho phép tất cả câu hỏi có thể là text, image, hoặc video
  */
 function renderVCNV() {
   const container = document.getElementById('vcnv-questions');
@@ -395,23 +451,23 @@ function renderVCNV() {
   const existingQuestions = getExistingQuestions('vcnv', null);
 
   let html = '';
-  // 5 câu text
-  for (let i = 0; i < config.textQuestions; i++) {
+  // Tất cả 6 câu đều cho phép text, image, video
+  for (let i = 0; i < config.totalQuestions; i++) {
     const existingQ = existingQuestions.find(q => q.order === i);
-    html += createQuestionItem('vcnv', null, i, ['text'], existingQ);
+    html += createQuestionItem('vcnv', null, i, config.allowedTypes, existingQ);
   }
-  // 1 câu ảnh
-  const existingQ5 = existingQuestions.find(q => q.order === 5);
-  html += createQuestionItem('vcnv', null, 5, ['image'], existingQ5);
 
   container.innerHTML = html;
 
   // ✅ Populate existing data vào form
-  populateExistingData('vcnv', null, existingQuestions);
+  setTimeout(() => {
+    populateExistingData('vcnv', null, existingQuestions);
+  }, 0);
 }
 
 /**
  * Render câu hỏi Tăng Tốc
+ * Cập nhật: Cho phép tất cả câu hỏi có thể là text, image, hoặc video
  */
 function renderTangToc() {
   const container = document.getElementById('tang-toc-questions');
@@ -425,22 +481,19 @@ function renderTangToc() {
   let html = '';
   let questionIndex = 0;
 
-  // Render ảnh
-  for (let i = 0; i < option.images; i++) {
+  // Render tất cả 4 câu với đầy đủ các loại
+  const totalQuestions = option.images + option.videos;
+  for (let i = 0; i < totalQuestions; i++) {
     const existingQ = existingQuestions.find(q => q.order === questionIndex);
-    html += createQuestionItem('tang_toc', null, questionIndex++, ['image', 'text'], existingQ);
-  }
-
-  // Render video
-  for (let i = 0; i < option.videos; i++) {
-    const existingQ = existingQuestions.find(q => q.order === questionIndex);
-    html += createQuestionItem('tang_toc', null, questionIndex++, ['video', 'text'], existingQ);
+    html += createQuestionItem('tang_toc', null, questionIndex++, QUESTION_CONFIG.tang_toc.allowedTypes, existingQ);
   }
 
   container.innerHTML = html;
 
   // ✅ Populate existing data vào form
-  populateExistingData('tang_toc', null, existingQuestions);
+  setTimeout(() => {
+    populateExistingData('tang_toc', null, existingQuestions);
+  }, 0);
 }
 
 /**
@@ -463,16 +516,20 @@ function renderVeDich() {
   container.innerHTML = html;
 
   // ✅ Populate existing data vào form
-  populateExistingData('ve_dich', playerIndex, existingQuestions);
+  setTimeout(() => {
+    populateExistingData('ve_dich', playerIndex, existingQuestions);
+  }, 0);
 }
 
 /**
  * Tạo HTML cho 1 câu hỏi
  */
 function createQuestionItem(section, playerIndex, questionIndex, allowedTypes, existingQuestion = null) {
+  // IMPORTANT: Replace ALL underscores with dashes for consistent ID
+  const sectionId = section.replace(/_/g, '-');
   const questionId = playerIndex !== null ?
-    `${section}-p${playerIndex}-q${questionIndex}` :
-    `${section}-q${questionIndex}`;
+    `${sectionId}-p${playerIndex}-q${questionIndex}` :
+    `${sectionId}-q${questionIndex}`;
 
   // Xác định type từ existing question hoặc default
   let defaultType = 'text';
@@ -509,7 +566,8 @@ function createQuestionItem(section, playerIndex, questionIndex, allowedTypes, e
       </div>
 
       <div class="question-content" data-type="${defaultType}">
-        ${defaultType === 'text' ? createTextInput(questionId) : createFileUpload(questionId, defaultType)}
+        ${createTextInput(questionId)}
+        ${createFileUpload(questionId, defaultType)}
       </div>
 
       <input type="text" class="question-input" placeholder="Đáp án"
@@ -527,39 +585,49 @@ function createQuestionItem(section, playerIndex, questionIndex, allowedTypes, e
  */
 function createTextInput(questionId) {
   return `
-    <textarea class="question-input" rows="3" placeholder="Nhập câu hỏi..." 
-              id="${questionId}-text"></textarea>
+    <div class="text-input-section" style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
+        <i class="fas fa-font"></i> Câu hỏi dạng text (tùy chọn):
+      </label>
+      <textarea class="question-input" rows="3" placeholder="Nhập câu hỏi dạng text..."
+                id="${questionId}-text"></textarea>
+    </div>
   `;
 }
 
 /**
  * Tạo file upload
  */
-function createFileUpload(questionId, type) {
-  const accept = type === 'image' ? 'image/*' : 'video/*';
+function createFileUpload(questionId) {
   return `
-    <div class="file-upload-area" 
-         ondrop="handleDrop(event, '${questionId}')" 
-         ondragover="handleDragOver(event)"
-         ondragleave="handleDragLeave(event)"
-         onclick="document.getElementById('${questionId}-file').click()">
-      <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #ccc;"></i>
-      <p>Kéo thả file hoặc click để chọn</p>
-      <input type="file" id="${questionId}-file" accept="${accept}" 
-             style="display: none;" onchange="handleFileSelect(event, '${questionId}')" />
+    <div class="file-upload-section" style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
+        <i class="fas fa-image"></i> Ảnh/Video (tùy chọn):
+      </label>
+      <div class="file-upload-area"
+           ondrop="handleDrop(event, '${questionId}')"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           onclick="document.getElementById('${questionId}-file').click()">
+        <i class="fas fa-cloud-upload-alt" style="font-size: 36px; color: #ccc;"></i>
+        <p style="margin: 10px 0 0 0;">Kéo thả file hoặc click để chọn</p>
+        <input type="file" id="${questionId}-file" accept="image/*,video/*"
+               style="display: none;" onchange="handleFileSelect(event, '${questionId}')" />
+      </div>
+      <div id="${questionId}-preview"></div>
     </div>
-    <div id="${questionId}-preview"></div>
   `;
 }
 
 /**
  * Thay đổi loại câu hỏi
+ * Giờ chỉ cập nhật active button, không thay đổi nội dung vì cả text và file đều hiển thị
  */
 function changeQuestionType(questionId, type) {
   const questionItem = document.getElementById(questionId);
   const contentDiv = questionItem.querySelector('.question-content');
   const typeButtons = questionItem.querySelectorAll('.type-btn');
-  
+
   // Update active button
   typeButtons.forEach(btn => {
     btn.classList.remove('active');
@@ -567,12 +635,9 @@ function changeQuestionType(questionId, type) {
       btn.classList.add('active');
     }
   });
-  
-  // Update content
+
+  // Update data-type attribute (for reference)
   contentDiv.setAttribute('data-type', type);
-  contentDiv.innerHTML = type === 'text' ? 
-    createTextInput(questionId) : 
-    createFileUpload(questionId, type);
 }
 
 /**
@@ -674,11 +739,27 @@ async function uploadFile(questionId, file) {
     if (data.success) {
       progressFill.style.width = '100%';
 
-      // Show preview
+      // Show preview với nút xóa
       if (file.type.startsWith('image/')) {
-        previewDiv.innerHTML = `<img src="${data.url}" class="file-preview" />`;
+        previewDiv.innerHTML = `
+          <img src="${data.url}" class="file-preview" style="max-width: 200px; border-radius: 4px; margin-top: 10px;" />
+          <div style="margin-top: 5px; font-size: 12px; color: #666;">
+            ✅ Đã upload ảnh
+            <button onclick="deleteExistingMedia('${questionId}')" style="margin-left: 10px; color: #f44336; cursor: pointer; border: none; background: none;">
+              <i class="fas fa-trash"></i> Xóa
+            </button>
+          </div>
+        `;
       } else if (file.type.startsWith('video/')) {
-        previewDiv.innerHTML = `<video src="${data.url}" class="file-preview" controls></video>`;
+        previewDiv.innerHTML = `
+          <video src="${data.url}" class="file-preview" controls style="max-width: 300px; border-radius: 4px; margin-top: 10px;"></video>
+          <div style="margin-top: 5px; font-size: 12px; color: #666;">
+            ✅ Đã upload video
+            <button onclick="deleteExistingMedia('${questionId}')" style="margin-left: 10px; color: #f44336; cursor: pointer; border: none; background: none;">
+              <i class="fas fa-trash"></i> Xóa
+            </button>
+          </div>
+        `;
       }
 
       // Save media info (URL, fileName, fileSize, fileType)
@@ -789,6 +870,7 @@ function collectAllQuestions() {
 
 /**
  * Collect single question data
+ * Cập nhật để thu thập cả text và media cùng lúc
  */
 function collectQuestionData(questionId, section, playerIndex, questionOrder) {
   const questionItem = document.getElementById(questionId);
@@ -798,33 +880,44 @@ function collectQuestionData(questionId, section, playerIndex, questionOrder) {
   const questionType = contentDiv.getAttribute('data-type');
   const answerInput = document.getElementById(`${questionId}-answer`);
 
-  let questionText = null;
-  let mediaFileName = null;
-  let mediaFileSize = null;
+  // Thu thập question text (luôn kiểm tra)
+  const textInput = document.getElementById(`${questionId}-text`);
+  const questionText = textInput ? textInput.value.trim() : '';
 
-  if (questionType === 'text') {
-    const textInput = document.getElementById(`${questionId}-text`);
-    questionText = textInput ? textInput.value.trim() : '';
-  } else {
-    // Get from saved data
-    const savedData = getSavedQuestionData(section, playerIndex, questionOrder);
-    mediaFileName = savedData?.mediaFileName || null;
-    mediaFileSize = savedData?.mediaFileSize || null;
-  }
+  // Thu thập media info (luôn kiểm tra)
+  const savedData = getSavedQuestionData(section, playerIndex, questionOrder);
+  const mediaFileName = savedData?.mediaFileName || null;
+  const mediaFileSize = savedData?.mediaFileSize || null;
 
   const answer = answerInput ? answerInput.value.trim() : '';
 
-  // Validate
+  // Validate: Phải có ít nhất text HOẶC media, và phải có answer
   if (!questionText && !mediaFileName) return null;
   if (!answer) return null;
+
+  // Xác định question_type dựa trên nội dung thực tế
+  let actualType = questionType;
+  if (questionText && mediaFileName) {
+    // Có cả text và media
+    actualType = 'mixed';
+  } else if (questionText) {
+    actualType = 'text';
+  } else if (mediaFileName) {
+    // Xác định từ extension
+    if (mediaFileName.match(/\.(mp4|avi|mov|wmv|flv|webm)$/i)) {
+      actualType = 'video';
+    } else if (mediaFileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      actualType = 'image';
+    }
+  }
 
   return {
     match_id: matchId,
     section: section,
     question_order: questionOrder,
     player_index: playerIndex,
-    question_type: questionType,
-    question_text: questionText,
+    question_type: actualType,
+    question_text: questionText || null,
     media_file: mediaFileName,
     media_size: mediaFileSize,
     answer_text: answer,

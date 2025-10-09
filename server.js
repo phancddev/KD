@@ -972,6 +972,64 @@ app.get('/api/tangtoc-test', (req, res) => {
   res.json({ message: 'TangToc Reports API is working!' });
 });
 
+/**
+ * Proxy stream từ Data Node
+ * GET /stream/:nodeId/:matchFolder/:fileName
+ * IMPORTANT: Đặt route này TRƯỚC các middleware authentication
+ * để video player có thể load được mà không cần đăng nhập
+ */
+app.get('/stream/:nodeId/:matchFolder/:fileName', async (req, res) => {
+  try {
+    const { nodeId, matchFolder, fileName } = req.params;
+
+    // Get data node info
+    const [nodes] = await pool.query(
+      'SELECT * FROM data_nodes WHERE id = ?',
+      [nodeId]
+    );
+
+    if (nodes.length === 0) {
+      return res.status(404).json({ error: 'Data node không tồn tại' });
+    }
+
+    const node = nodes[0];
+
+    if (node.status !== 'online') {
+      return res.status(503).json({ error: 'Data node offline' });
+    }
+
+    // Proxy request to data node
+    const dataNodeUrl = `http://${node.host}:${node.port}/stream/${matchFolder}/${fileName}`;
+
+    console.log(`🔄 Proxy stream: ${dataNodeUrl}`);
+
+    // Forward request using native fetch (Node.js 18+)
+    const headers = {};
+    if (req.headers.range) {
+      headers['Range'] = req.headers.range;
+    }
+
+    const response = await fetch(dataNodeUrl, { headers });
+
+    // Forward response status
+    res.status(response.status);
+
+    // Forward response headers
+    response.headers.forEach((value, name) => {
+      res.setHeader(name, value);
+    });
+
+    // Stream response body using Node.js Readable.fromWeb
+    const { Readable } = await import('stream');
+    const nodeStream = Readable.fromWeb(response.body);
+    nodeStream.pipe(res);
+
+  } catch (error) {
+    console.error('❌ Lỗi proxy stream:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // TangToc routes (đăng ký trước để bắt /api/tangtoc/... trước khi vào router /api chung)
 app.use('/', tangTocRoutes);
 
@@ -1036,19 +1094,32 @@ async function checkAdmin(req, res, next) {
   if (!req.session.user) {
     return res.redirect('/login');
   }
-  
+
   try {
     const isAdmin = await isUserAdmin(req.session.user.id);
     if (!isAdmin) {
       return res.status(403).send('Bạn không có quyền truy cập trang này');
     }
-    
+
     next();
   } catch (error) {
     console.error('Lỗi khi kiểm tra quyền admin:', error);
     return res.status(500).send('Đã xảy ra lỗi khi xác thực quyền admin');
   }
 }
+
+// API to get current user profile
+app.get('/api/user/profile', (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  res.json({
+    id: req.session.user.id,
+    username: req.session.user.username,
+    role: req.session.user.role
+  });
+});
 
 // Admin dashboard routes
 app.get('/admin/dashboard', checkAdmin, (req, res) => {
@@ -1093,58 +1164,6 @@ app.get('/admin/match-questions', checkAdmin, (req, res) => {
 
 app.get('/admin/match-manage', checkAdmin, (req, res) => {
   res.sendFile(join(__dirname, 'views', 'admin', 'match-manage.html'));
-});
-
-/**
- * Proxy stream từ Data Node
- * GET /stream/:nodeId/:matchFolder/:fileName
- */
-app.get('/stream/:nodeId/:matchFolder/:fileName', async (req, res) => {
-  try {
-    const { nodeId, matchFolder, fileName } = req.params;
-
-    // Get data node info
-    const [nodes] = await pool.query(
-      'SELECT * FROM data_nodes WHERE id = ?',
-      [nodeId]
-    );
-
-    if (nodes.length === 0) {
-      return res.status(404).json({ error: 'Data node không tồn tại' });
-    }
-
-    const node = nodes[0];
-
-    if (node.status !== 'online') {
-      return res.status(503).json({ error: 'Data node offline' });
-    }
-
-    // Proxy request to data node
-    const dataNodeUrl = `http://${node.host}:${node.port}/stream/${matchFolder}/${fileName}`;
-
-    console.log(`🔄 Proxy stream: ${dataNodeUrl}`);
-
-    // Forward request
-    const fetch = (await import('node-fetch')).default;
-    const response = await fetch(dataNodeUrl, {
-      headers: {
-        'Range': req.headers.range || ''
-      }
-    });
-
-    // Forward response headers
-    res.status(response.status);
-    response.headers.forEach((value, name) => {
-      res.setHeader(name, value);
-    });
-
-    // Pipe response
-    response.body.pipe(res);
-
-  } catch (error) {
-    console.error('❌ Lỗi proxy stream:', error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // ========== CLEANUP TEMP FILES ==========

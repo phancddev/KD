@@ -61,6 +61,24 @@ export async function addQuestionToDataNode(dataNodeId, matchId, questionData) {
 }
 
 /**
+ * Cập nhật câu hỏi trong match.json trên Data Node
+ * SỬ DỤNG TIMEOUT
+ */
+export async function updateQuestionInDataNode(dataNodeId, matchId, updateData) {
+  const socket = getDataNodeSocket(dataNodeId);
+
+  if (!socket) {
+    throw new Error(`Data Node ${dataNodeId} không kết nối`);
+  }
+
+  console.log(`📤 [UPDATE_QUESTION] Sending to node ${dataNodeId} with 20s timeout...`);
+  const response = await emitWithTimeout(socket, 'update_question', { matchId, ...updateData }, 20000);
+  console.log(`✅ [UPDATE_QUESTION] Response received from node ${dataNodeId}`);
+
+  return response.data;
+}
+
+/**
  * Xóa câu hỏi từ match.json trên Data Node
  * SỬ DỤNG TIMEOUT
  */
