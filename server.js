@@ -336,7 +336,10 @@ app.post('/login', async (req, res) => {
       
       // Thêm người dùng vào danh sách online
       addOnlineUser(user.id, user.username, req.clientIP);
-      
+
+      // Set flag để hiển thị toast notification
+      req.session.justLoggedIn = true;
+
       return res.redirect('/');
     } else {
       // Log đăng nhập thất bại
@@ -628,8 +631,26 @@ app.post('/register', async (req, res) => {
     // Tạo người dùng mới
     const newUser = await createUser(username, password, email, fullName);
 
-    // Redirect về trang login với thông báo thành công
-    return res.redirect('/login?registered=1');
+    // Đăng nhập tự động sau khi đăng ký thành công
+    req.session.user = {
+      id: newUser.id,
+      username: newUser.username,
+      email: newUser.email,
+      fullName: newUser.full_name || fullName,
+      is_admin: newUser.is_admin || 0,
+      isAdmin: newUser.is_admin === 1,
+      loginTime: new Date()
+    };
+
+    // Set flag để hiển thị toast notification
+    req.session.justLoggedIn = true;
+    req.session.isNewUser = true; // Flag để phân biệt user mới đăng ký
+
+    // Thêm người dùng vào danh sách online
+    addOnlineUser(newUser.id, newUser.username, req.clientIP);
+
+    // Redirect về trang home
+    return res.redirect('/');
   } catch (error) {
     console.error('Lỗi đăng ký:', error);
 
@@ -1140,6 +1161,37 @@ app.get('/api/user/profile', (req, res) => {
     id: req.session.user.id,
     username: req.session.user.username,
     role: req.session.user.role
+  });
+});
+
+// API to get user info with justLoggedIn flag
+app.get('/api/user/info', (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ success: false, error: 'Not authenticated' });
+  }
+
+  const justLoggedIn = req.session.justLoggedIn || false;
+  const isNewUser = req.session.isNewUser || false;
+
+  // Xóa flag sau khi đã lấy
+  if (req.session.justLoggedIn) {
+    delete req.session.justLoggedIn;
+  }
+  if (req.session.isNewUser) {
+    delete req.session.isNewUser;
+  }
+
+  res.json({
+    success: true,
+    user: {
+      id: req.session.user.id,
+      username: req.session.user.username,
+      email: req.session.user.email,
+      fullName: req.session.user.fullName,
+      isAdmin: req.session.user.isAdmin
+    },
+    justLoggedIn: justLoggedIn,
+    isNewUser: isNewUser
   });
 });
 

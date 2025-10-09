@@ -6,6 +6,7 @@
     <title>Đăng nhập - KD APP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/toast.css">
     <style>
         * {
             margin: 0;
@@ -400,7 +401,8 @@
             </form>
         </div>
     </div>
-    
+
+    <script src="/js/toast.js"></script>
     <script>
         const errorMessage = document.getElementById('error-message');
         const successMessage = document.getElementById('success-message');
@@ -443,32 +445,15 @@
             showError(errorMsg);
         }
 
-        if (urlParams.has('registered')) {
-            showSuccess('Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.');
-        }
-
         if (urlParams.has('logout')) {
-            showSuccess('Đã đăng xuất thành công. Hẹn gặp lại bạn!');
+            // Hiển thị toast notification thay vì success message
+            setTimeout(() => {
+                Toast.success('Đã đăng xuất thành công. Hẹn gặp lại bạn!', 4000);
+            }, 300);
         }
 
-        // Kiểm tra xem chức năng register có được bật không
-        async function checkRegistrationStatus() {
-            try {
-                const response = await fetch('/api/features/registration-status');
-                const data = await response.json();
-
-                const registerLink = document.getElementById('register-link');
-                if (!data.enabled) {
-                    registerLink.style.display = 'none';
-                    registerLink.parentElement.innerHTML = '<p style="color: #6b7280; font-size: 14px;">Chức năng đăng ký hiện đang tạm khóa.</p>';
-                }
-            } catch (error) {
-                console.log('Không thể kiểm tra trạng thái register');
-            }
-        }
-
-        // Kiểm tra khi trang load
-        checkRegistrationStatus();
+        // Luôn hiển thị link đăng ký, kể cả khi bị khóa
+        // Điều này cho phép admin vẫn có thể truy cập trang register để đăng nhập
 
         // Form validation và xử lý submit
         document.getElementById('loginForm').addEventListener('submit', function(e) {

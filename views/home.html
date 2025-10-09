@@ -6,6 +6,7 @@
     <title>Trang chủ - KD APP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/toast.css">
     <style>
         * {
             margin: 0;
@@ -722,6 +723,7 @@
     </div>
     
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/toast.js"></script>
     <script src="/js/home.js"></script>
     <script>
       (function(){
@@ -774,5 +776,30 @@
 
     <!-- Heartbeat mechanism để duy trì trạng thái online -->
     <script src="/js/heartbeat.js"></script>
+
+    <!-- Toast notification cho đăng nhập thành công -->
+    <script>
+        // Kiểm tra xem có phải vừa đăng nhập không
+        fetch('/api/user/info')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.justLoggedIn) {
+                    const fullName = data.user.fullName || data.user.username;
+                    // Hiển thị toast sau 500ms để đảm bảo trang đã load xong
+                    setTimeout(() => {
+                        if (data.isNewUser) {
+                            // Message cho user mới đăng ký
+                            Toast.success(`Chào mừng ${fullName} đã tham gia! Chúc bạn có trải nghiệm tuyệt vời!`, 6000);
+                        } else {
+                            // Message cho user đăng nhập lại
+                            Toast.success(`Chào mừng ${fullName} đã quay trở lại!`, 5000);
+                        }
+                    }, 500);
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi khi lấy thông tin user:', error);
+            });
+    </script>
 </body>
 </html>
