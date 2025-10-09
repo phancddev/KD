@@ -484,7 +484,41 @@ function renderVCNV() {
   // ✅ Populate existing data vào form
   setTimeout(() => {
     populateExistingData('vcnv', null, existingQuestions);
+    // ✅ Attach event listeners cho auto-count word count
+    attachVCNVAnswerListeners();
   }, 0);
+}
+
+/**
+ * Attach event listeners để tự động đếm số chữ đáp án VCNV
+ */
+function attachVCNVAnswerListeners() {
+  const answerInputs = document.querySelectorAll('.vcnv-answer-input');
+
+  answerInputs.forEach(input => {
+    // Đếm số chữ ban đầu nếu đã có đáp án
+    const questionId = input.dataset.questionId;
+    updateWordCount(questionId);
+
+    // Lắng nghe sự kiện input để cập nhật real-time
+    input.addEventListener('input', function() {
+      updateWordCount(questionId);
+    });
+  });
+}
+
+/**
+ * Cập nhật số chữ đáp án
+ */
+function updateWordCount(questionId) {
+  const answerInput = document.getElementById(`${questionId}-answer`);
+  const wordCountInput = document.getElementById(`${questionId}-wordcount`);
+
+  if (answerInput && wordCountInput) {
+    const answer = answerInput.value;
+    const count = answer.length; // Đếm tất cả ký tự bao gồm cả dấu cách
+    wordCountInput.value = count > 0 ? count : '';
+  }
 }
 
 /**
@@ -572,15 +606,17 @@ function createVCNVQuestionItem(questionIndex, existingQuestion = null) {
             <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
               <i class="fas fa-spell-check"></i> Đáp án:
             </label>
-            <input type="text" class="question-input" placeholder="Nhập đáp án"
-                   id="${questionId}-answer" />
+            <input type="text" class="question-input vcnv-answer-input" placeholder="Nhập đáp án"
+                   id="${questionId}-answer" data-question-id="${questionId}" />
           </div>
           <div>
             <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">
               <i class="fas fa-hashtag"></i> Số chữ trong đáp án:
+              <span style="font-size: 0.85em; color: #10b981; font-weight: normal;">(Tự động)</span>
             </label>
-            <input type="number" class="question-input" placeholder="VD: 5" min="1" max="20"
-                   id="${questionId}-wordcount" value="${wordCount}" />
+            <input type="number" class="question-input" placeholder="Tự động đếm" min="1" max="20"
+                   id="${questionId}-wordcount" value="${wordCount}" readonly
+                   style="background-color: #f3f4f6; cursor: not-allowed;" />
           </div>
         </div>
       </div>

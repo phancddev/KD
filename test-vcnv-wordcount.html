@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test VCNV Auto Word Count</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #667eea;
+      margin-bottom: 2rem;
+    }
+
+    .demo-section {
+      background: rgba(239, 68, 68, 0.05);
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .label-auto {
+      font-size: 0.85em;
+      color: #10b981;
+      font-weight: normal;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    input[readonly] {
+      background-color: #f3f4f6;
+      cursor: not-allowed;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+
+    .info-box h3 {
+      color: #3b82f6;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .info-box ul {
+      margin-left: 1.5rem;
+      color: #1e40af;
+    }
+
+    .info-box li {
+      margin-bottom: 0.25rem;
+    }
+
+    .example {
+      background: #f0fdf4;
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+
+    .example h3 {
+      color: #10b981;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .example-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem;
+      background: white;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .example-answer {
+      font-weight: 600;
+      color: #059669;
+    }
+
+    .example-count {
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test Tự Động Đếm Số Chữ VCNV</h1>
+
+    <div class="info-box">
+      <h3><i class="fas fa-info-circle"></i> Hướng dẫn</h3>
+      <ul>
+        <li>Nhập đáp án vào ô bên dưới</li>
+        <li>Số chữ sẽ tự động được đếm và hiển thị</li>
+        <li>Đếm tất cả ký tự bao gồm cả dấu cách</li>
+        <li>Trường "Số chữ" là readonly, không thể chỉnh sửa thủ công</li>
+      </ul>
+    </div>
+
+    <div class="demo-section">
+      <h2 style="color: #ef4444; margin-bottom: 1rem;">
+        <i class="fas fa-running"></i> Chướng ngại vật 1
+      </h2>
+
+      <div class="form-group">
+        <label>
+          <i class="fas fa-font"></i> Câu hỏi:
+        </label>
+        <textarea rows="3" placeholder="Nhập câu hỏi...">Đây là quốc gia nào?</textarea>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>
+            <i class="fas fa-spell-check"></i> Đáp án:
+          </label>
+          <input type="text" id="answer-input" placeholder="Nhập đáp án" value="">
+        </div>
+        <div class="form-group">
+          <label>
+            <i class="fas fa-hashtag"></i> Số chữ trong đáp án:
+            <span class="label-auto">(Tự động)</span>
+          </label>
+          <input type="number" id="wordcount-input" placeholder="Tự động đếm" readonly>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3><i class="fas fa-lightbulb"></i> Ví dụ</h3>
+      <div class="example-item">
+        <span class="example-answer">VIỆT NAM</span>
+        <span class="example-count">→ 8 chữ (V-I-Ế-T-[space]-N-A-M)</span>
+      </div>
+      <div class="example-item">
+        <span class="example-answer">HÀ NỘI</span>
+        <span class="example-count">→ 6 chữ (H-À-[space]-N-Ộ-I)</span>
+      </div>
+      <div class="example-item">
+        <span class="example-answer">PHỞ</span>
+        <span class="example-count">→ 3 chữ (P-H-Ở)</span>
+      </div>
+      <div class="example-item">
+        <span class="example-answer">THÁP RÙA</span>
+        <span class="example-count">→ 8 chữ (T-H-Á-P-[space]-R-Ù-A)</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tự động đếm số chữ
+    const answerInput = document.getElementById('answer-input');
+    const wordCountInput = document.getElementById('wordcount-input');
+
+    function updateWordCount() {
+      const answer = answerInput.value;
+      const count = answer.length;
+      wordCountInput.value = count > 0 ? count : '';
+    }
+
+    // Lắng nghe sự kiện input
+    answerInput.addEventListener('input', updateWordCount);
+
+    // Đếm ban đầu nếu có giá trị
+    updateWordCount();
+
+    // Focus vào input
+    answerInput.focus();
+  </script>
+</body>
+</html>
+
