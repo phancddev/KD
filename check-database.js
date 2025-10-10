@@ -8,19 +8,28 @@ import { pool } from './db/index.js';
 const REQUIRED_TABLES = [
   // Bảng cơ bản
   'users',
-  'questions',
-  'game_history',
-  'reports',
+  'questions',  // Lưu cả câu hỏi Khởi Động và Tăng Tốc (phân biệt bằng category)
+  'game_sessions',  // Lưu lịch sử game (cả Khởi Động và Tăng Tốc)
+  'user_answers',
+  'rooms',
+  'room_participants',
+  'answers',  // Đáp án bổ sung cho questions
+  'question_reports',
+  'answer_suggestions',
+  'answer_suggestion_logs',
+  'question_deletion_logs',
+  'deleted_question_answers',
   'login_logs',
-  'question_logs',
-  
-  // Bảng Tăng Tốc
-  'tangtoc_questions',
-  'tangtoc_game_history',
-  'tangtoc_reports',
-  'tangtoc_question_logs',
+  'ip_geolocation',
+
+  // Bảng Tăng Tốc (riêng cho reports và logs)
+  'tangtoc_answers',  // Đáp án bổ sung riêng cho Tăng Tốc
+  'tangtoc_question_reports',
+  'tangtoc_answer_suggestions',
+  'tangtoc_answer_suggestion_logs',
   'tangtoc_question_deletion_logs',
-  
+  'deleted_tangtoc_question_answers',
+
   // Bảng Data Nodes & Matches
   'data_nodes',
   'matches',
