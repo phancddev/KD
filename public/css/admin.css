@@ -959,78 +959,197 @@
     margin-top: 1.5rem;
 }
 
-/* Responsive */
+/* Responsive Design - Mobile First Approach */
+/* Tablet and below - Collapse sidebar to icons only */
 @media (max-width: 992px) {
     .admin-sidebar {
         width: 70px;
     }
-    
+
     .admin-sidebar .logo span,
     .sidebar-nav a span {
         display: none;
     }
-    
+
     .sidebar-nav a {
         justify-content: center;
         padding: 0.75rem;
     }
-    
+
     .sidebar-nav i {
         margin: 0;
+        width: auto;
     }
-    
+
     .admin-content {
         margin-left: 70px;
+        max-width: calc(100vw - 70px);
     }
 }
 
+/* Mobile - Optimize layout and spacing */
 @media (max-width: 768px) {
     .admin-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
+        padding: 1rem;
     }
-    
+
+    .admin-header h1 {
+        font-size: 1.5rem;
+    }
+
     .admin-actions {
         flex-direction: column;
         gap: 1rem;
+        width: 100%;
     }
-    
+
     .search-box {
         max-width: 100%;
+        width: 100%;
     }
-    
+
     .filter-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .user-profile {
         flex-direction: column;
         align-items: center;
         text-align: center;
     }
-    
+
     .user-info-grid {
         grid-template-columns: 1fr;
     }
-}
 
-@media (max-width: 576px) {
-    .admin-content {
+    /* Card adjustments */
+    .admin-card {
+        margin-bottom: 1rem;
+    }
+
+    .card-header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .card-body {
         padding: 1rem;
     }
-    
+
+    /* Button groups */
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-group .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Modal adjustments */
+    .modal-content {
+        width: 95%;
+        max-width: 95%;
+        margin: 1rem auto;
+        padding: 1rem;
+    }
+
+    .modal-header {
+        padding: 1rem;
+    }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    .modal-footer {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+    }
+}
+
+/* Small mobile - Further optimize */
+@media (max-width: 576px) {
+    .admin-content {
+        padding: 0.75rem;
+    }
+
+    .admin-header {
+        padding: 0.75rem;
+    }
+
+    .admin-header h1 {
+        font-size: 1.25rem;
+    }
+
     .stats-grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
     }
-    
+
+    .admin-table {
+        font-size: 0.875rem;
+    }
+
     .admin-table th,
     .admin-table td {
-        padding: 0.75rem 0.5rem;
+        padding: 0.5rem 0.25rem;
     }
-    
+
     .large-modal {
         width: 95%;
+    }
+
+    /* Form elements */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-control {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* Extra small devices - Minimal spacing */
+@media (max-width: 480px) {
+    .admin-content {
+        padding: 0.5rem;
+    }
+
+    .admin-header {
+        padding: 0.5rem;
+    }
+
+    .admin-header h1 {
+        font-size: 1.125rem;
+    }
+
+    .card-header {
+        padding: 0.75rem;
+    }
+
+    .card-body {
+        padding: 0.75rem;
+    }
+
+    .modal-content {
+        padding: 0.75rem;
     }
 }
 

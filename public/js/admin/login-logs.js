@@ -195,10 +195,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     logsTable.innerHTML = logs.map(log => {
       const sessionDuration = formatSessionDuration(log.sessionDuration);
-      const suspiciousBadge = log.isSuspicious ? 
-        '<span class="badge badge-danger" title="' + (log.suspiciousReason || 'Hoạt động đáng ngờ') + '">⚠️ Đáng ngờ</span>' : 
+      const suspiciousBadge = log.isSuspicious ?
+        '<span class="badge badge-danger" title="' + (log.suspiciousReason || 'Hoạt động đáng ngờ') + '">⚠️ Đáng ngờ</span>' :
         '<span class="badge badge-success">✅ Bình thường</span>';
-      
+
+      // Format device type icon
+      let deviceIcon = 'fa-desktop';
+      if (log.deviceType === 'mobile') deviceIcon = 'fa-mobile-alt';
+      else if (log.deviceType === 'tablet') deviceIcon = 'fa-tablet-alt';
+      else if (log.deviceType === 'tv') deviceIcon = 'fa-tv';
+
+      // Format device model - rút gọn nếu quá dài
+      let deviceModel = log.deviceModel || 'Unknown';
+      if (deviceModel.length > 25) {
+        deviceModel = deviceModel.substring(0, 22) + '...';
+      }
+
       return `
         <tr>
           <td>${formatDate(log.loginAt)}</td>
@@ -220,8 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td>
             <div class="device-info">
-              <span class="device-type">${log.deviceType}</span>
-              <small class="device-model">${log.deviceModel}</small>
+              <span class="device-type"><i class="fas ${deviceIcon}"></i> ${log.deviceType}</span>
+              <small class="device-model" title="${log.deviceModel || 'Unknown'}">${deviceModel}</small>
             </div>
           </td>
           <td>
@@ -242,7 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${sessionDuration}</td>
           <td>${suspiciousBadge}</td>
           <td>
-            <button class="btn btn-outline btn-detail" data-log='${JSON.stringify(log).replace(/'/g, "&apos;")}'>Chi tiết</button>
+            <button class="btn btn-outline btn-detail" data-log='${JSON.stringify(log).replace(/'/g, "&apos;")}'>
+              <i class="fas fa-info-circle"></i> Chi tiết
+            </button>
           </td>
         </tr>
       `;
@@ -259,42 +273,176 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Modal for log detail
   function showDetailModal(log) {
+    const statusBadge = log.loginStatus === 'success'
+      ? '<span class="badge badge-success"><i class="fas fa-check-circle"></i> Thành công</span>'
+      : '<span class="badge badge-danger"><i class="fas fa-times-circle"></i> Thất bại</span>';
+
+    const suspiciousBadge = log.isSuspicious
+      ? '<span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> Đáng ngờ</span>'
+      : '<span class="badge badge-success"><i class="fas fa-shield-alt"></i> Bình thường</span>';
+
     const modal = document.createElement('div');
     modal.className = 'modal-backdrop';
     modal.innerHTML = `
       <div class="modal">
         <div class="modal-header">
-          <h3>Chi tiết đăng nhập</h3>
+          <h3><i class="fas fa-info-circle"></i> Chi tiết đăng nhập</h3>
           <button class="modal-close">×</button>
         </div>
         <div class="modal-body">
-          <div class="modal-grid">
-            <div><strong>Thời gian:</strong> ${formatDate(log.loginAt)}</div>
-            <div><strong>Username:</strong> ${log.username}</div>
-            <div><strong>Họ tên:</strong> ${log.fullName || 'N/A'}</div>
-            <div><strong>IP:</strong> ${log.ipAddress}</div>
-            <div><strong>Vị trí:</strong> ${log.location || 'Unknown'}</div>
-            <div><strong>Timezone:</strong> ${log.timezone || 'Unknown'}</div>
-            <div><strong>Thiết bị:</strong> ${log.deviceType} - ${log.deviceModel}</div>
-            <div><strong>Trình duyệt:</strong> ${log.browser}</div>
-            <div><strong>Hệ điều hành:</strong> ${log.os}</div>
-            <div><strong>Phương thức:</strong> ${log.loginMethod}</div>
-            <div><strong>Trạng thái:</strong> ${log.loginStatus}</div>
-            <div><strong>Session ID:</strong> ${log.sessionId || 'N/A'}</div>
-            <div><strong>Thời gian session:</strong> ${formatSessionDuration(log.sessionDuration)}</div>
-            <div><strong>Đáng ngờ:</strong> ${log.isSuspicious ? 'Có' : 'Không'}</div>
-            <div><strong>Lý do:</strong> ${log.suspiciousReason || 'N/A'}</div>
-            <div><strong>User Agent:</strong> ${log.userAgent || 'N/A'}</div>
-            <div><strong>Email:</strong> ${log.email || 'N/A'}</div>
+          <!-- Thông tin người dùng -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="fas fa-user"></i>
+              Thông tin người dùng
+            </div>
+            <div class="modal-grid">
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-user-circle"></i> Username</div>
+                <div class="modal-field-value">${log.username}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-id-card"></i> Họ tên</div>
+                <div class="modal-field-value">${log.fullName || 'N/A'}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-envelope"></i> Email</div>
+                <div class="modal-field-value">${log.email || 'N/A'}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-clock"></i> Thời gian đăng nhập</div>
+                <div class="modal-field-value">${formatDate(log.loginAt)}</div>
+              </div>
+              ${log.logoutAt ? `
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-sign-out-alt"></i> Thời gian đăng xuất</div>
+                <div class="modal-field-value">${formatDate(log.logoutAt)}</div>
+              </div>
+              ` : ''}
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-hourglass-half"></i> Thời gian session</div>
+                <div class="modal-field-value">${formatSessionDuration(log.sessionDuration)}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Thông tin kết nối -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="fas fa-network-wired"></i>
+              Thông tin kết nối
+            </div>
+            <div class="modal-grid">
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-map-marker-alt"></i> Địa chỉ IP</div>
+                <div class="modal-field-value">${log.ipAddress}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-globe"></i> Vị trí</div>
+                <div class="modal-field-value">${log.location || 'Unknown'}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-clock"></i> Múi giờ</div>
+                <div class="modal-field-value">${log.timezone || 'Unknown'}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-key"></i> Session ID</div>
+                <div class="modal-field-value" style="font-family: monospace; font-size: 0.85rem;">${log.sessionId || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Thông tin thiết bị -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="fas fa-mobile-alt"></i>
+              Thông tin thiết bị
+            </div>
+            <div class="modal-grid">
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-tablet-alt"></i> Loại thiết bị</div>
+                <div class="modal-field-value">${log.deviceType || 'Unknown'}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-mobile"></i> Model thiết bị</div>
+                <div class="modal-field-value">${log.deviceModel || 'Unknown'}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-chrome"></i> Trình duyệt</div>
+                <div class="modal-field-value">${log.browser}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-desktop"></i> Hệ điều hành</div>
+                <div class="modal-field-value">${log.os}</div>
+              </div>
+              <div class="modal-field modal-field-full">
+                <div class="modal-field-label"><i class="fas fa-code"></i> User Agent</div>
+                <div class="modal-field-value" style="font-family: monospace; font-size: 0.8rem; word-break: break-all;">${log.userAgent || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trạng thái & Bảo mật -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="fas fa-shield-alt"></i>
+              Trạng thái & Bảo mật
+            </div>
+            <div class="modal-grid">
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-check-circle"></i> Trạng thái đăng nhập</div>
+                <div class="modal-field-value">${statusBadge}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-sign-in-alt"></i> Phương thức</div>
+                <div class="modal-field-value">${log.loginMethod || 'N/A'}</div>
+              </div>
+              <div class="modal-field">
+                <div class="modal-field-label"><i class="fas fa-exclamation-triangle"></i> Đánh giá</div>
+                <div class="modal-field-value">${suspiciousBadge}</div>
+              </div>
+              ${log.isSuspicious && log.suspiciousReason ? `
+              <div class="modal-field modal-field-full">
+                <div class="modal-field-label"><i class="fas fa-info-circle"></i> Lý do đáng ngờ</div>
+                <div class="modal-field-value" style="color: #dc2626;">${log.suspiciousReason}</div>
+              </div>
+              ` : ''}
+            </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-primary modal-close">Đóng</button>
+          <button class="btn btn-primary modal-close">
+            <i class="fas fa-times"></i> Đóng
+          </button>
         </div>
       </div>`;
+
     document.body.appendChild(modal);
-    modal.querySelectorAll('.modal-close').forEach(el => el.addEventListener('click', () => modal.remove()));
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    // Close handlers
+    modal.querySelectorAll('.modal-close').forEach(el => {
+      el.addEventListener('click', () => {
+        modal.style.animation = 'fadeOut 0.2s ease-out';
+        setTimeout(() => modal.remove(), 200);
+      });
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.animation = 'fadeOut 0.2s ease-out';
+        setTimeout(() => modal.remove(), 200);
+      }
+    });
+
+    // ESC key to close
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        modal.style.animation = 'fadeOut 0.2s ease-out';
+        setTimeout(() => modal.remove(), 200);
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
   }
 
   // Render stats overview

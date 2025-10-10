@@ -3,34 +3,197 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quản Lý Câu Hỏi - Ngôi Đền Quý</title>
-  <link rel="stylesheet" href="/css/admin.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <title>Quản Lý Câu Hỏi Trận Đấu - Admin - KD APP</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .container {
-      max-width: 1400px;
-      margin: 20px auto;
-      padding: 20px;
+    /* Base Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    .header {
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: white;
-      padding: 20px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      color: #1f2937;
+      line-height: 1.6;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
     }
 
-    .header h1 {
-      margin: 0 0 10px 0;
-      color: #333;
+    /* Floating blur circles with red theme */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(239, 68, 68, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(220, 38, 38, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(248, 113, 113, 0.06) 0%, transparent 50%);
+      filter: blur(40px);
+      animation: float 20s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(30px, -30px) rotate(120deg); }
+      66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    /* Admin Layout */
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    .admin-sidebar {
+      width: 280px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(239, 68, 68, 0.1);
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 2rem 1.5rem;
+      border-bottom: 1px solid rgba(239, 68, 68, 0.1);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ef4444;
+    }
+
+    .logo i {
+      font-size: 1.5rem;
+    }
+
+    .sidebar-nav ul {
+      list-style: none;
+      padding: 1rem 0;
+    }
+
+    .sidebar-nav li {
+      margin: 0.25rem 0;
+      position: relative;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1.5rem;
+      text-decoration: none;
+      color: #64748b;
+      transition: all 0.3s ease;
+      border-radius: 0;
+      position: relative;
+    }
+
+    .sidebar-nav li.active a,
+    .sidebar-nav a:hover {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
+
+    .sidebar-nav li.active a::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #ef4444;
+    }
+
+    .sidebar-nav i {
+      width: 20px;
+      text-align: center;
+    }
+
+    .admin-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 2rem;
+      max-width: calc(100vw - 280px);
+    }
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 1.5rem 2rem;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .admin-header h1 {
+      color: #ef4444;
+      font-size: 1.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .admin-user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .admin-user span {
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .avatar {
+      width: 2.5rem;
+      height: 2.5rem;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Match Info Card */
+    .match-info-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
 
     .match-info {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 15px;
-      margin-top: 15px;
     }
 
     .info-item {
@@ -40,12 +203,20 @@
     }
 
     .info-item i {
-      color: #4CAF50;
+      color: #ef4444;
     }
 
     #dataNodeStatusIcon {
       font-size: 12px;
       margin-right: 5px;
+    }
+
+    #dataNodeWarning {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(255, 243, 205, 0.7);
+      border-left: 4px solid #ffc107;
+      border-radius: 8px;
     }
 
     .sections-grid {
@@ -54,14 +225,16 @@
     }
 
     .section-card {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
       overflow: hidden;
     }
 
     .section-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
       padding: 20px;
       display: flex;
@@ -89,15 +262,16 @@
     }
 
     .question-card {
-      border: 2px solid #e0e0e0;
+      border: 2px solid rgba(239, 68, 68, 0.1);
       border-radius: 8px;
       padding: 15px;
       transition: all 0.3s;
+      background: rgba(255, 255, 255, 0.5);
     }
 
     .question-card:hover {
-      border-color: #667eea;
-      box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+      border-color: #ef4444;
+      box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
     }
 
     .question-header {
@@ -109,7 +283,7 @@
 
     .question-number {
       font-weight: bold;
-      color: #667eea;
+      color: #ef4444;
       font-size: 16px;
     }
 
@@ -121,46 +295,61 @@
     .btn {
       padding: 8px 16px;
       border: none;
-      border-radius: 4px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 14px;
       transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .btn-primary {
-      background: #667eea;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
     }
 
     .btn-primary:hover {
-      background: #5568d3;
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
     }
 
     .btn-success {
-      background: #4CAF50;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
     }
 
     .btn-success:hover {
-      background: #45a049;
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
     }
 
     .btn-danger {
-      background: #f44336;
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
     }
 
     .btn-danger:hover {
-      background: #da190b;
+      background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
     }
 
     .btn-secondary {
-      background: #757575;
+      background: linear-gradient(135deg, #64748b 0%, #475569 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
     }
 
     .btn-secondary:hover {
-      background: #616161;
+      background: linear-gradient(135deg, #475569 0%, #334155 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(100, 116, 139, 0.4);
     }
 
     .question-content {
@@ -408,54 +597,195 @@
     }
 
     .type-btn.active {
-      border-color: #667eea;
-      background: #667eea;
+      border-color: #ef4444;
+      background: #ef4444;
       color: white;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .admin-sidebar {
+        width: 70px;
+      }
+
+      .admin-sidebar .logo span,
+      .sidebar-nav a span {
+        display: none;
+      }
+
+      .admin-content {
+        margin-left: 70px;
+        padding: 1rem;
+        max-width: calc(100vw - 70px);
+      }
+
+      .admin-header {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+      }
+
+      .admin-header h1 {
+        font-size: 1.5rem;
+      }
+
+      .match-info {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-content {
+        width: 95%;
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .admin-content {
+        padding: 0.5rem;
+      }
+
+      .admin-header {
+        padding: 0.75rem;
+      }
+
+      .admin-header h1 {
+        font-size: 1.25rem;
+      }
+
+      .match-info-card {
+        padding: 1rem;
+      }
+
+      .section-header {
+        padding: 15px;
+      }
+
+      .section-content {
+        padding: 15px;
+      }
+
+      .question-card {
+        padding: 12px;
+      }
+
+      .btn {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
-    <div class="header">
-      <h1><i class="fas fa-question-circle"></i> Quản Lý Câu Hỏi</h1>
-      <div class="match-info">
-        <div class="info-item">
-          <i class="fas fa-trophy"></i>
-          <span><strong>Trận đấu:</strong> <span id="matchName">-</span></span>
-        </div>
-        <div class="info-item">
-          <i class="fas fa-server"></i>
-          <span><strong>Data Node:</strong> <span id="dataNodeName">-</span></span>
-        </div>
-        <div class="info-item">
-          <i class="fas fa-network-wired"></i>
-          <span><strong>Host:</strong> <span id="dataNodeHost">-</span></span>
-        </div>
-        <div class="info-item">
-          <i class="fas fa-circle" id="dataNodeStatusIcon"></i>
-          <span><strong>Trạng thái:</strong> <span id="dataNodeStatus">-</span></span>
-        </div>
-        <div class="info-item">
-          <i class="fas fa-users"></i>
-          <span><strong>Số người chơi:</strong> <span id="playerCount">4</span></span>
-        </div>
-        <div class="info-item">
-          <i class="fas fa-list"></i>
-          <span><strong>Tổng câu hỏi:</strong> <span id="totalQuestions">0/58</span></span>
+  <div class="admin-layout">
+    <!-- Sidebar Navigation -->
+    <div class="admin-sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fas fa-brain"></i>
+          <span>Admin Panel</span>
         </div>
       </div>
-
-      <!-- Warning if data node offline -->
-      <div id="dataNodeWarning" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-        <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
-        <strong>Cảnh báo:</strong> Data Node đang offline! Không thể upload file ảnh/video. Vui lòng khởi động Data Node hoặc chọn Data Node khác.
-      </div>
+      <nav class="sidebar-nav">
+        <ul>
+          <li>
+            <a href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
+          </li>
+          <li>
+            <a href="/admin/questions"><i class="fas fa-question-circle"></i> <span>Quản lý câu hỏi</span></a>
+          </li>
+          <li>
+            <a href="/admin/tangtoc-questions"><i class="fas fa-bolt"></i> <span>Quản lý câu hỏi Tăng Tốc</span></a>
+          </li>
+          <li>
+            <a href="/admin/data-nodes"><i class="fas fa-server"></i> <span>Quản lý Data Nodes</span></a>
+          </li>
+          <li class="active">
+            <a href="/admin/matches"><i class="fas fa-trophy"></i> <span>Quản lý Trận Đấu</span></a>
+          </li>
+          <li>
+            <a href="/admin/users"><i class="fas fa-users"></i> <span>Quản lý người dùng</span></a>
+          </li>
+          <li>
+            <a href="/admin/login-logs"><i class="fas fa-sign-in-alt"></i> <span>Login Logs</span></a>
+          </li>
+          <li>
+            <a href="/admin/game-history"><i class="fas fa-history"></i> <span>Lịch sử trận đấu</span></a>
+          </li>
+          <li>
+            <a href="/admin/reports"><i class="fas fa-flag"></i> <span>Báo lỗi câu hỏi</span></a>
+          </li>
+          <li>
+            <a href="/admin/tangtoc-reports"><i class="fas fa-bolt"></i> <span>Báo lỗi câu hỏi Tăng Tốc</span></a>
+          </li>
+          <li>
+            <a href="/admin/question-logs"><i class="fas fa-trash-alt"></i> <span>Logs xóa câu hỏi</span></a>
+          </li>
+          <li>
+            <a href="/admin/tangtoc-question-logs"><i class="fas fa-trash-alt"></i> <span>Logs xóa câu hỏi Tăng Tốc</span></a>
+          </li>
+          <li>
+            <a href="/"><i class="fas fa-home"></i> <span>Trang chủ</span></a>
+          </li>
+          <li>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> <span>Đăng xuất</span></a>
+          </li>
+        </ul>
+      </nav>
     </div>
 
-    <!-- Sections -->
-    <div class="sections-grid" id="sectionsContainer">
-      <!-- Sections will be rendered here -->
+    <!-- Main Content -->
+    <div class="admin-content">
+      <!-- Header -->
+      <div class="admin-header">
+        <h1><i class="fas fa-question-circle"></i> Quản Lý Câu Hỏi Trận Đấu</h1>
+        <div class="admin-user">
+          <span id="admin-name">Admin</span>
+          <div class="avatar">
+            <span id="avatar-text">A</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Match Info Card -->
+      <div class="match-info-card">
+        <div class="match-info">
+          <div class="info-item">
+            <i class="fas fa-trophy"></i>
+            <span><strong>Trận đấu:</strong> <span id="matchName">-</span></span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-server"></i>
+            <span><strong>Data Node:</strong> <span id="dataNodeName">-</span></span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-network-wired"></i>
+            <span><strong>Host:</strong> <span id="dataNodeHost">-</span></span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-circle" id="dataNodeStatusIcon"></i>
+            <span><strong>Trạng thái:</strong> <span id="dataNodeStatus">-</span></span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-users"></i>
+            <span><strong>Số người chơi:</strong> <span id="playerCount">4</span></span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-list"></i>
+            <span><strong>Tổng câu hỏi:</strong> <span id="totalQuestions">0/58</span></span>
+          </div>
+        </div>
+
+        <!-- Warning if data node offline -->
+        <div id="dataNodeWarning" style="display: none;">
+          <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+          <strong>Cảnh báo:</strong> Data Node đang offline! Không thể upload file ảnh/video. Vui lòng khởi động Data Node hoặc chọn Data Node khác.
+        </div>
+      </div>
+
+      <!-- Sections -->
+      <div class="sections-grid" id="sectionsContainer">
+        <!-- Sections will be rendered here -->
+      </div>
     </div>
   </div>
 
