@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   user_id INT NOT NULL,
   room_id INT NULL,
   is_solo BOOLEAN DEFAULT FALSE,
+  game_mode ENUM('khoidong', 'tangtoc') DEFAULT 'khoidong' COMMENT 'Chế độ chơi: khoidong hoặc tangtoc',
   score INT DEFAULT 0,
   total_questions INT NOT NULL,
   correct_answers INT DEFAULT 0,

@@ -193,6 +193,7 @@ async function createBasicTables() {
       user_id INT NOT NULL,
       room_id INT NULL,
       is_solo BOOLEAN DEFAULT FALSE,
+      game_mode ENUM('khoidong', 'tangtoc') DEFAULT 'khoidong' COMMENT 'Chế độ chơi: khoidong hoặc tangtoc',
       score INT DEFAULT 0,
       total_questions INT NOT NULL,
       correct_answers INT DEFAULT 0,
@@ -350,6 +351,22 @@ async function runMigrations() {
       'time_limit',
       "ADD COLUMN time_limit INT NULL AFTER difficulty"
     );
+
+    // ===== MIGRATION CHO GAME_MODE =====
+    // Đảm bảo cột game_mode tồn tại trong game_sessions
+    await ensureColumnExists(
+      'game_sessions',
+      'game_mode',
+      "ADD COLUMN game_mode ENUM('khoidong', 'tangtoc') DEFAULT 'khoidong' COMMENT 'Chế độ chơi: khoidong hoặc tangtoc' AFTER is_solo"
+    );
+
+    // Tạo index cho game_mode (nếu chưa có)
+    try {
+      await pool.query('CREATE INDEX idx_game_sessions_game_mode ON game_sessions(game_mode)');
+      console.log('✅ Đã tạo index idx_game_sessions_game_mode');
+    } catch (e) {
+      // Index đã tồn tại, bỏ qua
+    }
 
     // Đảm bảo cột accepted_answers tồn tại trong question_reports
     await ensureColumnExists(
@@ -835,6 +852,22 @@ async function runMigrations() {
         INDEX idx_status (upload_status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Log upload files lên data nodes'
     `);
+
+    // ===== MIGRATION CHO STORAGE_FOLDER =====
+    // Đảm bảo cột storage_folder tồn tại trong matches
+    await ensureColumnExists(
+      'matches',
+      'storage_folder',
+      "ADD COLUMN storage_folder VARCHAR(255) NULL COMMENT 'Tên folder lưu trữ trên Data Node (format: YYYYMMDD_CODE_TenTran)' AFTER data_node_id"
+    );
+
+    // Tạo index cho storage_folder (nếu chưa có)
+    try {
+      await pool.query('CREATE INDEX idx_storage_folder ON matches(storage_folder)');
+      console.log('✅ Đã tạo index idx_storage_folder');
+    } catch (e) {
+      // Index đã tồn tại, bỏ qua
+    }
 
     console.log('✅ Tất cả migrations đã hoàn tất!');
   } catch (err) {
