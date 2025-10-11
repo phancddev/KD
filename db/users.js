@@ -71,7 +71,7 @@ async function updateLastLogin(userId, ip) {
 async function getAllUsers() {
   try {
     const [rows] = await pool.query(
-      'SELECT id, username, email, full_name, is_admin, is_active, created_at, last_login, last_ip FROM users'
+      'SELECT id, username, email, full_name, is_admin, is_active, created_at, last_login, last_ip, avatar FROM users'
     );
     return rows;
   } catch (error) {
@@ -471,13 +471,13 @@ async function getUsersForDeletion(options) {
     // Nếu không có điều kiện nào, trả về tất cả người dùng
     if (conditions.length === 0) {
       const [rows] = await pool.query(
-        `SELECT id, username, full_name, email, is_active, is_admin, created_at, last_login,
+        `SELECT id, username, full_name, email, is_active, is_admin, created_at, last_login, avatar,
                 CONVERT_TZ(created_at, 'UTC', ?) as local_created_at
-         FROM users 
+         FROM users
          ORDER BY created_at DESC`,
         [timezone]
       );
-      
+
       return rows.map(row => ({
         id: row.id,
         username: row.username,
@@ -487,20 +487,21 @@ async function getUsersForDeletion(options) {
         isAdmin: row.is_admin === 1,
         createdAt: row.created_at,
         localCreatedAt: row.local_created_at,
-        lastLogin: row.last_login
+        lastLogin: row.last_login,
+        avatar: row.avatar
       }));
     }
     
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
-    
+
     const [rows] = await pool.query(
-      `SELECT id, username, full_name, email, is_active, is_admin, created_at, last_login,
+      `SELECT id, username, full_name, email, is_active, is_admin, created_at, last_login, avatar,
               CONVERT_TZ(created_at, 'UTC', ?) as local_created_at
-       FROM users ${whereClause} 
+       FROM users ${whereClause}
        ORDER BY created_at DESC`,
       [timezone, ...params]
     );
-    
+
     return rows.map(row => ({
       id: row.id,
       username: row.username,
@@ -510,7 +511,8 @@ async function getUsersForDeletion(options) {
       isAdmin: row.is_admin === 1,
       createdAt: row.created_at,
       localCreatedAt: row.local_created_at,
-      lastLogin: row.last_login
+      lastLogin: row.last_login,
+      avatar: row.avatar
     }));
   } catch (error) {
     console.error('Lỗi khi lấy danh sách người dùng để xóa:', error);
@@ -518,11 +520,118 @@ async function getUsersForDeletion(options) {
   }
 }
 
-export { 
-  createUser, 
+// Cập nhật thông tin profile của user (không bao gồm password)
+async function updateUserProfile(userId, profileData) {
+  try {
+    const { username, email, fullName } = profileData;
+
+    // Kiểm tra username mới có bị trùng không (nếu thay đổi username)
+    if (username) {
+      const existingUser = await pool.query(
+        'SELECT id FROM users WHERE username = ? AND id != ?',
+        [username, userId]
+      );
+      if (existingUser[0].length > 0) {
+        throw new Error('USERNAME_EXISTS');
+      }
+    }
+
+    // Kiểm tra email mới có bị trùng không (nếu thay đổi email)
+    if (email) {
+      const existingEmail = await pool.query(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
+        [email, userId]
+      );
+      if (existingEmail[0].length > 0) {
+        throw new Error('EMAIL_EXISTS');
+      }
+    }
+
+    // Build dynamic update query
+    const updates = [];
+    const params = [];
+
+    if (username !== undefined) {
+      updates.push('username = ?');
+      params.push(username);
+    }
+    if (email !== undefined) {
+      updates.push('email = ?');
+      params.push(email);
+    }
+    if (fullName !== undefined) {
+      updates.push('full_name = ?');
+      params.push(fullName);
+    }
+
+    if (updates.length === 0) {
+      return false; // Không có gì để update
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(userId);
+
+    const [result] = await pool.query(
+      `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error('Lỗi khi cập nhật profile người dùng:', error);
+    throw error;
+  }
+}
+
+// Đổi mật khẩu cho user (yêu cầu verify old password)
+async function changeUserPassword(userId, oldPassword, newPassword) {
+  try {
+    // Lấy thông tin user hiện tại
+    const user = await findUserById(userId);
+    if (!user) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    // Verify old password
+    const isValidOldPassword = verifyPassword(oldPassword, user.password);
+    if (!isValidOldPassword) {
+      throw new Error('INVALID_OLD_PASSWORD');
+    }
+
+    // Hash new password và update
+    const hashedNewPassword = hashPassword(newPassword);
+    const [result] = await pool.query(
+      'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [hashedNewPassword, userId]
+    );
+
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error('Lỗi khi đổi mật khẩu:', error);
+    throw error;
+  }
+}
+
+// Cập nhật avatar của user
+async function updateUserAvatar(userId, avatarPath) {
+  try {
+    const [result] = await pool.query(
+      'UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [avatarPath, userId]
+    );
+
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error('Lỗi khi cập nhật avatar:', error);
+    throw error;
+  }
+}
+
+export {
+  createUser,
   findUserByUsername,
   findUserById,
-  authenticateUser, 
+  authenticateUser,
   getAllUsers,
   setAdminStatus,
   isUserAdmin,
@@ -535,5 +644,8 @@ export {
   deleteUsersByHour,
   deleteUsersByHourInDay,
   deleteInactiveUsers,
-  getUsersForDeletion
+  getUsersForDeletion,
+  updateUserProfile,
+  changeUserPassword,
+  updateUserAvatar
 };

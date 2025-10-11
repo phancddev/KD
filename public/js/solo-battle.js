@@ -178,7 +178,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.username) {
-                document.getElementById('username-display').textContent = `${data.username}`;
+                // Ưu tiên hiển thị full_name, fallback về username
+                const displayName = (data.full_name && data.full_name.trim()) || data.username;
+                document.getElementById('username-display').textContent = displayName;
                 userId = data.id;
             } else {
                 window.location.href = '/login';

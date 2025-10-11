@@ -508,7 +508,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.id && data.username) {
                 userId = data.id;
                 username = data.username;
-                document.getElementById('username-display').textContent = username;
+                // Ưu tiên hiển thị full_name, fallback về username
+                const displayName = (data.full_name && data.full_name.trim()) || username;
+                document.getElementById('username-display').textContent = displayName;
                 
                 // Lưu user info vào localStorage để backup
                 localStorage.setItem('userInfo', JSON.stringify({
@@ -627,7 +629,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Cập nhật thông tin người dùng
                         userId = userData.id;
                         username = userData.username;
-                        document.getElementById('username-display').textContent = username;
+                        // Ưu tiên hiển thị full_name, fallback về username
+                        const displayName = (userData.full_name && userData.full_name.trim()) || username;
+                        document.getElementById('username-display').textContent = displayName;
                         
                         // Cập nhật thông tin phòng
                         roomInfo = roomData;
@@ -734,13 +738,58 @@ document.addEventListener('DOMContentLoaded', function() {
     // Hiển thị danh sách người tham gia
     function renderParticipants(participants) {
         if (!participants) return;
-        
-        participantsList.innerHTML = '';
-        participants.forEach(participant => {
-            const li = document.createElement('li');
-            li.textContent = participant.username + (participant.isCreator ? ' (Chủ phòng)' : '');
-            participantsList.appendChild(li);
-        });
+
+        console.log('🎯 renderParticipants called with:', participants);
+        console.log('🔍 AvatarModule available?', typeof AvatarModule !== 'undefined');
+
+        // Use AvatarModule if available, otherwise fallback to old method
+        if (typeof AvatarModule !== 'undefined') {
+            console.log('✅ Using AvatarModule to render participants');
+            AvatarModule.renderParticipantsList(participantsList, participants);
+        } else {
+            console.warn('⚠️ AvatarModule not available, using fallback');
+            // Fallback method
+            participantsList.innerHTML = '';
+            participants.forEach(participant => {
+                const participantDiv = document.createElement('div');
+                participantDiv.className = 'participant-item';
+                participantDiv.style.cssText = `
+                    background: rgba(255, 255, 255, 0.8);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(220, 38, 127, 0.2);
+                    border-radius: 12px;
+                    padding: 1rem;
+                    text-align: center;
+                    transition: all 0.3s ease;
+                `;
+
+                const displayName = (participant.fullName && participant.fullName.trim()) || participant.username;
+                const avatarInitial = displayName.charAt(0).toUpperCase();
+
+                let avatarHTML;
+                if (participant.avatar) {
+                    avatarHTML = `
+                        <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; margin: 0 auto 0.5rem; border: 2px solid rgba(220, 38, 127, 0.3);">
+                            <img src="${participant.avatar}?t=${Date.now()}" alt="${displayName}" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                    `;
+                } else {
+                    avatarHTML = `
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #dc2626, #ef4444); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; margin: 0 auto 0.5rem;">
+                            ${avatarInitial}
+                        </div>
+                    `;
+                }
+
+                participantDiv.innerHTML = `
+                    ${avatarHTML}
+                    <div class="participant-name" style="font-weight: 600; color: #374151;">${displayName}</div>
+                    <div style="font-size: 0.8rem; color: #6b7280;">${participant.isCreator ? 'Chủ phòng' : 'Thành viên'}</div>
+                `;
+
+                participantsList.appendChild(participantDiv);
+            });
+        }
     }
     
     // Nút bắt đầu trò chơi

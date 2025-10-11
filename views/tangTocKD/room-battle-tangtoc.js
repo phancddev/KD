@@ -278,8 +278,20 @@ class TangTocRoomBattle {
     }
 
     renderParticipantsList() {
+        console.log('🎯 [TangToc] renderParticipantsList called with:', this.participants);
+        console.log('🔍 [TangToc] AvatarModule available?', typeof AvatarModule !== 'undefined');
+
+        // Use AvatarModule if available
+        if (typeof AvatarModule !== 'undefined') {
+            console.log('✅ [TangToc] Using AvatarModule to render participants');
+            AvatarModule.renderParticipantsList(this.elements.participantsList, this.participants);
+            return;
+        }
+
+        console.warn('⚠️ [TangToc] AvatarModule not available, using fallback');
+        // Fallback method
         this.elements.participantsList.innerHTML = '';
-        
+
         this.participants.forEach(participant => {
             const participantDiv = document.createElement('div');
             participantDiv.className = 'participant-item';
@@ -292,16 +304,31 @@ class TangTocRoomBattle {
                 text-align: center;
                 transition: all 0.3s ease;
             `;
-            
+
             const displayName = (participant.fullName && participant.fullName.trim()) || participant.username;
+            const avatarInitial = displayName.charAt(0).toUpperCase();
+
+            let avatarHTML;
+            if (participant.avatar) {
+                avatarHTML = `
+                    <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; margin: 0 auto 0.5rem; border: 2px solid rgba(220, 38, 127, 0.3);">
+                        <img src="${participant.avatar}?t=${Date.now()}" alt="${displayName}" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                `;
+            } else {
+                avatarHTML = `
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #dc2626, #ef4444); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; margin: 0 auto 0.5rem;">
+                        ${avatarInitial}
+                    </div>
+                `;
+            }
+
             participantDiv.innerHTML = `
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #dc2626, #ef4444); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; margin: 0 auto 0.5rem;">
-                    ${displayName.charAt(0).toUpperCase()}
-                </div>
+                ${avatarHTML}
                 <div class="participant-name" style="font-weight: 600; color: #374151;">${displayName}</div>
                 <div style="font-size: 0.8rem; color: #6b7280;">${participant.isHost ? 'Chủ phòng' : 'Thành viên'}</div>
             `;
-            
+
             this.elements.participantsList.appendChild(participantDiv);
         });
     }

@@ -761,7 +761,7 @@
                     </div>
                 </div>
                 <div class="user-info">
-                    <div class="avatar">
+                    <div class="avatar" id="avatar">
                         <span id="avatar-text"></span>
                     </div>
                     <span id="username-display"></span>
@@ -949,24 +949,25 @@
     </div> -->
     
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/avatar.js?v=3"></script>
     <audio id="battle-sound" preload="auto">
         <source src="/sounds/soudKD.mp3" type="audio/mpeg">
     </audio>
-    
+
     <!-- Pre-battle sound -->
     <audio id="pre-battle-sound" preload="auto">
         <source src="/sounds/pre_KD.mp3" type="audio/mpeg">
     </audio>
-    
+
     <!-- Âm thanh cho câu trả lời đúng/sai -->
     <audio id="correct-sound" preload="auto">
         <source src="/sounds/kd_right.mp3" type="audio/mpeg">
     </audio>
-    
+
     <audio id="wrong-sound" preload="auto">
         <source src="/sounds/kd_wrong.mp3" type="audio/mpeg">
     </audio>
-    
+
     <script src="/js/room-battle.js"></script>
     <script>
       (function(){

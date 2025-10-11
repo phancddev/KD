@@ -253,6 +253,30 @@ async function updateNullGameMode() {
 }
 
 /**
+ * Add avatar column to users table if not exists
+ */
+async function addAvatarColumn() {
+  const hasColumn = await columnExists('users', 'avatar');
+
+  if (hasColumn) {
+    console.log('   ✅ Column avatar already exists - SKIP');
+    return false;
+  }
+
+  console.log('   ⚠️  Column avatar NOT exists - ADDING...');
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN avatar VARCHAR(255) DEFAULT NULL
+    COMMENT 'Đường dẫn ảnh đại diện của user'
+    AFTER last_ip
+  `);
+
+  console.log('   ✅ Column added successfully');
+  return true;
+}
+
+/**
  * Fix match_questions table - add all missing columns
  * DEPRECATED v2.1: Bảng match_questions đã bị xóa hoàn toàn
  * Dữ liệu giờ lưu trong match.json trên Data Nodes
@@ -297,23 +321,30 @@ async function checkAndMigrate() {
     anyChanges = anyChanges || gameModeUpdated;
 
     // ============================================
-    // STEP 4: Add storage_folder column if not exists
+    // STEP 4: Add avatar column to users table
     // ============================================
-    console.log('\n📝 Step 4: Check storage_folder column');
+    console.log('\n📝 Step 4: Check avatar column in users');
+    const avatarAdded = await addAvatarColumn();
+    anyChanges = anyChanges || avatarAdded;
+
+    // ============================================
+    // STEP 5: Add storage_folder column if not exists
+    // ============================================
+    console.log('\n📝 Step 5: Check storage_folder column');
     const columnAdded = await addStorageFolderColumn();
     anyChanges = anyChanges || columnAdded;
 
     // ============================================
-    // STEP 5: Add index if not exists
+    // STEP 6: Add index if not exists
     // ============================================
-    console.log('\n📝 Step 5: Check storage_folder index');
+    console.log('\n📝 Step 6: Check storage_folder index');
     const indexAdded = await addStorageFolderIndex();
     anyChanges = anyChanges || indexAdded;
 
     // ============================================
-    // STEP 6: Fix match_questions schema
+    // STEP 7: Fix match_questions schema
     // ============================================
-    console.log('\n📝 Step 6: Fix match_questions schema');
+    console.log('\n📝 Step 7: Fix match_questions schema');
     const questionsFixed = await fixMatchQuestionsSchema();
     anyChanges = anyChanges || questionsFixed;
 
@@ -324,9 +355,9 @@ async function checkAndMigrate() {
     }
 
     // ============================================
-    // STEP 7: Check current matches state
+    // STEP 8: Check current matches state
     // ============================================
-    console.log('\n📊 Step 7: Check existing matches');
+    console.log('\n📊 Step 8: Check existing matches');
 
     // Kiểm tra bảng matches có tồn tại không
     const hasMatchesTable = await tableExists('matches');
@@ -370,9 +401,9 @@ async function checkAndMigrate() {
     }
 
     // ============================================
-    // STEP 8: Update NULL storage_folder values
+    // STEP 9: Update NULL storage_folder values
     // ============================================
-    console.log('\n📝 Step 8: Update NULL values');
+    console.log('\n📝 Step 9: Update NULL values');
 
     if (!hasMatchesTable) {
       console.log('   ℹ️  Bảng matches chưa tồn tại - SKIP');

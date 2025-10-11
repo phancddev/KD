@@ -6,7 +6,10 @@ import { dirname, join } from 'path';
 import { createServer } from 'http';
 import config from './config.js';
 import { testConnection, initDatabase, pool } from './db/index.js';
-import { createUser, findUserByUsername, authenticateUser, isUserAdmin } from './db/users.js';
+import { createUser, findUserByUsername, authenticateUser, isUserAdmin, findUserById, updateUserProfile, changeUserPassword, updateUserAvatar } from './db/users.js';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 import { initSocketIO, getIO, addOnlineUser, removeOnlineUser, updateUserActivity } from './socket/index.js';
 import { initTangTocSocket, getTangTocParticipants } from './socket/kdtangtoc.js';
 import { collectDeviceInfo, generateDeviceFingerprint, detectSuspiciousActivity, getIpInfo } from './utils/user-agent-parser.js';
@@ -143,6 +146,8 @@ app.use((req, res, next) => {
 app.use(express.static(join(__dirname, 'public')));
 // Serve Tang Tốc client assets
 app.use('/tangTocKD', express.static(join(__dirname, 'views', 'tangTocKD')));
+// Serve uploads (avatars, etc.)
+app.use('/uploads', express.static(join(__dirname, 'uploads')));
 app.use(session({
   secret: config.session.secret,
   resave: false,
@@ -254,8 +259,17 @@ app.get('/login', (req, res) => {
   if (req.session.user) {
     return res.redirect('/');
   }
-  
+
   res.sendFile(join(__dirname, 'views', 'login.html'));
+});
+
+// Profile page
+app.get('/profile', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+
+  res.sendFile(join(__dirname, 'views', 'profile.html'));
 });
 
 app.post('/login', async (req, res) => {
@@ -775,12 +789,16 @@ app.get('/api/user', async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  
+
   try {
     const isAdmin = await isUserAdmin(req.session.user.id);
-    
+
+    // Lấy thông tin đầy đủ từ database để có avatar
+    const user = await findUserById(req.session.user.id);
+
     res.json({
       ...req.session.user,
+      avatar: user?.avatar || null,
       isAdmin
     });
   } catch (error) {
@@ -1152,16 +1170,276 @@ async function checkAdmin(req, res, next) {
 }
 
 // API to get current user profile
-app.get('/api/user/profile', (req, res) => {
+app.get('/api/user/profile', async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  res.json({
-    id: req.session.user.id,
-    username: req.session.user.username,
-    role: req.session.user.role
-  });
+  try {
+    // Lấy thông tin đầy đủ từ database
+    const user = await findUserById(req.session.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.full_name,
+      avatar: user.avatar,
+      isAdmin: user.is_admin === 1,
+      createdAt: user.created_at,
+      lastLogin: user.last_login
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin profile:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// API to update user profile (không bao gồm password)
+app.put('/api/user/profile', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ success: false, error: 'Not authenticated' });
+  }
+
+  try {
+    const { username, email, fullName } = req.body;
+
+    // Validate input
+    if (!username || username.trim().length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Username phải có ít nhất 3 ký tự'
+      });
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email không hợp lệ'
+      });
+    }
+
+    // Update profile
+    const updated = await updateUserProfile(req.session.user.id, {
+      username: username.trim(),
+      email: email ? email.trim() : null,
+      fullName: fullName ? fullName.trim() : null
+    });
+
+    if (updated) {
+      // Cập nhật session với thông tin mới
+      req.session.user.username = username.trim();
+      req.session.user.email = email ? email.trim() : null;
+      req.session.user.fullName = fullName ? fullName.trim() : null;
+
+      return res.json({
+        success: true,
+        message: 'Cập nhật thông tin thành công'
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Không có thay đổi nào được thực hiện'
+      });
+    }
+  } catch (error) {
+    console.error('Lỗi khi cập nhật profile:', error);
+
+    if (error.message === 'USERNAME_EXISTS') {
+      return res.status(400).json({
+        success: false,
+        error: 'Username đã tồn tại'
+      });
+    }
+
+    if (error.message === 'EMAIL_EXISTS') {
+      return res.status(400).json({
+        success: false,
+        error: 'Email đã được sử dụng'
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Lỗi khi cập nhật thông tin'
+    });
+  }
+});
+
+// API to change password
+app.post('/api/user/change-password', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ success: false, error: 'Not authenticated' });
+  }
+
+  try {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    // Validate input
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vui lòng điền đầy đủ thông tin'
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Mật khẩu mới không khớp'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Mật khẩu mới phải có ít nhất 6 ký tự'
+      });
+    }
+
+    // Change password
+    const changed = await changeUserPassword(
+      req.session.user.id,
+      oldPassword,
+      newPassword
+    );
+
+    if (changed) {
+      return res.json({
+        success: true,
+        message: 'Đổi mật khẩu thành công'
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Không thể đổi mật khẩu'
+      });
+    }
+  } catch (error) {
+    console.error('Lỗi khi đổi mật khẩu:', error);
+
+    if (error.message === 'USER_NOT_FOUND') {
+      return res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy người dùng'
+      });
+    }
+
+    if (error.message === 'INVALID_OLD_PASSWORD') {
+      return res.status(400).json({
+        success: false,
+        error: 'Mật khẩu cũ không đúng'
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Lỗi khi đổi mật khẩu'
+    });
+  }
+});
+
+// Cấu hình multer cho upload avatar
+const avatarStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const userId = req.session.user.id;
+    const uploadDir = join(__dirname, 'uploads', 'avatars', userId.toString());
+
+    // Tạo thư mục nếu chưa tồn tại
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'avatar-' + uniqueSuffix + ext);
+  }
+});
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: function (req, file, cb) {
+    // Chỉ cho phép ảnh
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Chỉ cho phép upload file ảnh'));
+    }
+  }
+});
+
+// API upload avatar
+app.post('/api/user/avatar', avatarUpload.single('avatar'), async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ success: false, error: 'Not authenticated' });
+  }
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Không có file được upload'
+      });
+    }
+
+    const userId = req.session.user.id;
+    // Lưu đường dẫn tương đối
+    const avatarPath = `/uploads/avatars/${userId}/${req.file.filename}`;
+
+    // Xóa avatar cũ nếu có
+    const oldUser = await findUserById(userId);
+    if (oldUser && oldUser.avatar) {
+      const oldAvatarPath = join(__dirname, oldUser.avatar);
+      if (fs.existsSync(oldAvatarPath)) {
+        try {
+          fs.unlinkSync(oldAvatarPath);
+        } catch (err) {
+          console.error('Lỗi khi xóa avatar cũ:', err);
+        }
+      }
+    }
+
+    // Cập nhật database
+    const updated = await updateUserAvatar(userId, avatarPath);
+
+    if (updated) {
+      return res.json({
+        success: true,
+        message: 'Upload avatar thành công',
+        avatarUrl: avatarPath
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Không thể cập nhật avatar'
+      });
+    }
+  } catch (error) {
+    console.error('Lỗi khi upload avatar:', error);
+
+    // Xóa file đã upload nếu có lỗi
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.error('Lỗi khi xóa file:', err);
+      }
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Lỗi khi upload avatar'
+    });
+  }
 });
 
 // API to get user info with justLoggedIn flag

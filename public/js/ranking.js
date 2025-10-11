@@ -24,12 +24,14 @@ async function fetchUserInfo() {
         }
 
         const user = await response.json();
-        document.getElementById('username-display').textContent = user.username;
+        // Ưu tiên hiển thị full_name, fallback về username
+        const displayName = (user.full_name && user.full_name.trim()) || user.username;
+        document.getElementById('username-display').textContent = displayName;
 
-        // Update avatar text with first letter of username
+        // Update avatar text with first letter of display name
         const avatarText = document.getElementById('avatar-text');
-        if (avatarText && user.username) {
-            avatarText.textContent = user.username.charAt(0).toUpperCase();
+        if (avatarText && displayName) {
+            avatarText.textContent = displayName.charAt(0).toUpperCase();
         }
     } catch (error) {
         console.error('Lỗi khi lấy thông tin người dùng:', error);

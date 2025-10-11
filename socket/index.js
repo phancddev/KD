@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { getRandomQuestions, checkAnswer } from '../db/questions.js';
 import { createRoom, findRoomByCode, joinRoom, getRoomParticipants, updateRoomStatus, updateParticipantScore, getRoomResults } from '../db/rooms.js';
 import { createGameSession, finishGameSession, saveUserAnswer, getUserGameHistory } from '../db/game-sessions.js';
+import { findUserById } from '../db/users.js';
 
 let io;
 
@@ -56,10 +57,23 @@ export function initSocketIO(server) {
     socket.on('create_room', async (data, callback) => {
       try {
         const { userId, username, roomName } = data;
-        
+
+        // Lấy thông tin user từ database để có avatar
+        let userAvatar = null;
+        let userFullName = username;
+        try {
+          const dbUser = await findUserById(userId);
+          if (dbUser) {
+            userAvatar = dbUser.avatar || null;
+            userFullName = (dbUser.full_name && dbUser.full_name.trim()) || username;
+          }
+        } catch (err) {
+          console.error('Error fetching user info:', err);
+        }
+
         // Tạo phòng trong database
         const room = await createRoom(roomName, userId);
-        
+
         // Lưu thông tin phòng trong bộ nhớ - PERSISTENT
         rooms.set(room.code, {
           id: room.id,
@@ -69,6 +83,8 @@ export function initSocketIO(server) {
           participants: [{
             id: userId,
             username: username,
+            fullName: userFullName,
+            avatar: userAvatar,
             socketId: socket.id,
             score: 0,
             isCreator: true
@@ -154,16 +170,31 @@ export function initSocketIO(server) {
           existingParticipant.socketId = socket.id;
           existingParticipant.lastSeen = Date.now();
           existingParticipant.disconnected = false;
-          
+
           console.log(`🔄 ${username} reconnect vào phòng ${roomCode}`);
         } else {
+          // Lấy thông tin user từ database để có avatar
+          let userAvatar = null;
+          let userFullName = username;
+          try {
+            const dbUser = await findUserById(userId);
+            if (dbUser) {
+              userAvatar = dbUser.avatar || null;
+              userFullName = (dbUser.full_name && dbUser.full_name.trim()) || username;
+            }
+          } catch (err) {
+            console.error('Error fetching user info:', err);
+          }
+
           // Tham gia phòng trong database
           await joinRoom(room.id, userId);
-          
+
           // Thêm người dùng vào danh sách trong bộ nhớ
           room.participants.push({
             id: userId,
             username: username,
+            fullName: userFullName,
+            avatar: userAvatar,
             socketId: socket.id,
             score: 0,
             isCreator: false,

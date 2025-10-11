@@ -19,8 +19,8 @@ RUN pip3 install --no-cache-dir --break-system-packages -r scripts/requirements.
 # Copy source code
 COPY . .
 
-# Create uploads directory
-RUN mkdir -p uploads
+# Create uploads directories
+RUN mkdir -p uploads/avatars uploads/temp
 
 # Make Python scripts executable
 RUN chmod +x scripts/csv_parser.py

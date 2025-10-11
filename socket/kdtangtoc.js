@@ -182,6 +182,7 @@ export function initTangTocSocket(io) {
         const username = (dbUser && dbUser.username) || data.username || `User-${socket.id.substring(0, 4)}`;
         const fullName = (dbUser && dbUser.full_name && String(dbUser.full_name).trim()) || (data.fullName && String(data.fullName).trim()) || username;
         const userId = (dbUser && dbUser.id) || rawUserId;
+        const avatar = (dbUser && dbUser.avatar) || null;
 
         const roomState = {
           id: roomId,
@@ -189,7 +190,7 @@ export function initTangTocSocket(io) {
           name,
           hostId: socket.id,
           status: 'waiting',
-          participants: [{ socketId: socket.id, userId, username, fullName, score: 0, timeSpent: 0 }],
+          participants: [{ socketId: socket.id, userId, username, fullName, avatar, score: 0, timeSpent: 0 }],
           questions: [],
           currentQuestionIndex: -1,
           currentTimer: null
@@ -228,8 +229,9 @@ export function initTangTocSocket(io) {
         const displayName = (dbUser && dbUser.username) || username || `User-${socket.id.substring(0, 4)}`;
         const displayFullName = (dbUser && dbUser.full_name && String(dbUser.full_name).trim()) || (fullName && String(fullName).trim()) || displayName;
         const uid = (dbUser && dbUser.id) || rawUserId;
+        const displayAvatar = (dbUser && dbUser.avatar) || null;
         if (!room.participants.find(p => p.socketId === socket.id)) {
-          room.participants.push({ socketId: socket.id, userId: uid, username: displayName, fullName: displayFullName, score: 0, timeSpent: 0 });
+          room.participants.push({ socketId: socket.id, userId: uid, username: displayName, fullName: displayFullName, avatar: displayAvatar, score: 0, timeSpent: 0 });
         }
 
         socket.join(room.code);
@@ -378,6 +380,7 @@ export function getTangTocParticipants(roomId) {
     id: p.userId,
     username: p.username,
     fullName: (p.fullName && String(p.fullName).trim()) || p.username,
+    avatar: p.avatar || null,
     isHost: room.hostId === p.socketId
   }));
 }

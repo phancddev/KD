@@ -102,14 +102,29 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.id && data.username) {
                 userId = data.id;
                 username = data.username;
-                
+
                 const usernameDisplay = document.getElementById('username-display');
                 if (usernameDisplay) {
-                    usernameDisplay.textContent = `Xin chào, ${data.username}`;
+                    // Ưu tiên hiển thị full_name, fallback về username
+                    const displayName = (data.full_name && data.full_name.trim()) || data.username;
+                    usernameDisplay.textContent = `Xin chào, ${displayName}`;
                 } else {
                     console.warn('⚠️ Không tìm thấy element username-display');
                 }
-                
+
+                // Update avatar
+                const avatarText = document.getElementById('avatar-text');
+                if (avatarText) {
+                    if (data.avatar) {
+                        // Hiển thị ảnh avatar
+                        const avatarContainer = avatarText.parentElement;
+                        avatarContainer.innerHTML = `<img src="${data.avatar}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+                    } else {
+                        // Hiển thị chữ cái đầu
+                        avatarText.textContent = data.username.charAt(0).toUpperCase();
+                    }
+                }
+
                 if (data.isAdmin) {
                     console.log('👑 Người dùng là admin, hiển thị admin panel');
                     showAdminPanel();
